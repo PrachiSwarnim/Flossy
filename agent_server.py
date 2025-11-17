@@ -31,17 +31,18 @@ load_dotenv()
 # --------------------------------------------
 # GOOGLE SPEECH TO TEXT CONFIG
 # --------------------------------------------
-b64_creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-if not b64_creds:
-    raise RuntimeError("Missing GOOGLE_APPLICATION_CREDENTIALS_JSON env variable")
+cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
-service_json = json.loads(base64.b64decode(b64_creds))
-gcp_credentials = service_account.Credentials.from_service_account_info(service_json)
+if not cred_path or not os.path.exists(cred_path):
+    raise RuntimeError(
+        f"Missing or invalid GOOGLE_APPLICATION_CREDENTIALS path: {cred_path}"
+    )
+
+gcp_credentials = service_account.Credentials.from_service_account_file(cred_path)
 
 speech_client = speech.SpeechClient(credentials=gcp_credentials)
 SAMPLE_RATE = 16000
 LANGUAGE = "en-US"
-
 
 # --------------------------------------------
 # Pydantic Schema for Gemini Output
@@ -288,6 +289,100 @@ STATE: {st}
         return await send_bot(ws, f"Your appointment is confirmed for {msg}!")
 
     return await send_bot(ws, ai["message"])
+
+# --------------------------------------------
+# TEXT MODE HANDLER — for /ai_response endpoint
+# --------------------------------------------
+async def handle_user_utterance_text(
+    query: str,
+    user: str = "default",
+    db_user_id: Optional[int] = None
+):
+    db = SessionLocal()
+    st = text_states.get(user, {})
+
+    current_time_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    prompt = f"""
+You are FlossyAI (TEXT MODE).
+Start the very first chat with:
+"Hi! Welcome to Smile Artists Dental Studio! I am Flossy AI. How can I help you?"
+
+If the first message is not a greeting, simply answer the user's query.
+
+Follow the SAME JSON schema and rules as voice mode.
+
+**CURRENT TIME: {current_time_utc}**
+- Suggest future date/time relative to CURRENT TIME if needed.
+
+Booking requires: name, date, time, phone, symptom_message.
+Cancellation requires: phone.
+
+Ask name, date, time, phone, symptom message one chat by one chat.
+USER: "{query}"
+STATE: {st}
+"""
+
+    ai = await ask_gemini(prompt)
+    if not ai:
+        return "Sorry, I couldn’t understand that."
+
+    # Update state
+    for k in ["name", "date", "time", "phone", "symptom_message"]:
+        if ai.get(k):
+            st[k] = ai[k]
+
+    text_states[user] = st
+
+    # ------------------------------
+    # APPOINTMENT BOOKING
+    # ------------------------------
+    if ai.get("ready_for_booking"):
+        dt_final = execute_booking(db, st, db_user_id)
+        text_states[user] = {}
+
+        formatted_time = dt_final.strftime('%A, %B %d at %I:%M %p UTC')
+
+        return (
+            f"All set, {st['name']}! 🎉 Your appointment with "
+            f"{DEFAULT_DOCTOR_NAME} is booked for {formatted_time}. "
+            f"We have recorded your reason as: {st['symptom_message']}."
+        )
+
+    # ------------------------------
+    # APPOINTMENT CANCELLATION
+    # ------------------------------
+    if ai.get("ready_for_cancellation"):
+        phone = st.get("phone")
+        if not phone:
+            return "Please provide the phone number."
+
+        p = db.query(Patient).filter(Patient.phone == phone).first()
+        if not p:
+            return "No appointments found for that phone number."
+
+        appt = (
+            db.query(Appointment)
+            .filter(
+                Appointment.patient_id == p.id,
+                Appointment.status == "scheduled"
+            )
+            .first()
+        )
+
+        if not appt:
+            return "There is no appointment to cancel."
+
+        appt.status = "cancelled"
+        db.commit()
+
+        text_states[user] = {}
+        return "Your appointment has been cancelled 😊"
+
+    # ------------------------------
+    # DEFAULT REPLY
+    # ------------------------------
+    return ai.get("message", "How can I help you?")
 
 
 # --------------------------------------------

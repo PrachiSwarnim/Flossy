@@ -392,8 +392,8 @@ function appendToPanel(who, text) {
 }
 
 aiSend.addEventListener("click", sendText);
-aiInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
+aiInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     sendText();
   }

@@ -48,7 +48,6 @@ class Appointment(Base):
     datetime = Column(DateTime(timezone=True), nullable=False)
     status = Column(String(50), default="scheduled")
     doctor_name = Column(String(120), nullable=False, default="Dr. Ava Sharma") # NEW COLUMN
-
     patient = relationship("Patient", back_populates="appointments")
 
     def __repr__(self):
