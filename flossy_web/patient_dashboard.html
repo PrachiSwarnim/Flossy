@@ -17,7 +17,6 @@
       overflow-x: hidden;
     }
 
-    /* ---------------- HEADER ---------------- */
     header {
       background: white;
       display: flex;
@@ -45,11 +44,6 @@
       border-radius: 50%;
       transition: 0.35s ease;
       box-shadow: 0 0 0 rgba(255,203,5,0.0);
-    }
-
-    .logo img:hover {
-      transform: scale(1.08);
-      box-shadow: 0 8px 25px rgba(255,203,5,0.45);
     }
 
     nav {
@@ -85,7 +79,6 @@
 
     .logout-btn:hover { background: #f0b800; }
 
-    /* ---------------- MAIN ---------------- */
     main {
       max-width: 1100px;
       margin: 3rem auto;
@@ -121,7 +114,17 @@
       font-size: 1.4rem;
     }
 
-    /* ---------------- AI PANEL ---------------- */
+    /* AI BUTTONS */
+    .ai-btn {
+      background: #ffcb05;
+      border: none;
+      padding: 0.6rem 0.9rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* AI PANEL button on the edge */
     #open-ai-panel {
       position: fixed;
       right: 0;
@@ -139,15 +142,16 @@
       z-index: 3000;
     }
 
+    /* AI PANEL */
     #ai-panel {
       position: fixed;
       top: 0;
-      right: -380px;
-      width: 380px;
+      right: -420px;
+      width: 420px;
       height: 100vh;
       background: white;
       box-shadow: -4px 0 25px rgba(0,0,0,0.15);
-      transition: 0.4s ease;
+      transition: 0.32s ease;
       display: flex;
       flex-direction: column;
       z-index: 6000;
@@ -177,6 +181,7 @@
       display: flex;
       gap: 0.8rem;
       border-top: 2px solid rgba(255,203,5,0.3);
+      align-items: center;
     }
 
     #ai-input {
@@ -196,7 +201,28 @@
       font-weight: 600;
     }
 
-    #ai-mic.active { background: red; }
+    #ai-mic.active { background: red; color: white; }
+
+    /* Voice panel (compact) */
+    #voice-controls {
+      display:flex;
+      gap:0.5rem;
+      align-items:center;
+    }
+
+    .transcript {
+      margin-bottom: 0.4rem;
+      font-size: 0.95rem;
+      color: #333;
+    }
+
+    .user-msg { color: #444; }
+    .bot-msg { color: #bb8400; font-weight:700; }
+
+    /* Responsive */
+    @media (max-width: 760px) {
+      #ai-panel { width: 100%; right: -100%; }
+    }
   </style>
 </head>
 
@@ -204,7 +230,7 @@
 
 <header>
   <div class="logo">
-    <img src="/static/assets/logo.png" />
+    <img src="/static/assets/logo.png" alt="logo" />
     <span>Smile Artists</span>
   </div>
 
@@ -239,24 +265,30 @@
   <div class="card">
     <h3>AI Appointment & Care Assistant</h3>
     <p>Your smart dental assistant for care, questions, and voice support.</p>
-  
+
     <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:1rem;">
-      <button class="ai-btn" id="toggleChat">💬 Chat with FlossyAI</button>
-      <button class="ai-btn voice" id="toggleVoice">🎤 Voice Assistant</button>
+      <button class="ai-btn" id="toggleChat">💬 Chat</button>
+      <button class="ai-btn voice" id="toggleVoice">🎤 Voice</button>
     </div>
   </div>
-  
+
 </main>
 
 <!-- AI PANEL -->
-<!-- VOICE PANEL -->
-<div id="voice-panel">
-  <div id="ai-panel-header">🎤 FlossyAI Voice Assistant</div>
-  <div id="voice-panel-content"></div>
+<div id="open-ai-panel">AI</div>
+
+<div id="ai-panel" aria-hidden="true" role="dialog">
+  <div id="ai-panel-header">🎛 FlossyAI — Assistant</div>
+
+  <div id="ai-panel-content" aria-live="polite"></div>
 
   <div id="ai-input-area">
-    <button id="voiceStart">🎙 Start Voice</button>
-    <button id="voiceStop">⛔ Stop</button>
+    <input id="ai-input" placeholder="Ask about appointments, prescriptions, or say hello..." />
+    <button id="ai-send">Send</button>
+    <div id="voice-controls">
+      <button id="ai-mic" title="Start/Stop Voice">🎙</button>
+      <span id="mic-status" style="font-size:0.85rem; color:#666; margin-left:6px;">idle</span>
+    </div>
   </div>
 </div>
 
@@ -269,93 +301,375 @@
 </script>
 
 <script>
-/* ---------------- UTIL ---------------- */
+/* ----------------- Configuration ----------------- */
+const LOCAL_WS_HOST = "127.0.0.1:8000"; // local host and port (you chose A)
+const WS_PATH = `/agent/ws/agent`;       // agent is mounted under /agent
+const WS_BASE = `ws://${LOCAL_WS_HOST}${WS_PATH}`;
+
+/* ----------------- Utilities ----------------- */
 function formatTime(utcDateString) {
   return new Date(utcDateString)
     .toLocaleString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
-async function fetchTodayAppointments() {
-  const token = new URLSearchParams(window.location.search).get("token");
-  const res = await fetch(`/appointments/today?token=${token}`);
+async function fetchTodayAppointments(token) {
+  const res = await fetch(`/appointments/today?token=${encodeURIComponent(token)}`);
   const data = await res.json();
   return data.appointments || [];
 }
 
-/* ---------------- LOAD PATIENT APPOINTMENT ---------------- */
-async function loadPatientAppointment() {
-  const appts = await fetchTodayAppointments();
-  const next = appts[0];
-  const el = document.getElementById("nextAppointment");
+/* ----------------- Page setup ----------------- */
+const aiPanel = document.getElementById("ai-panel");
+const panelContent = document.getElementById("ai-panel-content");
+const toggleChatBtn = document.getElementById("toggleChat");
+const toggleVoiceBtn = document.getElementById("toggleVoice");
+const openAiPanelBtn = document.getElementById("open-ai-panel");
+const aiInput = document.getElementById("ai-input");
+const aiSend = document.getElementById("ai-send");
+const aiMic = document.getElementById("ai-mic");
+const micStatus = document.getElementById("mic-status");
+const logoutBtn = document.getElementById("logout");
 
-  if (!next) {
-    el.textContent = "No appointments today.";
-    return;
-  }
+let CLERK_TOKEN = null;
+let CURRENT_USER = null;
 
-  const time = new Date(next.time).toLocaleString();
-  el.textContent = `${next.doctor_name} — ${time}`;
-}
-
-/* ---------------- DASHBOARD INIT ---------------- */
+/* ----------------- Clerk & initial load ----------------- */
 window.addEventListener("load", async () => {
   await Clerk.load();
-  const user = Clerk.user;
+  try {
+    // attempt to get the Clerk session token & user
+    await Clerk.load();
+    const user = Clerk.user;
+    CURRENT_USER = user || {};
+    // Try to get session token. This may require the user to be signed-in.
+    if (Clerk.session && typeof Clerk.session.getToken === "function") {
+      try {
+        CLERK_TOKEN = await Clerk.session.getToken({ template: "default" });
+      } catch (e) {
+        // fallback: try getting from URL query param
+        CLERK_TOKEN = new URLSearchParams(window.location.search).get("token") || null;
+      }
+    } else {
+      CLERK_TOKEN = new URLSearchParams(window.location.search).get("token") || null;
+    }
 
-  document.getElementById("welcomeMessage").textContent =
-    `Welcome back, ${user.firstName || "Patient"}!`;
+    document.getElementById("welcomeMessage").textContent =
+      `Welcome back, ${CURRENT_USER?.firstName || "Patient"}!`;
 
-  loadPatientAppointment();
-});
-
-/* ---------------- AI PANEL ---------------- */
-/* ---------------- AI PANEL (OPEN/CLOSE) ---------------- */
-document.getElementById("toggleChat").onclick = () => {
-  const panel = document.getElementById("ai-panel");
-  panel.classList.toggle("open");
-
-  // Change button text depending on panel state
-  const btn = document.getElementById("toggleChat");
-  btn.textContent = panel.classList.contains("open")
-    ? "✖ Close"
-    : "💬 Chat";
-};
-
-/* ---------------- TEXT CHAT ---------------- */
-async function sendText() {
-  const input = document.getElementById("ai-input");
-  const msg = input.value.trim();
-  if (!msg) return;
-
-  const content = document.getElementById("ai-panel-content");
-  content.innerHTML += `<div><b>You:</b> ${msg}</div>`;
-  input.value = "";
-
-  const res = await fetch("/ai_response", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query: msg })
-  });
-
-  const data = await res.json();
-  content.innerHTML += `<div style="color:#e3aa00;"><b>FlossyAI:</b> ${data.answer}</div>`;
-  content.scrollTop = content.scrollHeight;
-}
-
-document.getElementById("ai-send").onclick = sendText;
-document.getElementById("ai-input").addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();    // block default newline behavior
-    sendText();            // send the message
+    // Load appointment
+    const appts = await fetchTodayAppointments(CLERK_TOKEN);
+    const next = appts[0];
+    const el = document.getElementById("nextAppointment");
+    if (!next) {
+      el.textContent = "No appointments today.";
+    } else {
+      const time = new Date(next.time).toLocaleString();
+      el.textContent = `${next.doctor_name} — ${time}`;
+    }
+  } catch (err) {
+    console.error("Clerk load error:", err);
+    document.getElementById("welcomeMessage").textContent = "Welcome!";
   }
 });
 
+/* ----------------- Panel toggle handlers ----------------- */
+openAiPanelBtn.addEventListener("click", () => {
+  aiPanel.classList.toggle("open");
+});
 
-/* ---------------- LOGOUT ---------------- */
-document.getElementById("logout").onclick = () => {
+toggleChatBtn.addEventListener("click", () => {
+  aiPanel.classList.toggle("open");
+  toggleChatBtn.textContent = aiPanel.classList.contains("open") ? "✖ Close" : "💬 Chat";
+});
+
+/* ----------------- Text chat flow ----------------- */
+function appendToPanel(who, text) {
+  const div = document.createElement("div");
+  div.className = who === "user" ? "transcript user-msg" : "transcript bot-msg";
+  div.innerHTML = `<b>${who === "user" ? "You" : "FlossyAI"}:</b> ${text}`;
+  panelContent.appendChild(div);
+  panelContent.scrollTop = panelContent.scrollHeight;
+}
+
+aiSend.addEventListener("click", sendText);
+aiInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    sendText();
+  }
+});
+
+async function sendText() {
+  const text = aiInput.value.trim();
+  if (!text) return;
+  appendToPanel("user", text);
+  aiInput.value = "";
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (CLERK_TOKEN) headers["Authorization"] = `Bearer ${CLERK_TOKEN}`;
+
+    const res = await fetch("/ai_response", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ query: text })
+    });
+
+    const data = await res.json();
+    const reply = data.answer || data.reply || "Sorry, no response.";
+    appendToPanel("bot", reply);
+  } catch (err) {
+    console.error("Text send error:", err);
+    appendToPanel("bot", "Error contacting AI. Check console.");
+  }
+}
+
+/* ----------------- Logout ----------------- */
+logoutBtn.addEventListener("click", () => {
   Clerk.signOut().then(() => window.location.href = "/");
-};
-</script>
+});
 
+/* ----------------- Voice recorder -> websocket pipeline ----------------- */
+
+/*
+Client will:
+ - Create WebSocket to ws://127.0.0.1:8000/agent/ws/agent?token=CLERK_TOKEN
+ - Capture microphone using AudioContext ScriptProcessorNode
+ - Convert Float32 to 16-bit PCM, downsample to 16kHz, base64-encode chunks
+ - Send JSON: { type: "audio_chunk", data: "<base64>" }
+ - On stop: send { type: "audio_done" }
+ - Handle incoming websocket messages: transcript, bot_text, audio_chunk (bot TTS)
+*/
+
+let audioContext = null;
+let mediaStream = null;
+let processor = null;
+let socket = null;
+let socketOpen = false;
+let recording = false;
+let sendBuffer = []; // used to collect encoded PCM chunks before sending (if needed)
+
+function floatTo16BitPCM(float32Array) {
+  const l = float32Array.length;
+  const buffer = new ArrayBuffer(l * 2);
+  const view = new DataView(buffer);
+  let offset = 0;
+  for (let i = 0; i < l; i++, offset += 2) {
+    let s = Math.max(-1, Math.min(1, float32Array[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+  return new Int16Array(buffer);
+}
+
+// downsample from source sampleRate to targetSampleRate (16000)
+function downsampleBuffer(buffer, inputSampleRate, outputSampleRate = 16000) {
+  if (outputSampleRate === inputSampleRate) {
+    return buffer;
+  }
+  const sampleRateRatio = inputSampleRate / outputSampleRate;
+  const newLength = Math.round(buffer.length / sampleRateRatio);
+  const result = new Float32Array(newLength);
+  let offsetResult = 0;
+  let offsetBuffer = 0;
+  while (offsetResult < result.length) {
+    const nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
+    // simple average to resample
+    let accum = 0, count = 0;
+    for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+      accum += buffer[i];
+      count++;
+    }
+    result[offsetResult] = count ? accum / count : 0;
+    offsetResult++;
+    offsetBuffer = nextOffsetBuffer;
+  }
+  return result;
+}
+
+async function startRecording() {
+  if (recording) return;
+  // open websocket if not open
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    await openSocket();
+  }
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const inputSampleRate = audioContext.sampleRate || 48000;
+
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const source = audioContext.createMediaStreamSource(mediaStream);
+
+    // Use ScriptProcessor for wide compatibility
+    const bufferSize = 4096;
+    processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+
+    processor.onaudioprocess = (evt) => {
+      if (!recording) return;
+      const inputData = evt.inputBuffer.getChannelData(0);
+      // downsample to 16k
+      const downsampled = downsampleBuffer(inputData, inputSampleRate, 16000);
+      const pcm16 = floatTo16BitPCM(downsampled);
+      // convert Int16Array to raw bytes and base64
+      const ab = pcm16.buffer;
+      const binary = new Uint8Array(ab);
+      const b64 = btoa(String.fromCharCode(...binary));
+      // send chunk through websocket
+      if (socketOpen) {
+        try {
+          socket.send(JSON.stringify({ type: "audio_chunk", data: b64 }));
+        } catch (err) {
+          console.warn("socket send error:", err);
+        }
+      } else {
+        sendBuffer.push(b64);
+      }
+    };
+
+    source.connect(processor);
+    processor.connect(audioContext.destination); // necessary in some browsers
+    recording = true;
+    aiMic.classList.add("active");
+    micStatus.textContent = "recording";
+  } catch (err) {
+    console.error("startRecording error:", err);
+    micStatus.textContent = "error";
+  }
+}
+
+async function stopRecording() {
+  if (!recording) return;
+  recording = false;
+  aiMic.classList.remove("active");
+  micStatus.textContent = "processing";
+
+  // notify server that audio is done
+  try {
+    if (socket && socketOpen) {
+      socket.send(JSON.stringify({ type: "audio_done" }));
+    }
+  } catch (err) {
+    console.warn("audio_done send error:", err);
+  }
+
+  // tear down audio nodes
+  if (processor) {
+    processor.disconnect();
+    processor.onaudioprocess = null;
+    processor = null;
+  }
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = null;
+  }
+  if (audioContext) {
+    // don't close audioContext immediately if you plan to record again quickly - but safe to close
+    audioContext.close().catch(() => {});
+    audioContext = null;
+  }
+}
+
+/* ----------------- WebSocket open/handle ----------------- */
+async function openSocket() {
+  return new Promise((resolve, reject) => {
+    try {
+      // attach token as query string so server can validate
+      const tokenParam = CLERK_TOKEN ? `?token=${encodeURIComponent(CLERK_TOKEN)}` : "";
+      socket = new WebSocket(WS_BASE + tokenParam);
+
+      socket.onopen = () => {
+        console.log("WebSocket open");
+        socketOpen = true;
+        // flush any buffered chunks
+        if (sendBuffer.length) {
+          for (const b of sendBuffer) {
+            socket.send(JSON.stringify({ type: "audio_chunk", data: b }));
+          }
+          sendBuffer = [];
+        }
+        resolve();
+      };
+
+      socket.onmessage = (evt) => {
+        // Expecting messages like:
+        // {"type":"transcript","final":true,"text":"..."}
+        // {"type":"bot_text","text":"..."}
+        // {"type":"audio_chunk","data":"base64"}  (TTS audio chunk)
+        try {
+          const msg = JSON.parse(evt.data);
+          if (msg.type === "transcript") {
+            appendToPanel("user", msg.text);
+          } else if (msg.type === "bot_text") {
+            appendToPanel("bot", msg.text);
+          } else if (msg.type === "audio_chunk") {
+            // Reconstruct audio blob and play
+            playBase64AudioChunk(msg.data);
+          } else if (msg.type === "audio_done") {
+            // server finished sending TTS audio
+            console.log("Server audio_done");
+          } else {
+            console.log("socket msg:", msg);
+          }
+        } catch (err) {
+          console.log("ws non-json msg:", evt.data);
+        }
+      };
+
+      socket.onclose = (e) => {
+        console.log("WebSocket closed", e);
+        socketOpen = false;
+      };
+
+      socket.onerror = (err) => {
+        console.error("WebSocket error", err);
+        socketOpen = false;
+      };
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+/* ----------------- TTS playback (browser) ----------------- */
+function playBase64AudioChunk(b64) {
+  try {
+    const byteCharacters = atob(b64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    // We assume server sends PCM16 WAV frames or a playable WAV chunk.
+    // If server sends raw WAV file bytes, we can create Blob + ObjectURL and play.
+    const blob = new Blob([byteArray], { type: "audio/wav" });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.play().then(() => {
+      // revoke after play
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }).catch((e) => console.warn("audio play failed", e));
+  } catch (err) {
+    console.error("playBase64AudioChunk error", err);
+  }
+}
+
+/* ----------------- UI bind for mic button ----------------- */
+aiMic.addEventListener("click", async () => {
+  if (!recording) {
+    // ensure socket open
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      await openSocket();
+    }
+    await startRecording();
+  } else {
+    await stopRecording();
+  }
+});
+
+/* ----------------- Clean up on leaving ----------------- */
+window.addEventListener("beforeunload", () => {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.close();
+  }
+});
+</script>
 </body>
 </html>
