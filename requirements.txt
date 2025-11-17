@@ -1,6 +1,9 @@
 fastapi
 uvicorn
-firebase-admin
+sqlalchemy
 python-dotenv
+requests
+PyJWT
+python-multipart
 pydantic
-vosk
+PyJWKClient
