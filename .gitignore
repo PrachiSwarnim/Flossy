@@ -9,3 +9,4 @@ nlu_model
 appointments.db
 package-lock.json
 package.json
+vosk-model-small-en-us-0.15
