@@ -6,4 +6,3 @@ requests
 PyJWT
 python-multipart
 pydantic
-PyJWKClient
