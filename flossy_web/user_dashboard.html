@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dentist Dashboard — Smile Artist Studio</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet" />
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Sora", sans-serif;
+      background: linear-gradient(135deg, #fffdf7, #fff8df);
+      color: #2c2c2c;
+      overflow-x: hidden;
+    }
+
+    /* ---------------- HEADER ---------------- */
+    header {
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 2.5rem;
+      border-bottom: 2px solid rgba(255,203,5,0.5);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      color:#fcb911;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .logo img {
+      width: 55px;
+      height: 55px;
+      border-radius: 50%;
+      transition: 0.35s ease;
+      box-shadow: 0 0 0 rgba(255,203,5,0.0);
+    }
+
+    .logo img:hover {
+      transform: scale(1.08) rotate(0deg);
+      box-shadow: 0 8px 25px rgba(255,203,5,0.45);
+    }
+
+
+    nav {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+
+    nav a {
+      text-decoration: none;
+      color: #444;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      transition: 0.25s ease;
+    }
+
+    nav a:hover {
+      background: #ffcb05;
+      color: black;
+    }
+
+    .logout-btn {
+      background: #ffcb05;
+      padding: 0.55rem 1.2rem;
+      border-radius: 25px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: 0.25s ease;
+    }
+
+    .logout-btn:hover { background: #f0b800; }
+
+    /* ---------------- MAIN CONTENT ---------------- */
+    main {
+      max-width: 1100px;
+      margin: 3rem auto;
+      padding: 0 1.5rem;
+    }
+
+    #welcomeMessage {
+      font-size: 2rem;
+      font-family: "Playfair Display", serif;
+      background: linear-gradient(90deg, #f0b800, #ffcb05);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 2.5rem;
+      text-align: center;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1.8rem;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+
+    .card {
+      background: white;
+      border-radius: 1.2rem;
+      padding: 2rem;
+      box-shadow: 0 6px 30px rgba(255,203,5,0.15);
+      transition: 0.3s ease;
+      border-left: 6px solid #ffcb05;
+    }
+
+    .card:hover { transform: translateY(-6px); }
+
+    .card h3 {
+      font-family: "Playfair Display", serif;
+      margin-bottom: 0.8rem;
+      color: #f0b800;
+      font-size: 1.4rem;
+    }
+
+    /* ---------------- AI PANEL ---------------- */
+    #open-ai-panel {
+      position: fixed;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #ffcb05;
+      padding: 0.8rem 1rem;
+      border-radius: 12px 0 0 12px;
+      font-weight: 700;
+      color: black;
+      cursor: pointer;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      box-shadow: -4px 0 15px rgba(0,0,0,0.15);
+      z-index: 3000;
+    }
+
+    #ai-panel {
+      position: fixed;
+      top: 0;
+      right: -380px;
+      width: 380px;
+      height: 100vh;
+      background: white;
+      box-shadow: -4px 0 25px rgba(0,0,0,0.15);
+      transition: 0.4s ease;
+      display: flex;
+      flex-direction: column;
+      z-index: 6000;
+      border-left: 4px solid #ffcb05;
+    }
+
+    #ai-panel.open { right: 0; }
+
+    #ai-panel-header {
+      background: linear-gradient(90deg, #ffcb05, #f0b800);
+      padding: 1rem;
+      text-align: center;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    #ai-panel-content {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      font-size: 0.95rem;
+    }
+
+    #ai-input-area {
+      background: #fff7cd;
+      padding: 1rem;
+      display: flex;
+      gap: 0.8rem;
+      border-top: 2px solid rgba(255,203,5,0.3);
+    }
+
+    #ai-input {
+      flex: 1;
+      padding: 0.55rem;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      font-size: 0.9rem;
+    }
+
+    #ai-send, #ai-mic {
+      background: #ffcb05;
+      border: none;
+      padding: 0.6rem 0.9rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    #ai-mic.active { background: red; }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">
+    <img src="/static/assets/logo.png" />
+    <span>Smile Artists</span>
+  </div>
+
+  <nav>
+    <a href="/">Home</a>
+    <a href="/patient">Patients</a>
+    <button id="logout" class="logout-btn">Logout</button>
+  </nav>
+</header>
+
+<main>
+  <h2 id="welcomeMessage"></h2>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Today’s Appointments</h3>
+      <div id="todayAppointmentsList">
+        <p>Loading appointments...</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Recent Interactions</h3>
+      <p id="interaction-summary">Loading...</p>
+    </div>
+
+    <div class="card">
+      <h3>AI Insights</h3>
+      <p>FlossyAI detected 3 gum disease risk cases this week.</p>
+      <p><a style="color: #f0b800; font-weight: 600;" href="#">View Report</a></p>
+    </div>
+
+    <div class="card">
+      <h3>Notifications</h3>
+      <p>2 new appointment requests pending approval.</p>
+      <p><a style="color: #f0b800; font-weight: 600;" href="#">Review Now</a></p>
+    </div>
+  </div>
+</main>
+
+<!-- AI PANEL BUTTON -->
+<div id="open-ai-panel">FlossyAI</div>
+
+<!-- AI PANEL -->
+<div id="ai-panel">
+  <div id="ai-panel-header">🦷 FlossyAI Assistant</div>
+  <div id="ai-panel-content"></div>
+
+  <div id="ai-input-area">
+    <input id="ai-input" placeholder="Ask FlossyAI..." />
+    <button id="ai-mic">🎤</button>
+    <button id="ai-send">Send</button>
+  </div>
+</div>
+
+<!-- Clerk -->
+<script
+  async
+  crossorigin="anonymous"
+  data-clerk-publishable-key="pk_test_bWVldC1ncm91c2UtMzMuY2xlcmsuYWNjb3VudHMuZGV2JA"
+  src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js">
+</script>
+
+<script>
+/* ---------------- UTIL ---------------- */
+function formatTime(utcDateString) {
+  const date = new Date(utcDateString);
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function fetchTodayAppointments() {
+  const token = new URLSearchParams(window.location.search).get("token");
+
+  const res = await fetch(`/appointments/today?token=${token}`);
+  const data = await res.json();
+
+  return data.appointments || [];
+}
+
+/* ---------------- DASHBOARD ---------------- */
+async function renderDentistDashboard() {
+  await Clerk.load();
+  const user = Clerk.user;
+
+  document.getElementById("welcomeMessage").textContent =
+    `Welcome back, Dr. ${user.firstName || "Dentist"}!`;
+
+  const listDiv = document.getElementById("todayAppointmentsList");
+  const appts = await fetchTodayAppointments();
+
+  listDiv.innerHTML = appts.map(a => `
+    <p>
+      <span style="font-weight:700;color:#ffcb05;">${formatTime(a.time)}</span> – ${a.patient_name}
+      <span style="color:#666;font-size:0.9em;">(${a.reason})</span>
+    </p>
+  `).join("");
+}
+
+window.addEventListener("load", renderDentistDashboard);
+
+/* ---------------- AI PANEL ---------------- */
+document.getElementById("open-ai-panel").onclick = () =>
+  document.getElementById("ai-panel").classList.toggle("open");
+
+/* ---------------- TEXT CHAT ---------------- */
+async function sendText() {
+  const input = document.getElementById("ai-input");
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  const content = document.getElementById("ai-panel-content");
+  content.innerHTML += `<div><b>You:</b> ${msg}</div>`;
+  input.value = "";
+
+  const res = await fetch("/ai_response", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ query: msg })
+  });
+  const data = await res.json();
+
+  content.innerHTML += `<div style="color:#e3aa00;"><b>FlossyAI:</b> ${data.answer}</div>`;
+  content.scrollTop = content.scrollHeight;
+}
+
+document.getElementById("ai-send").onclick = sendText;
+
+/* ---------------- LOGOUT ---------------- */
+document.getElementById("logout").onclick = () => {
+  Clerk.signOut().then(() => window.location.href = "/");
+};
+</script>
+
+</body>
+</html>

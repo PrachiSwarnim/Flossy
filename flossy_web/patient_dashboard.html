@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Patient Dashboard — Smile Artist Studio</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet" />
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Sora", sans-serif;
+      background: linear-gradient(135deg, #fffdf7, #fff8df);
+      color: #2c2c2c;
+      overflow-x: hidden;
+    }
+
+    /* ---------------- HEADER ---------------- */
+    header {
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 2.5rem;
+      border-bottom: 2px solid rgba(255,203,5,0.5);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      color:#fcb911;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .logo img {
+      width: 55px;
+      height: 55px;
+      border-radius: 50%;
+      transition: 0.35s ease;
+      box-shadow: 0 0 0 rgba(255,203,5,0.0);
+    }
+
+    .logo img:hover {
+      transform: scale(1.08);
+      box-shadow: 0 8px 25px rgba(255,203,5,0.45);
+    }
+
+    nav {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+
+    nav a {
+      text-decoration: none;
+      color: #444;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      transition: 0.25s ease;
+    }
+
+    nav a:hover {
+      background: #ffcb05;
+      color: black;
+    }
+
+    .logout-btn {
+      background: #ffcb05;
+      padding: 0.55rem 1.2rem;
+      border-radius: 25px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: 0.25s ease;
+    }
+
+    .logout-btn:hover { background: #f0b800; }
+
+    /* ---------------- MAIN ---------------- */
+    main {
+      max-width: 1100px;
+      margin: 3rem auto;
+      padding: 0 1.5rem;
+    }
+
+    #welcomeMessage {
+      font-size: 2rem;
+      font-family: "Playfair Display", serif;
+      background: linear-gradient(90deg, #f0b800, #ffcb05);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 2.5rem;
+      text-align: center;
+    }
+
+    .card {
+      background: white;
+      border-radius: 1.2rem;
+      padding: 2rem;
+      box-shadow: 0 6px 30px rgba(255,203,5,0.15);
+      transition: 0.3s ease;
+      border-left: 6px solid #ffcb05;
+      margin-bottom: 2rem;
+    }
+
+    .card:hover { transform: translateY(-6px); }
+
+    h3 {
+      font-family: "Playfair Display", serif;
+      margin-bottom: 0.8rem;
+      color: #f0b800;
+      font-size: 1.4rem;
+    }
+
+    /* ---------------- AI PANEL ---------------- */
+    #open-ai-panel {
+      position: fixed;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #ffcb05;
+      padding: 0.8rem 1rem;
+      border-radius: 12px 0 0 12px;
+      font-weight: 700;
+      color: black;
+      cursor: pointer;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      box-shadow: -4px 0 15px rgba(0,0,0,0.15);
+      z-index: 3000;
+    }
+
+    #ai-panel {
+      position: fixed;
+      top: 0;
+      right: -380px;
+      width: 380px;
+      height: 100vh;
+      background: white;
+      box-shadow: -4px 0 25px rgba(0,0,0,0.15);
+      transition: 0.4s ease;
+      display: flex;
+      flex-direction: column;
+      z-index: 6000;
+      border-left: 4px solid #ffcb05;
+    }
+
+    #ai-panel.open { right: 0; }
+
+    #ai-panel-header {
+      background: linear-gradient(90deg, #ffcb05, #f0b800);
+      padding: 1rem;
+      text-align: center;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    #ai-panel-content {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      font-size: 0.95rem;
+    }
+
+    #ai-input-area {
+      background: #fff7cd;
+      padding: 1rem;
+      display: flex;
+      gap: 0.8rem;
+      border-top: 2px solid rgba(255,203,5,0.3);
+    }
+
+    #ai-input {
+      flex: 1;
+      padding: 0.55rem;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      font-size: 0.9rem;
+    }
+
+    #ai-send, #ai-mic {
+      background: #ffcb05;
+      border: none;
+      padding: 0.6rem 0.9rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    #ai-mic.active { background: red; }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">
+    <img src="/static/assets/logo.png" />
+    <span>Smile Artists</span>
+  </div>
+
+  <nav>
+    <a href="/">Home</a>
+    <a href="/user">Dashboard</a>
+    <button id="logout" class="logout-btn">Logout</button>
+  </nav>
+</header>
+
+<main>
+  <h2 id="welcomeMessage"></h2>
+
+  <div class="card">
+    <h3>My Dental Records</h3>
+    <p>Last Visit: July 12, 2025</p>
+    <a class="btn">View Full History</a>
+  </div>
+
+  <div class="card">
+    <h3>My Prescriptions</h3>
+    <p>• Antiseptic Mouthwash</p>
+    <a class="btn">Download</a>
+  </div>
+
+  <div class="card">
+    <h3>Upcoming Appointment</h3>
+    <p id="nextAppointment">Loading...</p>
+    <a class="btn">Reschedule</a>
+  </div>
+
+  <div class="card">
+    <h3>AI Appointment & Care Assistant</h3>
+    <p>Your smart dental assistant for care, questions, and voice support.</p>
+  
+    <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:1rem;">
+      <button class="ai-btn" id="toggleChat">💬 Chat with FlossyAI</button>
+      <button class="ai-btn voice" id="toggleVoice">🎤 Voice Assistant</button>
+    </div>
+  </div>
+  
+</main>
+
+<!-- AI PANEL -->
+<!-- VOICE PANEL -->
+<div id="voice-panel">
+  <div id="ai-panel-header">🎤 FlossyAI Voice Assistant</div>
+  <div id="voice-panel-content"></div>
+
+  <div id="ai-input-area">
+    <button id="voiceStart">🎙 Start Voice</button>
+    <button id="voiceStop">⛔ Stop</button>
+  </div>
+</div>
+
+<!-- Clerk -->
+<script
+  async
+  crossorigin="anonymous"
+  data-clerk-publishable-key="pk_test_bWVldC1ncm91c2UtMzMuY2xlcmsuYWNjb3VudHMuZGV2JA"
+  src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js">
+</script>
+
+<script>
+/* ---------------- UTIL ---------------- */
+function formatTime(utcDateString) {
+  return new Date(utcDateString)
+    .toLocaleString("en-US", { hour: "2-digit", minute: "2-digit" });
+}
+
+async function fetchTodayAppointments() {
+  const token = new URLSearchParams(window.location.search).get("token");
+  const res = await fetch(`/appointments/today?token=${token}`);
+  const data = await res.json();
+  return data.appointments || [];
+}
+
+/* ---------------- LOAD PATIENT APPOINTMENT ---------------- */
+async function loadPatientAppointment() {
+  const appts = await fetchTodayAppointments();
+  const next = appts[0];
+  const el = document.getElementById("nextAppointment");
+
+  if (!next) {
+    el.textContent = "No appointments today.";
+    return;
+  }
+
+  const time = new Date(next.time).toLocaleString();
+  el.textContent = `${next.doctor_name} — ${time}`;
+}
+
+/* ---------------- DASHBOARD INIT ---------------- */
+window.addEventListener("load", async () => {
+  await Clerk.load();
+  const user = Clerk.user;
+
+  document.getElementById("welcomeMessage").textContent =
+    `Welcome back, ${user.firstName || "Patient"}!`;
+
+  loadPatientAppointment();
+});
+
+/* ---------------- AI PANEL ---------------- */
+/* ---------------- AI PANEL (OPEN/CLOSE) ---------------- */
+document.getElementById("toggleChat").onclick = () => {
+  const panel = document.getElementById("ai-panel");
+  panel.classList.toggle("open");
+
+  // Change button text depending on panel state
+  const btn = document.getElementById("toggleChat");
+  btn.textContent = panel.classList.contains("open")
+    ? "✖ Close"
+    : "💬 Chat";
+};
+
+/* ---------------- TEXT CHAT ---------------- */
+async function sendText() {
+  const input = document.getElementById("ai-input");
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  const content = document.getElementById("ai-panel-content");
+  content.innerHTML += `<div><b>You:</b> ${msg}</div>`;
+  input.value = "";
+
+  const res = await fetch("/ai_response", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: msg })
+  });
+
+  const data = await res.json();
+  content.innerHTML += `<div style="color:#e3aa00;"><b>FlossyAI:</b> ${data.answer}</div>`;
+  content.scrollTop = content.scrollHeight;
+}
+
+document.getElementById("ai-send").onclick = sendText;
+document.getElementById("ai-input").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();    // block default newline behavior
+    sendText();            // send the message
+  }
+});
+
+
+/* ---------------- LOGOUT ---------------- */
+document.getElementById("logout").onclick = () => {
+  Clerk.signOut().then(() => window.location.href = "/");
+};
+</script>
+
+</body>
+</html>

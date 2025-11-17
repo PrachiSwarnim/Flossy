@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/static/assets/logo.png">
+  <title>Smile Artist Dental Studio — Crafting Smarter Smiles</title>
+
+  <!-- Updated Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet" />
+  <link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+  />
+
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Manrope", sans-serif;
+      background: #fffaf3;
+      color: #1c1c1c;
+      overflow-x: hidden;
+    }
+
+    nav {
+        margin-left: auto;
+    }
+    header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.8rem 5%;  /* reduced height */
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(90px);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
+        transition: background 0.4s ease, padding 0.3s ease;
+        }
+
+        .logo {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        font-family: "Playfair Display", serif;
+        font-weight: 700;
+        font-size: 1.4rem; /* slightly smaller */
+        color: #fca311;
+        letter-spacing: 0.4px;
+        height: 35px;
+        }
+
+        nav ul li a {
+        text-decoration: none;
+        color: #333;
+        font-weight: 600;
+        font-size: 0.95rem; /* balanced with smaller header */
+        transition: color 0.3s ease;
+        }
+
+
+    .logo img {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    transition: transform 0.4s ease;
+    }
+
+    .logo:hover img {
+    transform: scale(1.2);
+    }
+
+    nav ul {
+      display: flex;
+      gap: 1.8rem;
+      list-style: none;
+    }
+
+    nav ul li {
+        justify-content: flex-end;
+    }
+    nav ul li a:hover {
+      color: #fca311;
+    }
+
+    /* Hero Section */
+    .hero {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8%;
+      background: radial-gradient(circle at top left, #fff6e1, #fffaf3 40%, #ffe8b8 100%);
+      position: relative;
+    }
+
+    .hero-text h1 {
+      font-size: 4rem;
+      font-family: "Playfair Display", serif;
+      line-height: 1.1;
+      background: linear-gradient(90deg, #fca311, #ff7b00);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-text {
+      animation: fadeInUp 1s ease-out forwards;
+      max-width: 600px;
+    }
+
+    .btn { 
+      background: linear-gradient(135deg, #fca311, #ffd166); 
+      color: #fff; 
+      padding: 0.8rem 2rem;
+      margin: 1rem; 
+      border: none; 
+      border-radius: 50px; 
+      font-size: 1.05rem; 
+      font-weight: 700; 
+      cursor: pointer; 
+      transition: all 0.3s ease; 
+      text-transform: uppercase; 
+      letter-spacing: 1px; 
+    } 
+    
+    .btn:hover { 
+      transform: translateY(-3px); 
+      box-shadow: 0 8px 20px rgba(252, 163, 17, 0.3); 
+    }
+
+    /* Carousel Section */
+    .carousel {
+      width: 100%;
+      height: 90vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #ffffff; /* keeps white edges clean */
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* This wrapper creates the white space on sides */
+    .carousel-inner {
+      width: 92%;              /* adjust: lower = wider white sides */
+      height: 100%;
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    }
+
+    .slides {
+      display: flex;
+      height: 100%;
+      width: 400%;
+      transition: transform 0.7s ease;
+    }
+
+    .slide {
+      width: 100%;
+      flex: 0 0 100%;
+      height: 100%;
+    }
+
+    .slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 24px;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);    
+    }
+
+    /* dots */
+    .carousel-buttons {
+      position: absolute;
+      bottom: 20px;
+      display: flex;
+      gap: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .dot.active {
+      background: #fca311;
+    }
+
+    /* Responsive tweak */
+    @media (max-width: 768px) {
+      .carousel { height: 50vh; }
+    }
+
+    .hero-image img {
+        width: 450px;
+        height: auto;
+        border-radius: 30px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        animation: fadeIn 1.6s ease-out forwards;
+        transition: transform 0.3s ease;
+    }
+
+    .hero-image img:hover {
+        transform: scale(1.05);
+    }
+
+    @media (max-width: 768px) {
+        .hero-image img {
+            width: 85%;
+            margin-top: 2rem;
+        }
+    }
+
+
+    section {
+      padding: 5rem 8%;
+      text-align: center;
+    }
+
+    .about h2, .ai-section h2 {
+      font-family: "Playfair Display", serif;
+      font-size: 2.6rem;
+      margin-bottom: 1.2rem;
+      color: #1c1c1c;
+    }
+
+    .about p, .ai-section p {
+      max-width: 700px;
+      margin: 0 auto;
+      line-height: 1.7;
+      color: #555;
+      font-size: 1.05rem;
+    }
+
+    .login-btn {
+        background: linear-gradient(135deg, #fca311, white);
+        color: black;
+        padding: 0.5rem 0.5rem;
+        border-radius: 50px;
+        border: none;
+        cursor: pointer;
+        font-weight: 400;
+        font-size: 0.80rem;
+        box-shadow: 0 4px 10px rgba(157, 98, 4, 0.564);
+        transition: all 0.3s ease;
+        margin-left: 0.5rem;
+        }
+
+    .login-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(252, 163, 17, 0.3);
+        }
+
+    .signup-btn {
+        background: linear-gradient(135deg, #fca311, white);
+        color: black;
+        padding: 0.5rem 1rem;
+        margin-left: 0.5rem;
+        border-radius: 50px;
+        border: none;
+        cursor: pointer;
+        font-weight: 400;
+        font-size: 0.80rem;
+        box-shadow: 0 4px 10px rgba(157, 98, 4, 0.564);
+        transition: all 0.3s ease;
+        }
+
+    .signup-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(252, 163, 17, 0.3);
+        }
+
+    .ai-section {
+      background: linear-gradient(160deg, #fff4d2 0%, #fffaf3 100%);
+      border-top: 1px solid rgba(0,0,0,0.05);
+    }
+
+    /* Meet the Team – Hover Effects */
+    .member {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+      width: 300px;
+      padding: 1.5rem;
+      transition: all 0.4s ease;
+      cursor: pointer;
+      transform: translateY(0);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .member:hover {
+      transform: translateY(-10px) scale(1.03);
+      box-shadow: 0 15px 30px rgba(252, 163, 17, 0.25);
+    }
+
+    .member img {
+      width: 100%;
+      border-radius: 50%;
+      height: 280px;
+      object-fit: cover;
+      transition: transform 0.4s ease, filter 0.4s ease;
+    }
+
+    .member:hover img {
+      transform: scale(1.08);
+      filter: brightness(1.05);
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .team-grid .member {
+      animation: fadeUp 0.8s ease-out both;
+    }
+
+    .team-grid .member:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .team-grid .member:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+
+    /* Add a gradient glow under the name */
+    .member h3 {
+      position: relative;
+      display: inline-block;
+    }
+
+    .member h3::after {
+      content: "";
+      position: absolute;
+      bottom: -5px;
+      left: 50%;
+      width: 0%;
+      height: 3px;
+      background: linear-gradient(90deg, #ffb703, #fca311);
+      border-radius: 50px;
+      transition: all 0.3s ease;
+      transform: translateX(-50%);
+    }
+
+    .member:hover h3::after {
+      width: 70%;
+    }
+
+    /* Subtle LinkedIn icon motion */
+    .member a i {
+      transition: color 0.3s ease, transform 0.3s ease;
+    }
+
+    .member a:hover i {
+      color: #005582;
+      transform: rotate(10deg) scale(1.2);
+    }
+
+    #instagram iframe {
+      max-width: 100%;
+      width: 100%;
+      height: 550px;
+      border: none;
+      overflow: hidden;
+      border-radius: 12px;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.08);
+    }
+
+
+    footer {
+      background: #fca311;
+      color: #fff;
+      padding: 0.8rem 8%;
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 768px) {
+      .hero {
+        flex-direction: column;
+        text-align: center;
+        padding: 4rem 6%;
+      }
+
+      .hero img {
+        width: 85%;
+        margin-top: 2rem;
+      }
+
+      .hero-text h1 {
+        font-size: 2.5rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">
+          <img src="/static/assets/logo.avif" alt="Smile Artist Logo" />
+          <span class="name">Smile Artists</span>
+        </div>
+      
+        <nav>
+          <ul>
+            <li><a href="#about">About</a></li>
+            <li><a href="#ai">FlossyAI</a></li>
+            <li><a href="/services">Our Services</a></li>
+            <li><a href="/dental_tourism">Dental Tourism</a></li>
+            <li><a href="/contact">Contact</a></li>
+            <li><a href="/login" id="login-btn">Login</a></li>
+            <li><a href="/signup" id="signup-btn">Sign Up</a></li>
+          </ul>
+        </nav>
+    </header>
+      
+
+  <!-- Carousel -->
+  <div class="carousel">
+    <div class="carousel-inner">
+      <div class="slides" id="slides">
+        <div class="slide"><img src="/static/assets/download.jpeg"></div>
+        <div class="slide"><img src="/static/assets/download (1).jpeg"></div>
+        <div class="slide"><img src="/static/assets/download (2).jpeg"></div>
+        <div class="slide"><img src="/static/assets/images.jpeg"></div>
+        <div class="slide"><img src="/static/assets/images (1).jpeg"></div>
+        <div class="slide"><img src="/static/assets/images (2).jpeg"></div>
+      </div>
+    </div>
+  
+    <div class="carousel-buttons">
+      <div class="dot active" onclick="goToSlide(0)"></div>
+      <div class="dot" onclick="goToSlide(1)"></div>
+      <div class="dot" onclick="goToSlide(2)"></div>
+      <div class="dot" onclick="goToSlide(3)"></div>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-text">
+      <h1>Crafting <span>Smarter Smiles</span></h1>
+      <p>Welcome to <strong>Smile Artist Dental Studio</strong> — where artistry meets innovation.  
+      Experience advanced dental care enhanced by <strong>FlossyAI</strong>, your AI-powered companion for effortless care, reminders, and personalized insights.</p>
+      <button id="get-started" class="btn">Get Started</button>
+    </div>
+    <div class="hero-image">
+        <img src="/static/assets/tooth11.jpg" salt="Happy patient smiling" />
+    </div>
+  </section>
+
+  <section id="about" class="about" style="padding: 4rem 2rem; background-color: #fffbea; color: #333; text-align: center; font-family: 'Poppins', sans-serif;">
+    <h2 style="font-size: 2rem; color: #ffb703; margin-bottom: 2rem; font-weight: 700;">About Our Studio</h2>
+    
+    <p style="max-width: 800px; margin: 0 auto 1.5rem auto; line-height: 1.8; font-size: 1.05rem;">
+      At Smile Artists Dental Studio, we believe every smile tells a story and we’re here to make yours shine brighter. Our team of skilled and caring dental professionals is dedicated to making every visit relaxing, comfortable, and genuinely enjoyable.
+    </p>
+    
+    <p style="max-width: 800px; margin: 0 auto 1.5rem auto; line-height: 1.8; font-size: 1.05rem;">
+      Our commitment goes beyond treatments! It’s about building trust and creating experiences that make dental care feel refreshing, not routine. Every detail, from our welcoming studio to our gentle techniques, is designed with your comfort in mind.
+    </p>
+    
+    <p style="max-width: 800px; margin: 0 auto 1.5rem auto; line-height: 1.8; font-size: 1.05rem;">
+      As an ISO 9001:2015 Certified Clinic, we hold ourselves to the highest standards of care and hygiene. Whether it’s a simple cleaning or a complete smile makeover, our goal is to help you feel confident every time you smile.
+    </p>
+    
+    <p style="max-width: 800px; margin: 0 auto 1.5rem auto; line-height: 1.8; font-size: 1.05rem;">
+      At Smile Artists, we don’t just fix teeth we craft smiles that last a lifetime.
+    </p>
+    
+    <p style="max-width: 800px; margin: 2rem auto 0 auto; font-style: italic; font-weight: 500; color: #555;">
+      Thank you for trusting Smile Artists Dental Studio where every smile is crafted with care and passion!
+    </p>
+  </section>
+  
+  <!-- Meet the Team Section -->
+<section id="team" style="padding: 5rem 8%; text-align: center; background: #fff;">
+    <h2 style="font-family: 'Playfair Display', serif; font-size: 2.6rem; color: #fca311; margin-bottom: 1rem;">
+      Meet the Team
+    </h2>
+    <p style="max-width: 800px; margin: 0 auto 3rem; color: #444; line-height: 1.8;">
+      The Smile Artists team is built on friendship, expertise, and empathy — three dentists united by a shared passion for creating brighter, healthier smiles.
+    </p>
+  
+    <div class="team-grid" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem;">
+      <div class="member" style="background: #fff; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 300px; padding: 1.5rem; transition: transform 0.3s ease, box-shadow 0.3s ease;">
+        <img src="/static/assets/Dr Shagufta Jawaid.avif" alt="Dr Shagufta Jawaid" style="width: 100%; border-radius: 50%; height: 280px; object-fit: cover;">
+        <h3 style="margin-top: 1rem; font-family: 'Playfair Display', serif; color: #fca311;">Dr. Shagufta Jawaid</h3>
+        <p style="font-size: 0.95rem; color: #555; line-height: 1.6;">
+          A compassionate and skilled dentist, Dr. Jawaid is known for her patient-first approach and dedication to advanced dental technologies.
+        </p>
+        <a href="https://www.linkedin.com/in/dr-shagufta-jawaid-53604b203/" target="_blank" aria-label="LinkedIn Profile of Dr. Shagufta Jawaid" style="display:inline-block; margin-top:0.8rem; color:#0077b5; font-size:1.5rem; transition:transform 0.3s ease, color 0.3s ease;">
+          <i class="fab fa-linkedin"></i>
+        </a>
+      </div>
+  
+      <div class="member" style="background: #fff; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 300px; padding: 1.5rem;">
+        <img src="/static/assets/Dr Shruti Choudhary.avif" alt="Dr Shruti Choudhary" style="width: 100%; border-radius: 50%; height: 280px; object-fit: cover;">
+        <h3 style="margin-top: 1rem; font-family: 'Playfair Display', serif; color: #fca311;">Dr. Shruti Choudhary</h3>
+        <p style="font-size: 0.95rem; color: #555; line-height: 1.6;">
+          With her gentle and friendly approach, Dr. Choudhary makes dental care stress-free and enjoyable while ensuring precision and comfort.
+        </p>
+        <a href="https://www.linkedin.com/in/shruti-choudhary01/" target="_blank" aria-label="LinkedIn Profile of Dr. Shruti Choudhary" style="display:inline-block; margin-top:0.8rem; color:#0077b5; font-size:1.5rem;">
+          <i class="fab fa-linkedin"></i>
+        </a>
+      </div>
+  
+      <div class="member" style="background: #fff; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 300px; padding: 1.5rem;">
+        <img src="/static/assets/Dr Aishwarya Singh.avif" alt="Dr Aishwarya Singh" style="width: 100%; border-radius: 50%; height: 280px; object-fit: cover;">
+        <h3 style="margin-top: 1rem; font-family: 'Playfair Display', serif; color: #fca311;">Dr. Aishwarya Singh</h3>
+        <p style="font-size: 0.95rem; color: #555; line-height: 1.6;">
+          An expert in smile design, Dr. Singh’s artistry and attention to detail bring out radiant, confident smiles with every treatment.
+        </p>
+        <a href="https://www.linkedin.com/company/wix-com/" target="_blank" aria-label="LinkedIn Profile of Dr. Aishwarya Singh" style="display:inline-block; margin-top:0.8rem; color:#0077b5; font-size:1.5rem;">
+          <i class="fab fa-linkedin"></i>
+        </a>
+      </div>
+    </div>
+  </section>  
+
+  <section id="ai" class="ai-section">
+    <h2>Powered by FlossyAI</h2>
+    <p>FlossyAI simplifies your dental care experience.  
+    From appointment booking to personalized health tracking, our AI assistant helps you keep your smile radiant intelligently.</p>
+    <button id="ai-button" class="btn" onclick="window.location.href='/signup'">Try FlossyAI</button>
+  </section>
+
+  <section id="instagram" style="padding: 4rem 8%; text-align:center;">
+    <h2 style="font-family: 'Playfair Display', serif; font-size:2.4rem; color:#fca311; margin-bottom:1rem;">
+      Follow Us On Instagram
+    </h2>
+  
+    <p style="color:#555; margin-bottom:2rem;">
+      Stay updated with our latest smiles, transformations, and daily dental care tips.
+    </p>
+  
+    <!-- LightWidget -->
+    <!-- <iframe src="https://cdn.lightwidget.com/widgets/YOUR_WIDGET_ID.html"
+            scrolling="no"
+            allowtransparency="true"
+            class="lightwidget-widget"
+            style="width:100%; border:0; overflow:hidden;">
+    </iframe> -->
+  </section>
+  
+  <footer id="contact">
+    <p>© 2023 Smile Artist Dental Studio | Powered by FlossyAI</p>
+  </footer>
+  <!-- Clerk Auth -->
+  <script
+    async
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_bWVldC1ncm91c2UtMzMuY2xlcmsuYWNjb3VudHMuZGV2JA"
+    src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js">
+  </script>
+
+  <script>
+    (function () {
+      const slidesEl = document.getElementById('slides');
+      const dots = [...document.querySelectorAll('.dot')];
+      const total = dots.length;
+      let idx = 0;
+      let timer = null;
+      const autoplayDelay = 5000;
+
+      function goTo(i, animate = true) {
+        idx = (i + total) % total;
+        if (!animate) slidesEl.style.transition = 'none';
+        else slidesEl.style.transition = '';
+        slidesEl.style.transform = `translateX(-${idx * 100}%)`;
+        dots.forEach((d, di) => d.classList.toggle('active', di === idx));
+        if (!animate) {
+          void slidesEl.offsetWidth;
+          slidesEl.style.transition = '';
+        }
+      }
+
+      dots.forEach((d, index) => {
+        d.dataset.index = index;
+      });
+
+      dots.forEach(d => d.addEventListener('click', () => {
+        stopAutoplay();
+        goTo(Number(d.dataset.index));
+        startAutoplay();
+      }));
+
+      function startAutoplay() {
+        stopAutoplay();
+        timer = setInterval(() => goTo(idx + 1), autoplayDelay);
+      }
+      function stopAutoplay() {
+        if (timer) { clearInterval(timer); timer = null; }
+      }
+
+      goTo(0, false);
+      startAutoplay();
+    })();
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const aiButton = document.getElementById("ai-button");
+      if (aiButton) {
+        aiButton.addEventListener("click", () => {
+          window.location.href = "/signup";
+        });
+      }
+
+      const getStarted = document.getElementById("get-started");
+      if (getStarted) {
+        getStarted.addEventListener("click", () => {
+          window.location.href = "/signup";
+        });
+      }
+    });
+
+  </script>
+</body>
+</html> 

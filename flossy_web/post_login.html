@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Redirecting...</title>
+
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(160deg, #fffaf3 0%, #fff4d2 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #333;
+      text-align: center;
+    }
+    .loading-spin {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #ffd166;
+      border-top: 4px solid #fca311;
+      border-radius: 50%;
+      margin: 2rem auto;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+
+<body>
+  <h2>🔄 Redirecting and verifying your role...</h2>
+  <div class="loading-spin"></div>
+
+  <script
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_bWVldC1ncm91c2UtMzMuY2xlcmsuYWNjb3VudHMuZGV2JA"
+    src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js">
+  </script>
+
+
+  <script>
+    (async () => {
+      try {
+        // Wait for Clerk to load
+        let attempts = 0;
+        while (typeof window.Clerk === "undefined" && attempts < 100) {
+          await new Promise(r => setTimeout(r, 60));
+          attempts++;
+        }
+
+        if (typeof window.Clerk === "undefined") {
+          document.body.innerHTML =
+            "<h2>Authentication library failed to load. Please refresh.</h2>";
+          return;
+        }
+
+        // IMPORTANT: your REAL publishable key must be here
+        await Clerk.load({
+          publishableKey: "pk_test_bWVldC1ncm91c2UtMzMuY2xlcmsuYWNjb3VudHMuZGV2JA"
+        });
+
+        // Check session
+        if (!Clerk.session || !Clerk.session.id) {
+          window.location.href = "/login?error=no_session";
+          return;
+        }
+
+        // Get user + token
+        const user = Clerk.user || {};
+        const token = await Clerk.session.getToken({ template: "default" });
+
+        if (!token) {
+          throw new Error("Token retrieval failed");
+        }
+
+        // Extract email
+        let email = null;
+
+        if (user.primaryEmailAddress) {
+          email = user.primaryEmailAddress.emailAddress || null;
+        }
+
+        if (!email && Array.isArray(user.emailAddresses) && user.emailAddresses.length > 0) {
+          email = user.emailAddresses[0].emailAddress || null;
+        }
+
+        // Send token (and email if available) to backend
+        const params = new URLSearchParams({ token });
+        if (email) params.append("email", email);
+
+        window.location.href = "/redirect_user?" + params.toString();
+
+      } catch (err) {
+        console.error("post_login error:", err);
+        window.location.href = "/login?error=post_login_failed";
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Our Services — Smile Artists Dental Studio</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet" />
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Manrope', sans-serif;
+      background-color: #fff;
+      color: #333;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ---------- HEADER / NAVIGATION ---------- */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.8rem 5%;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(80px);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
+      transition: background 0.4s ease, padding 0.3s ease;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      font-family: "Playfair Display", serif;
+      font-weight: 700;
+      font-size: 1.4rem;
+      color: #fca311;
+      letter-spacing: 0.4px;
+    }
+
+    .logo img {
+      width: 55px;
+      height: 55px;
+      border-radius: 50%;
+      transition: transform 0.4s ease;
+    }
+
+    .logo:hover img {
+      transform: scale(1.15);
+    }
+
+    nav ul {
+      display: flex;
+      gap: 1.8rem;
+      list-style: none;
+    }
+
+    nav ul li a {
+      text-decoration: none;
+      color: #333;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: color 0.3s ease;
+    }
+
+    nav ul li a:hover {
+      color: #fca311;
+    }
+
+    .login-btn, .signup-btn {
+      background: linear-gradient(135deg, #fca311, white);
+      color: black;
+      padding: 0.5rem 1rem;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      font-weight: 400;
+      font-size: 0.80rem;
+      box-shadow: 0 4px 10px rgba(157, 98, 4, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .login-btn:hover, .signup-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(252, 163, 17, 0.3);
+    }
+
+    /* ---------- HERO SECTION ---------- */
+    section.hero {
+      background: #fef9f5;
+      padding: 4rem 8%;
+      text-align: center;
+    }
+
+    section.hero h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.6rem;
+      color: #fca311;
+    }
+
+    section.hero p {
+      max-width: 800px;
+      margin: 1rem auto 0;
+      color: #444;
+      line-height: 1.8;
+    }
+
+    /* ---------- SERVICES GRID ---------- */
+    .services {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 2rem;
+      padding: 4rem 8%;
+      background-color: #fff;
+    }
+
+    .service-card {
+      background: #fff;
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      overflow: hidden;
+    }
+
+    .service-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 25px rgba(0,0,0,0.08);
+    }
+
+    .service-card img {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+    }
+
+    .service-card .content {
+      padding: 1.5rem;
+    }
+
+    .service-card h3 {
+      color: #fca311;
+      font-family: 'Playfair Display', serif;
+      margin-top: 0.5rem;
+    }
+
+    .service-card p {
+      font-size: 0.95rem;
+      color: #555;
+      margin-top: 0.5rem;
+    }
+
+    /* ---------- FOOTER ---------- */
+    footer {
+      background: #111;
+      color: #fff;
+      padding: 3rem 8%;
+      text-align: center;
+    }
+
+    footer a {
+      color: #fca311;
+      margin: 0 0.6rem;
+      font-size: 1.3rem;
+      transition: color 0.3s ease;
+    }
+
+    footer a:hover {
+      color: #fff;
+    }
+
+    footer p {
+      margin-top: 1.5rem;
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Navigation Bar -->
+  <header>
+    <div class="logo">
+      <img src="/static/assets/logo.png" alt="Smile Artist Logo" />
+      <span class="name">Smile Artists</span>
+    </div>
+
+    <nav>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#ai">FlossyAI</a></li>
+        <li><a href="/contact">Contact</a></li>
+        <li><a href="/login"><button class="login-btn">Login</button></a></li>
+        <li><a href="/signup"><button class="signup-btn">Sign Up</button></a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <h2>Our Services</h2>
+    <p>
+      At Smile Artists Dental Studio, we offer a wide range of dental services designed to meet the unique needs of our patients. From routine cleanings and exams to more complex treatments, our experienced dental professionals are here to provide you with exceptional care in a comfortable and stress-free environment.
+    </p>
+  </section>
+
+  <!-- Services Section -->
+  <section class="services">
+    <div class="service-card">
+      <img src="/static/assets/Routine Dental Checkup.avif" alt="Routine Dental Checkup">
+      <div class="content">
+        <h3>Routine Dental Checkup</h3>
+        <p>Experience comprehensive dental exams, teeth cleaning, and fluoride treatments to prevent dental problems before they occur. We offer personalized care, including implant restoration and periodontal treatments.</p>
+      </div>
+    </div>
+
+    <div class="service-card">
+      <img src="/static/assets/Preventive Care & Cosmetic Dentistry.avif" alt="Preventive Care & Cosmetic Dentistry">
+      <div class="content">
+        <h3>Preventive Care & Cosmetic Dentistry</h3>
+        <p>We provide preventive care to maintain oral health and cosmetic dentistry to enhance your smile — restoring beauty and function through modern, gentle techniques.</p>
+      </div>
+    </div>
+
+    <div class="service-card">
+      <img src="/static/assets/Dental Fillings.avif" alt="Dental Fillings">
+      <div class="content">
+        <h3>Dental Fillings</h3>
+        <p>We offer both traditional and laser composite fillings to restore decayed or damaged teeth quickly and painlessly for long-lasting dental health.</p>
+      </div>
+    </div>
+
+    <div class="service-card">
+      <img src="/static/assets/Emergency Care & Oral Surgery.avif" alt="Emergency Care & Oral Surgery">
+      <div class="content">
+        <h3>Emergency Care & Oral Surgery</h3>
+        <p>Our skilled team is ready to handle emergencies like chipped teeth or mouth trauma with advanced surgical techniques and compassionate care.</p>
+      </div>
+    </div>
+
+    <div class="service-card">
+      <img src="/static/assets/Painless Root Canal Treatments.avif" alt="Painless Root Canal Treatments">
+      <div class="content">
+        <h3>Painless Root Canal Treatments</h3>
+        <p>With modern techniques, our one-day root canal treatments are nearly pain-free. We recommend dental crowns post-treatment for strength and longevity.</p>
+      </div>
+    </div>
+
+    <div class="service-card">
+      <img src="/static/assets/Hollywood Smile Makeover.avif" alt="Hollywood Smile Makeover">
+      <div class="content">
+        <h3>Hollywood Smile Makeover</h3>
+        <p>Transform your smile with our Hollywood Smile Design — where artistry meets dental science for a radiant, confident smile.</p>
+      </div>
+    </div>
+
+    <div class="service-card">
+      <img src="/static/assets/Immediate Implants.avif" alt="Immediate Implants">
+      <div class="content">
+        <h3>Immediate Implants</h3>
+        <p>Restore missing teeth in just 48 hours with our immediate implant procedure for a natural, lasting result.</p>
+      </div>
+    </div>
+
+    <div class="service-card">
+      <img src="/static/assets/Kids Dentistry.avif" alt="Kids Dentistry">
+      <div class="content">
+        <h3>Kids Dentistry</h3>
+        <p>We make dental visits fun and stress-free for kids, ensuring healthy baby teeth and strong foundations for permanent ones.</p>
+      </div>
+    </div>
+
+    <div class="service-card">
+      <img src="/static/assets/Dental Crowns & Bridges.avif" alt="Dental Crowns & Bridges">
+      <div class="content">
+        <h3>Dental Crowns & Bridges</h3>
+        <p>Our ceramic crowns and dental bridges restore damaged or missing teeth, giving you back confidence and function.</p>
+      </div>
+    </div>
+
+    <div class="service-card">
+      <img src="/static/assets/Teeth Whitening.avif" alt="Teeth Whitening">
+      <div class="content">
+        <h3>Teeth Whitening</h3>
+        <p>Get a smile several shades brighter in just one hour using safe and advanced whitening techniques.</p>
+      </div>
+    </div>
+
+    <div class="service-card">
+      <img src="/static/assets/Wisdom Tooth Removal.avif" alt="Wisdom Tooth Removal">
+      <div class="content">
+        <h3>Wisdom Tooth Removal</h3>
+        <p>Our gentle and effective removal of wisdom teeth prevents pain, infections, and misalignment — restoring comfort quickly.</p>
+      </div>
+    </div>
+
+    <div class="service-card">
+      <img src="/static/assets/Braces & Aligners.avif" alt="Braces & Aligners">
+      <div class="content">
+        <h3>Braces & Aligners</h3>
+        <p>Choose from metal, ceramic, or clear aligners to achieve a perfectly aligned, confident smile with expert orthodontic care.</p>
+      </div>
+    </div>
+
+    <div class="service-card">
+      <img src="/static/assets/Dentures.avif" alt="Dentures">
+      <div class="content">
+        <h3>Dentures</h3>
+        <p>Replace missing teeth with our durable, comfortable complete or partial dentures, designed for easy maintenance and natural aesthetics.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div>
+      <a href="https://www.facebook.com/smileartistsdentalstudio" target="_blank" aria-label="Facebook">
+        <i class="fab fa-facebook"></i>
+      </a>
+      <a href="https://www.instagram.com/smileartistsdentalstudio" target="_blank" aria-label="Instagram">
+        <i class="fab fa-instagram"></i>
+      </a>
+    </div>
+    <p>Copyright © 2023 Smile Artists Dental Studio - All Rights Reserved.</p>
+    <p>Proudly created by <a href="https://www.boostrow.com" target="_blank">www.boostrow.com</a></p>
+  </footer>
+
+</body>
+</html>
