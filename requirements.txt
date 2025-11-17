@@ -7,3 +7,7 @@ PyJWT
 python-multipart
 pydantic
 firebase_admin
+google-cloud-speech
+google-genai
+pyttsx3
+python-dateutil
