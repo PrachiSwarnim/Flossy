@@ -53,10 +53,6 @@ speech_client = speech.SpeechClient(credentials=gcp_credentials)
 SAMPLE_RATE = 16000
 LANGUAGE = "en-US"
 
-# --------------------------------------------
-# Pydantic Schema for Gemini Output
-# --------------------------------------------
-
 class FlossyAIResponse(BaseModel):
     intent: Literal["book_appointment", "cancel_appointment", "symptom", "smalltalk"]
     name: Optional[str] = None
