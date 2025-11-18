@@ -31,12 +31,21 @@ load_dotenv()
 # --------------------------------------------
 # GOOGLE SPEECH TO TEXT CONFIG
 # --------------------------------------------
+# -------------------------------
+# GOOGLE CREDENTIALS LOADING
+# -------------------------------
 cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
+# Render Secret Files live at: /etc/secrets/<filename>
+render_secret_file = "/etc/secrets/flossy-476616-cf6c940eac95.json"
+
+# Decide which path to use
+if os.path.exists(render_secret_file):
+    # Running on Render
+    cred_path = render_secret_file
+
 if not cred_path or not os.path.exists(cred_path):
-    raise RuntimeError(
-        f"Missing or invalid GOOGLE_APPLICATION_CREDENTIALS path: {cred_path}"
-    )
+    raise RuntimeError(f"Missing or invalid GOOGLE_APPLICATION_CREDENTIALS file: {cred_path}")
 
 gcp_credentials = service_account.Credentials.from_service_account_file(cred_path)
 
