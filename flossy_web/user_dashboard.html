@@ -283,10 +283,10 @@ function formatTime(utcDateString) {
   return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
-async function fetchTodayAppointments() {
+async function fetchUpcomingAppointments() {
   const token = new URLSearchParams(window.location.search).get("token");
 
-  const res = await fetch(`/appointments/today?token=${token}`);
+  const res = await fetch(`/appointments/dentist_upcoming?token=${token}`);
   const data = await res.json();
 
   return data.appointments || [];
@@ -297,18 +297,56 @@ async function renderDentistDashboard() {
   await Clerk.load();
   const user = Clerk.user;
 
+  const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+  const dentistDisplayName = `Dr. ${fullName}`;
+
   document.getElementById("welcomeMessage").textContent =
-    `Welcome back, Dr. ${user.firstName || "Dentist"}!`;
+    `Welcome back, ${dentistDisplayName}!`;
 
   const listDiv = document.getElementById("todayAppointmentsList");
-  const appts = await fetchTodayAppointments();
 
-  listDiv.innerHTML = appts.map(a => `
-    <p>
-      <span style="font-weight:700;color:#ffcb05;">${formatTime(a.time)}</span> – ${a.patient_name}
-      <span style="color:#666;font-size:0.9em;">(${a.reason})</span>
-    </p>
-  `).join("");
+  const token = new URLSearchParams(window.location.search).get("token");
+  const res = await fetch(`/appointments/dentist_upcoming?token=${token}`);
+  const data = await res.json();
+
+  const today = data.today || [];
+  const upcoming = data.upcoming || [];
+
+  const format = (a) => `
+    <div style="
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: #fffbea;
+      border-radius: 12px;
+      border-left: 6px solid #ffcb05;
+      box-shadow: 0 2px 8px rgba(255,203,5,0.15);
+    ">
+      <b style="color:#f0b800;">${formatTime(a.time)}</b>
+      <span style="font-weight:700;"> — ${a.patient_name}</span><br>
+
+      <span style="color:#666;font-size:0.9rem;">Reason: ${a.reason}</span><br>
+      <span style="color:#666;font-size:0.9rem;">Phone: ${a.phone}</span><br>
+      <span style="color:#888;font-size:0.9rem;">Status: ${a.status}</span><br><br>
+
+      <button onclick="markCompleted(${a.id})"
+        style="background:#28a745;color:white;padding:5px 10px;border:none;border-radius:6px;cursor:pointer;">
+        Mark Completed
+      </button>
+
+      <button onclick="window.location.href='tel:${a.phone}'"
+        style="background:#007bff;color:white;padding:5px 10px;border:none;border-radius:6px;cursor:pointer;margin-left:8px;">
+        Call Patient
+      </button>
+    </div>
+  `;
+
+  listDiv.innerHTML = `
+    <h4 style="margin-bottom:10px;color:#f0b800;">Today</h4>
+    ${today.length ? today.map(format).join("") : "<p>No appointments today.</p>"}
+
+    <h4 style="margin-top:20px;margin-bottom:10px;color:#f0b800;">Upcoming</h4>
+    ${upcoming.length ? upcoming.map(format).join("") : "<p>No upcoming appointments.</p>"}
+  `;
 }
 
 window.addEventListener("load", renderDentistDashboard);
@@ -324,6 +362,16 @@ document.getElementById("close-ai-panel").onclick = () => {
   aiPanel.classList.remove("open");
 };
 
+async function markCompleted(id) {
+  const res = await fetch(`/appointments/mark_completed/${id}`, {
+    method: "POST"
+  });
+
+  if (res.ok) {
+    alert("Appointment marked as completed");
+    renderDentistDashboard();
+  }
+}
 
 /* --- CLOSE CHATBOX WHEN CLICKING OUTSIDE OR PRESSING CLOSE BUTTON --- */
 document.addEventListener("click", (e) => {

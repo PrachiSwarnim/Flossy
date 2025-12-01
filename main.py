@@ -210,16 +210,23 @@ def get_today_appointments(request: Request, db: Session = Depends(get_db)):
         .order_by(Appointment.datetime.asc())
     )
 
-    # ---------------- ROLE FILTER ----------------
+    # ---------------- ROLE FILTER (FIXED FOR DENTIST) ----------------
     if user.role == "dentist":
-        # Fetch dentist's name as stored in DB
-        dentist_name = user.email.split("@")[0].replace(".", " ").title()
-        dentist_name = f"Dr. {dentist_name}"
+        # Derive doctor name EXACTLY as stored in appointments.doctor_name
+        # From email → prachi.swarnim@gmail.com → "Dr. Prachi Swarnim"
+        email_prefix = email.split("@")[0]                 # prachi.swarnim
+        clean = email_prefix.replace(".", " ")             # prachi swarnim
+        proper = " ".join([p.capitalize() for p in clean.split()])  # Prachi Swarnim
+        dentist_name = f"Dr. {proper}"
+
+        print("👨‍⚕️ DENTIST NAME FOR FILTER:", dentist_name)
 
         appts = base_query.filter(
             Appointment.doctor_name.ilike(dentist_name)
         ).all()
+
     else:
+        # PATIENT SIDE
         patient = db.query(Patient).filter(Patient.user_id == user.id).first()
         if not patient:
             return {"appointments": []}
@@ -253,6 +260,84 @@ def get_today_appointments(request: Request, db: Session = Depends(get_db)):
     ]
 
     return {"appointments": result}
+
+@app.get("/appointments/dentist_upcoming")
+def dentist_upcoming(request: Request, db: Session = Depends(get_db)):
+    token = request.query_params.get("token")
+    if not token:
+        raise HTTPException(status_code=400, detail="Missing token")
+
+    payload = verify_token(token)
+    email = payload.get("email") or payload.get("email_address")
+    if not email:
+        raise HTTPException(status_code=401, detail="Email missing")
+
+    # Validate dentist user
+    user = db.query(User).filter(User.email.ilike(email)).first()
+    if not user or user.role != "dentist":
+        return {"today": [], "upcoming": []}
+
+    # Build name identical to appointment table
+    email_prefix = email.split("@")[0]
+    clean = email_prefix.replace(".", " ")
+    proper = " ".join([p.capitalize() for p in clean.split()])
+    dentist_name = f"Dr. {proper}"
+
+    print("🔍 FILTERING FOR:", dentist_name)
+
+    now = datetime.now(timezone.utc)
+    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    today_end = today_start + timedelta(days=1)
+
+    # Fetch today's appointments
+    today_appts = (
+        db.query(Appointment)
+        .options(joinedload(Appointment.patient))
+        .filter(
+            Appointment.doctor_name.ilike(dentist_name),
+            Appointment.datetime >= today_start,
+            Appointment.datetime < today_end,
+        )
+        .order_by(Appointment.datetime.asc())
+        .all()
+    )
+
+    # Fetch upcoming appointments
+    upcoming_appts = (
+        db.query(Appointment)
+        .options(joinedload(Appointment.patient))
+        .filter(
+            Appointment.doctor_name.ilike(dentist_name),
+            Appointment.datetime >= today_end,
+        )
+        .order_by(Appointment.datetime.asc())
+        .all()
+    )
+
+    def format_appt(a):
+        return {
+            "id": a.id,
+            "time": a.datetime.isoformat(),
+            "patient_name": a.patient.name if a.patient else "Unknown",
+            "phone": a.patient.phone if a.patient else "Unknown",
+            "status": a.status,
+            "reason": a.reason,
+        }
+
+    return {
+        "today": [format_appt(a) for a in today_appts],
+        "upcoming": [format_appt(a) for a in upcoming_appts],
+    }
+
+@app.post("/appointments/mark_completed/{appt_id}")
+def mark_completed(appt_id: int, db: Session = Depends(get_db)):
+    appt = db.query(Appointment).filter(Appointment.id == appt_id).first()
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    appt.status = "completed"
+    db.commit()
+    return {"success": True}
 
 @app.post("/ai_response")
 async def ai_response(request: Request, payload: dict, db: Session = Depends(get_db)):
