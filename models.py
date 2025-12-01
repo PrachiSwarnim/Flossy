@@ -70,3 +70,13 @@ class Interaction(Base):
 
     def __repr__(self):
         return f"<Interaction(channel={self.channel}, message_length={len(self.message)})>"
+
+class Doctor(Base):
+    __tablename__ = "doctors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(120), nullable=False)
+    specialization = Column(String(120), nullable=True, default="General Dentistry")
+
+    def __repr__(self):
+        return f"<Doctor(name={self.name})>"

@@ -8,24 +8,20 @@ import difflib
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Literal, Dict, Tuple
 from zoneinfo import ZoneInfo
-
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import pyttsx3
 from dateutil import parser as dtparser
-
 # Google AI (Gemini)
 from google.genai import Client
-
 # Google Speech-to-Text
 from google.cloud import speech
 from google.oauth2 import service_account
-
 # Database (adjust to your project)
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Patient, Appointment, Interaction
+from models import Patient, Appointment, Interaction, User
 
 load_dotenv()
 
@@ -40,7 +36,6 @@ BUSINESS_START_HOUR = 9
 BUSINESS_END_HOUR = 17
 SLOT_DURATION_MINUTES = 30
 MAX_SLOTS_PER_APPOINTMENT = 2
-DEFAULT_DOCTOR_NAME = "Dr. Ava Sharma"
 USER_TZ = ZoneInfo("Asia/Kolkata")
 
 # STT / TTS config
@@ -257,6 +252,18 @@ def find_next_available_slot(db: Session, preferred_dt_user_tz: datetime) -> dat
             preferred = (preferred + timedelta(days=1)).replace(hour=BUSINESS_START_HOUR, minute=0)
     return (now_utc + timedelta(days=1)).astimezone(timezone.utc)
 
+def get_default_doctor(db: Session):
+    doctor = db.query(User).filter(User.role == "dentist").first()
+    if doctor:
+        # if you want the email prefix as name
+        name = doctor.email.split("@")[0].replace(".", " ").title()
+
+        # OR if you want a hardcoded pretty name:
+        name = "Dr. " + name
+        return name
+
+    return "Dr. Available Dentist"
+
 # BOOKING
 def execute_booking(db: Session, st: dict, db_user_id: Optional[int] = None) -> Tuple[datetime, datetime]:
     now_utc = datetime.now(timezone.utc)
@@ -289,14 +296,16 @@ def execute_booking(db: Session, st: dict, db_user_id: Optional[int] = None) -> 
             contact_datetime=datetime.now(timezone.utc)
         )
         db.add(patient); db.commit(); db.refresh(patient)
+    doctor_name = get_default_doctor(db)
 
     appt = Appointment(
         patient_id=patient.id,
         datetime=dt_final_utc,
         status="scheduled",
-        doctor_name=DEFAULT_DOCTOR_NAME,
+        doctor_name=doctor_name,
         reason=st.get("symptom_message")
     )
+
     db.add(appt); db.commit()
 
     return dt_final_utc, preferred_dt_user_tz
@@ -364,7 +373,8 @@ STATE: {st}
             booked_time = dt_local.strftime("%I:%M %p")
             reason_msg = f"We had to move your appointment to {booked_time} as the {preferred_time} slot was just filled. "
         voice_states[cid] = {}
-        return await send_bot(ws, f"All set, {user_name}! Your appointment with {DEFAULT_DOCTOR_NAME} is booked for {formatted_local}. {reason_msg}We've noted your reason as: {st.get('symptom_message','')}.")
+        doctor_name = get_default_doctor(db)
+        return await send_bot(ws, f"All set, {user_name}! Your appointment with {doctor_name} is booked for {formatted_local}. {reason_msg}We've noted your reason as: {st.get('symptom_message','')}.")
     if ai.get("ready_for_cancellation"):
         phone = st.get("phone")
         if not phone:
@@ -504,8 +514,9 @@ STATE: {st}
                 f"so we booked the nearest available slot at {booked_time}. "
             )
         text_states[user] = {}
+        doctor_name = get_default_doctor(db)
         return (
-            f"All set, {st.get('name','Patient')}! 🎉 Your appointment with {DEFAULT_DOCTOR_NAME} "
+            f"All set, {st.get('name','Patient')}! 🎉 Your appointment with {doctor_name} "
             f"is booked for {formatted}. {reason_msg}"
             f"We have recorded your reason as: {st.get('symptom_message','')}."
         )
