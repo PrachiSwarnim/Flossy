@@ -296,8 +296,12 @@ def execute_booking(db: Session, st: dict, db_user_id: Optional[int] = None) -> 
             contact_datetime=datetime.now(timezone.utc)
         )
         db.add(patient); db.commit(); db.refresh(patient)
-    doctor_name = get_default_doctor(db)
+    # 🔥 FIX: Make sure patient is linked to logged-in user
+    if patient and patient.user_id is None and db_user_id is not None:
+        patient.user_id = db_user_id
+        db.commit()
 
+    doctor_name = get_default_doctor(db)
     appt = Appointment(
         patient_id=patient.id,
         datetime=dt_final_utc,

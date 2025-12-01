@@ -212,7 +212,13 @@ def get_today_appointments(request: Request, db: Session = Depends(get_db)):
 
     # ---------------- ROLE FILTER ----------------
     if user.role == "dentist":
-        appts = base_query.all()
+        # Fetch dentist's name as stored in DB
+        dentist_name = user.email.split("@")[0].replace(".", " ").title()
+        dentist_name = f"Dr. {dentist_name}"
+
+        appts = base_query.filter(
+            Appointment.doctor_name.ilike(dentist_name)
+        ).all()
     else:
         patient = db.query(Patient).filter(Patient.user_id == user.id).first()
         if not patient:
@@ -518,6 +524,54 @@ QUESTION:
     )
 
     return {"answer": response.text}
+
+@app.get("/appointments/next")
+def get_next_appointment(request: Request, db: Session = Depends(get_db)):
+    token = request.query_params.get("token")
+    if not token:
+        raise HTTPException(status_code=400, detail="Missing token")
+
+    payload = verify_token(token)
+    email = payload.get("email") or payload.get("email_address")
+    if not email:
+        raise HTTPException(status_code=401, detail="Email missing in token")
+
+    user = db.query(User).filter(User.email.ilike(email)).first()
+    if not user:
+        return {"appointment": None}
+
+    now = datetime.now(timezone.utc)
+
+    # base query for future appointments
+    query = (
+        db.query(Appointment)
+        .options(joinedload(Appointment.patient))
+        .filter(
+            Appointment.datetime >= now,
+            Appointment.status == "scheduled"
+        )
+        .order_by(Appointment.datetime.asc())
+    )
+
+    if user.role != "dentist":
+        patient = db.query(Patient).filter(Patient.user_id == user.id).first()
+        if not patient:
+            return {"appointment": None}
+
+        query = query.filter(Appointment.patient_id == patient.id)
+
+    appt = query.first()
+    if not appt:
+        return {"appointment": None}
+
+    return {
+        "appointment": {
+            "time": appt.datetime.isoformat(),
+            "doctor_name": appt.doctor_name,
+            "reason": appt.reason,
+            "patient_name": appt.patient.name if appt.patient else "Unknown"
+        }
+    }
 
 @app.get("/redirect_user")
 async def redirect_user(request: Request, db: Session = Depends(get_db)):

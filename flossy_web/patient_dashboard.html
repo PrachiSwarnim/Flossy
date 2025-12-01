@@ -402,15 +402,17 @@ window.addEventListener("load", async () => {
       `Welcome back, ${CURRENT_USER?.firstName || "Patient"}!`;
 
     // Load appointment
-    const appts = await fetchTodayAppointments(CLERK_TOKEN);
-    const next = appts[0];
+    const res = await fetch(`/appointments/next?token=${encodeURIComponent(CLERK_TOKEN)}`);
+    const data = await res.json();
+    const next = data.appointment;
     const el = document.getElementById("nextAppointment");
     if (!next) {
-      el.textContent = "No appointments today.";
+      el.textContent = "No upcoming appointments.";
     } else {
       const time = new Date(next.time).toLocaleString();
       el.textContent = `${next.doctor_name} — ${time}`;
     }
+
   } catch (err) {
     console.error("Clerk load error:", err);
     document.getElementById("welcomeMessage").textContent = "Welcome!";
