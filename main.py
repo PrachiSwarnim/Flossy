@@ -1,6 +1,8 @@
 import os
 import jwt
 import requests
+import json
+import numpy as np
 from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,19 +16,23 @@ from dotenv import load_dotenv
 from sqlalchemy.orm import Session, joinedload
 from jwt import PyJWKClient
 from agent_server import handle_user_utterance_text
+import faiss
+from google.genai import Client
 
 # --------------------------------------------------------------------------
 #                         ENV + CLERK SETUP
 # --------------------------------------------------------------------------
 
 load_dotenv()
-
+GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")
+CLERK_API_BASE = "https://api.clerk.dev/v1"
 CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
 CLERK_PUBLISHABLE_KEY = os.getenv("CLERK_PUBLISHABLE_KEY")
 CLERK_CLIENT_ID = os.getenv("CLERK_CLIENT_ID")
 CLERK_CLIENT_SECRET = os.getenv("CLERK_CLIENT_SECRET")
 CLERK_ISSUER = os.getenv("CLERK_ISSUER", "https://meet-grouse-33.clerk.accounts.dev")
 JWKS_URL = f"{CLERK_ISSUER}/.well-known/jwks.json"
+genai_client = Client(api_key=GEMINI_API_KEY)
 
 if not all([CLERK_SECRET_KEY, CLERK_CLIENT_ID, CLERK_CLIENT_SECRET]):
     raise RuntimeError("❌ Missing Clerk credentials in .env file")
@@ -82,7 +88,25 @@ def get_db():
     finally:
         db.close()
 
+def get_or_create_patient(db: Session, user: User, clerk_name: str = None, phone: str = None):
+    patient = db.query(Patient).filter(Patient.user_id == user.id).first()
 
+    if patient:
+        return patient
+
+    # Create new patient with full name from Clerk
+    new_patient = Patient(
+        name=clerk_name or "Unknown",
+        phone=phone or "0000000000",
+        user_id=user.id,
+        contact_datetime=datetime.now(timezone.utc)
+    )
+    db.add(new_patient)
+    db.commit()
+    db.refresh(new_patient)
+
+    return new_patient
+    
 def verify_token(token: str):
     """Verify Clerk JWT and return the full payload. Accept small clock skew."""
     try:
@@ -144,15 +168,15 @@ def store_user_if_new(db: Session, email: str, role: str = None, name: str = Non
         print(f"⚠️ Error storing user {email}: {e}")
         return user
 
-
 @app.get("/appointments/today")
 def get_today_appointments(request: Request, db: Session = Depends(get_db)):
     """
     Returns today's appointments:
-    - Dentist: sees ALL appointments
-    - Patient: sees ONLY their appointments
+    - Dentist → sees all appointments
+    - Patient → sees only their appointments
     """
 
+    # ---------------- TOKEN CHECK ----------------
     token = request.query_params.get("token")
     if not token:
         raise HTTPException(status_code=400, detail="Missing token")
@@ -163,50 +187,61 @@ def get_today_appointments(request: Request, db: Session = Depends(get_db)):
     if not email:
         raise HTTPException(status_code=401, detail="Email missing in token")
 
-    # Get user
+    # ---------------- USER LOOKUP ----------------
     user = db.query(User).filter(User.email.ilike(email)).first()
     if not user:
-        # If user is not in our DB but has a valid Clerk token, we need to create them before proceeding.
-        user = store_user_if_new(db, email, role=None)
+        user = store_user_if_new(db, email)
         if not user:
-             raise HTTPException(status_code=404, detail="User lookup failed after token verification.")
+            raise HTTPException(status_code=500, detail="User creation failed")
 
-    # ---- Today’s date range in UTC ----
+    # ---------------- TODAY'S RANGE ----------------
     now = datetime.now(timezone.utc)
     start = datetime(now.year, now.month, now.day, 0, 0, tzinfo=timezone.utc)
     end = start + timedelta(days=1)
-    
-    # Base query for all scheduled appointments today
-    base_query = db.query(Appointment).options(joinedload(Appointment.patient)).filter(
-        Appointment.datetime >= start,
-        Appointment.datetime < end,
-        Appointment.status == "scheduled"
-    ).order_by(Appointment.datetime.asc())
 
-    # Dentist → show ALL appointments
+    base_query = (
+        db.query(Appointment)
+        .options(joinedload(Appointment.patient))
+        .filter(
+            Appointment.datetime >= start,
+            Appointment.datetime < end,
+            Appointment.status == "scheduled"
+        )
+        .order_by(Appointment.datetime.asc())
+    )
+
+    # ---------------- ROLE FILTER ----------------
     if user.role == "dentist":
         appts = base_query.all()
-    # Patient → show ONLY their linked appointments
     else:
         patient = db.query(Patient).filter(Patient.user_id == user.id).first()
         if not patient:
-            return {"appointments": []} # Patient user exists, but no linked Patient record yet.
+            return {"appointments": []}
 
         appts = base_query.filter(Appointment.patient_id == patient.id).all()
 
-    # ---- Serialize ----
+    # ---------------- FETCH LATEST INTERACTIONS (FAST) ----------------
+    patient_ids = [a.patient_id for a in appts]
+
+    latest_interactions = (
+        db.query(Interaction)
+        .filter(Interaction.patient_id.in_(patient_ids))
+        .order_by(Interaction.patient_id, Interaction.created_at.desc())
+        .all()
+    )
+
+    interaction_map = {}
+    for inter in latest_interactions:
+        if inter.patient_id not in interaction_map:
+            interaction_map[inter.patient_id] = inter.message
+
+    # ---------------- FORMAT RESPONSE ----------------
     result = [
         {
             "time": a.datetime.isoformat(),
             "patient_name": a.patient.name if a.patient else "Unknown",
-            # Assuming symptom/reason is stored in the latest interaction log linked to the appointment's patient
-            "reason": (
-                db.query(Interaction.message)
-                .filter(Interaction.patient_id == a.patient_id)
-                .order_by(Interaction.created_at.desc())
-                .limit(1).scalar()
-            ) or "N/A", 
-            "doctor_name": a.doctor_name
+            "reason": interaction_map.get(a.patient_id, "N/A"),
+            "doctor_name": a.doctor_name,
         }
         for a in appts
     ]
@@ -215,35 +250,76 @@ def get_today_appointments(request: Request, db: Session = Depends(get_db)):
 
 @app.post("/ai_response")
 async def ai_response(request: Request, payload: dict, db: Session = Depends(get_db)):
-    """
-    Handles text chat from patient dashboard.
-    Obtains token from headers to identify the user ID.
-    """
     user_msg = payload.get("query", "")
     if not user_msg:
         return {"answer": "I didn't receive any message. Could you please repeat that?"}
-    
-    # Attempt to get the authenticated user's ID
+
     db_user_id = None
+    clerk_name = "Patient"   # fallback
+    patient = None
+
     try:
-        # Assuming JWT token is passed in the Authorization header for API calls
         auth_header = request.headers.get("Authorization")
+
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
-            payload = verify_token(token)
-            
-            email = payload.get("email") or payload.get("email_address")
+            decoded = verify_token(token)
+
+            email = decoded.get("email") or decoded.get("email_address")
+            clerk_user_id = decoded.get("sub")
+
+            # ---------------------------------------------------
+            # FETCH FULL USER PROFILE FROM CLERK REST API
+            # ---------------------------------------------------
+            try:
+                headers = {"Authorization": f"Bearer {CLERK_SECRET_KEY}"}
+                url = f"{CLERK_API_BASE}/users/{clerk_user_id}"
+                resp = requests.get(url, headers=headers, timeout=6)
+
+                if resp.status_code == 200:
+                    data = resp.json()
+
+                    # Same logic as frontend – keeps names consistent
+                    full = data.get("full_name")
+                    first = data.get("first_name") or ""
+                    last = data.get("last_name") or ""
+
+                    clerk_name = full or (first + " " + last).strip() or "Patient"
+
+                else:
+                    print("⚠ Clerk REST fetch failed:", resp.status_code, resp.text)
+
+            except Exception as e:
+                print("⚠ Clerk REST name fetch error:", e)
+
+            # ---------------------------------------------------
+            # MATCH / CREATE LOCAL USER + PATIENT
+            # ---------------------------------------------------
             if email:
                 user = db.query(User).filter(User.email.ilike(email)).first()
+
                 if user:
                     db_user_id = user.id
-    except HTTPException:
-        # Token is invalid, continue anonymously or handle as error
-        pass
 
-    # Call your AI logic
-    # Pass the user's DB ID to allow the booking logic to link the Patient record
-    reply = await handle_user_utterance_text(user_msg, user=str(db_user_id), db_user_id=db_user_id)
+                    # Attach Clerk name to patient
+                    patient = get_or_create_patient(
+                        db,
+                        user,
+                        clerk_name=clerk_name
+                    )
+
+    except Exception as e:
+        print("⚠ Error auto-linking patient:", e)
+
+    # ---------------------------------------------------
+    # PASS clerk_name to AI handler ALWAYS
+    # ---------------------------------------------------
+    reply = await handle_user_utterance_text(
+        user_msg,
+        user=str(db_user_id),
+        db_user_id=db_user_id,
+        clerk_name=clerk_name
+    )
 
     return JSONResponse({"answer": reply})
 
@@ -254,7 +330,6 @@ async def ai_response(request: Request, payload: dict, db: Session = Depends(get
 @app.get("/", response_class=HTMLResponse)
 def serve_landing():
     return load_html("landing.html")
-
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page():
@@ -360,6 +435,89 @@ def check_user_role(email: str, db: Session = Depends(get_db)):
         "exists": True,
         "role": user.role
     }
+
+@app.post("/doctor_ai/query")
+async def doctor_ai(request: Request):
+    payload = await request.json()
+    query = payload.get("query", "")
+
+    # -----------------------------------------------------
+    # 1) Get doctor identity from Authorization header
+    # -----------------------------------------------------
+    auth = request.headers.get("Authorization")
+    doctor_name = "Doctor"  # fallback
+
+    if auth and auth.startswith("Bearer "):
+        token = auth.split(" ")[1]
+        try:
+            decoded = verify_token(token)
+            email = decoded.get("email") or decoded.get("email_address")
+            clerk_user_id = decoded.get("sub")
+
+            # Fetch full doctor profile from Clerk
+            headers = {"Authorization": f"Bearer {CLERK_SECRET_KEY}"}
+            url = f"{CLERK_API_BASE}/users/{clerk_user_id}"
+            resp = requests.get(url, headers=headers, timeout=5)
+
+            if resp.status_code == 200:
+                data = resp.json()
+                full = data.get("full_name")
+                first = data.get("first_name") or ""
+                last = data.get("last_name") or ""
+                doctor_name = full or (first + " " + last).strip() or "Doctor"
+
+        except Exception as e:
+            print("⚠ Doctor name fetch failed:", e)
+
+    # -----------------------------------------------------
+    # 2) Load KB (FAISS or numpy)
+    # -----------------------------------------------------
+    index = faiss.read_index("dental_embeddings.faiss")
+    with open("dental_meta.json", "r", encoding="utf-8") as f:
+        meta = json.load(f)
+    chunks = meta["chunks"]
+
+    # -----------------------------------------------------
+    # 3) Get embedding for question
+    # -----------------------------------------------------
+    embedding_result = genai_client.models.embed_content(
+        model="models/text-embedding-004",
+        contents=[query]
+    )
+    # The result's .embeddings[0] is the ContentEmbedding object.
+    query_emb_object = embedding_result.embeddings[0] 
+
+    # FIX: Convert the ContentEmbedding object (which contains the vector data) 
+    # to a standard list of floats before creating the NumPy array.
+    query_vector = query_emb_object.values 
+    query_vec = np.array([query_vector], dtype="float32")
+
+    D, I = index.search(query_vec, 5)
+    context = "\n\n".join(chunks[i] for i in I[0])
+    # -----------------------------------------------------
+    # 4) Generate response using name
+    # -----------------------------------------------------
+    response = genai_client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=f"""
+You are FlossyAI Doctor Assistant.
+Your response MUST be concise and CRISP, limited to a maximum of 5 lines, and use ONLY the provided CONTEXT.
+
+RULES FOR RESPONSE FORMAT:
+1. If the QUESTION is a simple greeting (e.g., "hi", "hello", "good morning"), respond briefly to the doctor's name {doctor_name} on the first line and then say them "Welcome to FlossyAI Doctor Assistant! How can I help you today?"
+2. If the QUESTION is a substantive query (e.g., "what is plaque"), begin immediately with the concise answer. Do NOT include a greeting or the doctor's name.
+3. Answer the QUESTION using ONLY the CONTEXT.
+4. Be energetic and friendly in the responses.
+5. If the doctor says to explain in laymann terms or simple terms do it.
+CONTEXT:
+{context}
+
+QUESTION:
+{query}
+"""
+    )
+
+    return {"answer": response.text}
 
 @app.get("/redirect_user")
 async def redirect_user(request: Request, db: Session = Depends(get_db)):

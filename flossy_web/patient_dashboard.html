@@ -95,6 +95,18 @@
       text-align: center;
     }
 
+    .typing-dots::after {
+      content: " .";
+      animation: dots 1s steps(5, end) infinite;
+    }
+
+    @keyframes dots {
+      0%, 20% { content: " ."; }
+      40% { content: " .."; }
+      60% { content: " ..."; }
+      80%, 100% { content: " ...."; }
+    }
+
     .card {
       background: white;
       border-radius: 1.2rem;
@@ -275,12 +287,37 @@
 </main>
 
 <!-- AI PANEL -->
-<div id="open-ai-panel">AI</div>
+<div id="open-ai-panel">FlossyAI</div>
 
 <div id="ai-panel" aria-hidden="true" role="dialog">
-  <div id="ai-panel-header">🎛 FlossyAI — Assistant</div>
-
+  <div id="ai-panel-header" style="position:relative;">
+    🎛 FlossyAI — Assistant
+    <button id="ai-close" 
+      style="
+        position:absolute;
+        right:12px;
+        top:50%;
+        transform:translateY(-50%);
+        background:none;
+        border:none;
+        font-size:1.3rem;
+        cursor:pointer;
+        color:black;
+        font-weight:700;
+      ">
+      ✖
+    </button>
+  </div>  
   <div id="ai-panel-content" aria-live="polite"></div>
+    <div id="ai-typing" style="
+    display:none;
+    padding: 0.6rem 1rem;
+    color: #bb8400;
+    font-weight: 600;
+    font-size: 0.9rem;
+    ">
+    <span class="typing-dots">FlossyAI is typing</span>
+  </div>
 
   <div id="ai-input-area">
     <input id="ai-input" placeholder="Ask about appointments, prescriptions, or say hello..." />
@@ -327,6 +364,14 @@ const openAiPanelBtn = document.getElementById("open-ai-panel");
 const aiInput = document.getElementById("ai-input");
 const aiSend = document.getElementById("ai-send");
 const aiMic = document.getElementById("ai-mic");
+/* ----------------- AI Panel Close Button ----------------- */
+const aiClose = document.getElementById("ai-close");
+
+aiClose.addEventListener("click", () => {
+  aiPanel.classList.remove("open");          // close panel
+  toggleChatBtn.textContent = "💬 Chat";     // reset button text
+});
+
 const micStatus = document.getElementById("mic-status");
 const logoutBtn = document.getElementById("logout");
 

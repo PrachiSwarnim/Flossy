@@ -256,7 +256,9 @@
 
 <!-- AI PANEL -->
 <div id="ai-panel">
-  <div id="ai-panel-header">🦷 FlossyAI Assistant</div>
+  <div id="ai-panel-header">🦷 FlossyAI Assistant
+    <span id="close-ai-panel" style="float:right; cursor:pointer;">✖</span>
+  </div>
   <div id="ai-panel-content"></div>
 
   <div id="ai-input-area">
@@ -312,8 +314,23 @@ async function renderDentistDashboard() {
 window.addEventListener("load", renderDentistDashboard);
 
 /* ---------------- AI PANEL ---------------- */
-document.getElementById("open-ai-panel").onclick = () =>
-  document.getElementById("ai-panel").classList.toggle("open");
+const aiPanel = document.getElementById("ai-panel");
+
+document.getElementById("open-ai-panel").onclick = () => {
+  aiPanel.classList.toggle("open");
+};
+
+document.getElementById("close-ai-panel").onclick = () => {
+  aiPanel.classList.remove("open");
+};
+
+
+/* --- CLOSE CHATBOX WHEN CLICKING OUTSIDE OR PRESSING CLOSE BUTTON --- */
+document.addEventListener("click", (e) => {
+  if (!aiPanel.contains(e.target) && e.target.id !== "open-ai-panel") {
+    aiPanel.classList.remove("open");
+  }
+});
 
 /* ---------------- TEXT CHAT ---------------- */
 async function sendText() {
@@ -325,11 +342,17 @@ async function sendText() {
   content.innerHTML += `<div><b>You:</b> ${msg}</div>`;
   input.value = "";
 
-  const res = await fetch("/ai_response", {
+  const token = new URLSearchParams(window.location.search).get("token");
+
+const res = await fetch("/doctor_ai/query", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+    },
     body: JSON.stringify({ query: msg })
-  });
+});
+
   const data = await res.json();
 
   content.innerHTML += `<div style="color:#e3aa00;"><b>FlossyAI:</b> ${data.answer}</div>`;
@@ -337,6 +360,14 @@ async function sendText() {
 }
 
 document.getElementById("ai-send").onclick = sendText;
+
+/* ---------------- SEND MESSAGE ON ENTER KEY ---------------- */
+document.getElementById("ai-input").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    sendText();
+  }
+});
 
 /* ---------------- LOGOUT ---------------- */
 document.getElementById("logout").onclick = () => {
