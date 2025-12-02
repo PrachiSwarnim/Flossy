@@ -264,6 +264,24 @@ def get_default_doctor(db: Session):
 
     return "Dr. Available Dentist"
 
+# BOT UTIL
+async def send_bot(ws: WebSocket, text: str):
+    await ws.send_text(json.dumps({"type":"bot_text","text":text}))
+    wav = await asyncio.get_running_loop().run_in_executor(None, tts_synthesize_wav, text)
+    await stream_audio(ws, wav)
+
+def check_doctor_conflict(db, doctor_name, dt_utc):
+    conflict = (
+        db.query(Appointment)
+        .filter(
+            Appointment.doctor_name.ilike(doctor_name),
+            Appointment.datetime == dt_utc,
+            Appointment.status == "scheduled"
+        )
+        .first()
+    )
+    return conflict is not None
+
 # BOOKING
 def execute_booking(db: Session, st: dict, db_user_id: Optional[int] = None) -> Tuple[datetime, datetime]:
     now_utc = datetime.now(timezone.utc)
@@ -302,6 +320,10 @@ def execute_booking(db: Session, st: dict, db_user_id: Optional[int] = None) -> 
         db.commit()
 
     doctor_name = get_default_doctor(db)
+    # ❌ Prevent double booking for same doctor
+    if check_doctor_conflict(db, doctor_name, dt_final_utc):
+        return None, None, f"{doctor_name} already has an appointment at that time."
+
     appt = Appointment(
         patient_id=patient.id,
         datetime=dt_final_utc,
@@ -313,12 +335,6 @@ def execute_booking(db: Session, st: dict, db_user_id: Optional[int] = None) -> 
     db.add(appt); db.commit()
 
     return dt_final_utc, preferred_dt_user_tz
-
-# BOT UTIL
-async def send_bot(ws: WebSocket, text: str):
-    await ws.send_text(json.dumps({"type":"bot_text","text":text}))
-    wav = await asyncio.get_running_loop().run_in_executor(None, tts_synthesize_wav, text)
-    await stream_audio(ws, wav)
 
 # VOICE HANDLER
 async def handle_user_utterance(ws: WebSocket, text: str, db_user_id: Optional[int] = None, clerk_name: Optional[str] = None):
