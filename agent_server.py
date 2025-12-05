@@ -1,3 +1,4 @@
+# agent_server.py
 import os
 import asyncio
 import json
@@ -5,32 +6,45 @@ import base64
 import tempfile
 import re
 import difflib
+import uuid
+import numpy as np
+
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Literal, Dict, Tuple
 from zoneinfo import ZoneInfo
+
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
 import pyttsx3
 from dateutil import parser as dtparser
-# Google AI (Gemini)
-from google.genai import Client
-# Google Speech-to-Text
+
+# Google APIs
 from google.cloud import speech
 from google.oauth2 import service_account
-# Database (adjust to your project)
+
+# Local DB models & session
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Patient, Appointment, Interaction, User
+from models import Patient, Appointment, Interaction, User, LLMInteraction
+
+# RL + LLM helpers
+from rl_core import bandit, ACTIONS, PROMPT_VARIANTS, MODELS
+from utils import ai_generate, embed_with_client, cos_sim
+from llm_client import genai_client
+
+# symptom KB
+from symptom_kb import get_symptom_kb
 
 load_dotenv()
 
+# -------------------------
 # CONFIG
+# -------------------------
 GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")
 if not GEMINI_API_KEY:
     raise RuntimeError("Missing GOOGLE_API_KEY")
-
-genai_client = Client(api_key=GEMINI_API_KEY)
 
 BUSINESS_START_HOUR = 9
 BUSINESS_END_HOUR = 17
@@ -56,7 +70,9 @@ app = FastAPI(title="FlossyAI Voice Agent")
 voice_states: Dict[int, dict] = {}
 text_states: Dict[str, dict] = {}
 
+# -------------------------
 # RESPONSE SCHEMA
+# -------------------------
 class FlossyAIResponse(BaseModel):
     intent: Literal["book_appointment", "cancel_appointment", "symptom", "smalltalk", "confirm_slot"]
     name: Optional[str] = None
@@ -69,7 +85,9 @@ class FlossyAIResponse(BaseModel):
     ready_for_cancellation: bool = False
     slot_confirmed: Optional[bool] = None
 
+# -------------------------
 # AUTOCORRECT
+# -------------------------
 AGGRESSIVE_DICT = sorted(set([
     "appointment","book","booking","cancel","cancellation","reschedule",
     "tooth","teeth","extraction","checkup","cleaning","root","canal",
@@ -116,17 +134,17 @@ def aggressive_autocorrect(text: str) -> str:
     corrected = "".join(t if re.fullmatch(r"\w+", t) else t for t in out)
     return re.sub(r"\s+", " ", corrected).strip()
 
-# NORMALIZATION
+# -------------------------
+# NORMALIZATION HELPERS
+# -------------------------
 def normalize_relative_date(date_str: str) -> str:
     if not date_str:
         return date_str
     s = date_str.strip().lower()
     today = datetime.now(USER_TZ).date()
     if "today" in s:
-        # If user explicitly requested today's morning/afternoon but it's already past that window, offer tomorrow instead.
         if any(token in s for token in ["morning","afternoon","evening","am","pm"]):
             now_user = datetime.now(USER_TZ)
-            # If requested morning but current time is after 11:30, shift to tomorrow
             if "morning" in s and now_user.hour >= 12:
                 return (today + timedelta(days=1)).strftime("%Y-%m-%d")
         return today.strftime("%Y-%m-%d")
@@ -138,12 +156,11 @@ def normalize_vague_time(date_str: str, time_str: str, raw_text: Optional[str] =
     if time_str and time_str.strip() and not re.fullmatch(r"(morning|afternoon|evening|noon)", time_str.strip().lower()):
         return time_str
     raw_low = (raw_text or "").lower()
-    # prefer explicit 'time_str' when it contains 'morning' etc.
     t = time_str or date_str or raw_low
     t_low = t.lower()
-    if "morning" in t_low or "am" in t_low and not re.search(r"\d{1,2}", t_low):
+    if "morning" in t_low or ("am" in t_low and not re.search(r"\d{1,2}", t_low)):
         return "09:00 AM"
-    if "afternoon" in t_low or "pm" in t_low and not re.search(r"\d{1,2}", t_low):
+    if "afternoon" in t_low or ("pm" in t_low and not re.search(r"\d{1,2}", t_low)):
         return "02:00 PM"
     if "evening" in t_low:
         return "06:00 PM"
@@ -151,7 +168,9 @@ def normalize_vague_time(date_str: str, time_str: str, raw_text: Optional[str] =
         return "12:00 PM"
     return time_str or ""
 
+# -------------------------
 # STT
+# -------------------------
 async def google_stt_stream(chunks: list) -> str:
     streaming_config = speech.StreamingRecognitionConfig(
         config=speech.RecognitionConfig(
@@ -172,7 +191,9 @@ async def google_stt_stream(chunks: list) -> str:
                 return result.alternatives[0].transcript
     return ""
 
+# -------------------------
 # TTS
+# -------------------------
 def tts_synthesize_wav(text: str) -> bytes:
     engine = pyttsx3.init()
     engine.setProperty("rate", 150)
@@ -194,7 +215,9 @@ async def stream_audio(ws: WebSocket, audio: bytes):
         await asyncio.sleep(0.003)
     await ws.send_text(json.dumps({"type":"audio_done"}))
 
-# GEMINI
+# -------------------------
+# SIMPLE GEMINI JSON PARSER (kept for non-RL paths)
+# -------------------------
 async def ask_gemini(prompt: str) -> Optional[dict]:
     try:
         resp = genai_client.models.generate_content(
@@ -215,7 +238,9 @@ async def ask_gemini(prompt: str) -> Optional[dict]:
         print("Gemini Parse Error:", e)
         return None
 
+# -------------------------
 # SCHEDULING HELPERS
+# -------------------------
 def is_slot_available(db: Session, slot_time: datetime) -> bool:
     slot_end = slot_time + timedelta(minutes=SLOT_DURATION_MINUTES)
     appointments_count = db.query(Appointment).filter(
@@ -255,16 +280,14 @@ def find_next_available_slot(db: Session, preferred_dt_user_tz: datetime) -> dat
 def get_default_doctor(db: Session):
     doctor = db.query(User).filter(User.role == "dentist").first()
     if doctor:
-        # if you want the email prefix as name
         name = doctor.email.split("@")[0].replace(".", " ").title()
-
-        # OR if you want a hardcoded pretty name:
         name = "Dr. " + name
         return name
-
     return "Dr. Available Dentist"
 
+# -------------------------
 # BOT UTIL
+# -------------------------
 async def send_bot(ws: WebSocket, text: str):
     await ws.send_text(json.dumps({"type":"bot_text","text":text}))
     wav = await asyncio.get_running_loop().run_in_executor(None, tts_synthesize_wav, text)
@@ -282,9 +305,12 @@ def check_doctor_conflict(db, doctor_name, dt_utc):
     )
     return conflict is not None
 
+# -------------------------
 # BOOKING
-def execute_booking(db: Session, st: dict, db_user_id: Optional[int] = None) -> Tuple[datetime, datetime]:
+# -------------------------
+def execute_booking(db: Session, st: dict, db_user_id: Optional[int] = None) -> Tuple[Optional[datetime], Optional[datetime]]:
     now_utc = datetime.now(timezone.utc)
+    preferred_dt_user_tz = None
     try:
         date_str = normalize_relative_date(st.get("date", "") or "")
         time_str = normalize_vague_time(date_str, st.get("time", "") or "", st.get("raw_text"))
@@ -314,15 +340,14 @@ def execute_booking(db: Session, st: dict, db_user_id: Optional[int] = None) -> 
             contact_datetime=datetime.now(timezone.utc)
         )
         db.add(patient); db.commit(); db.refresh(patient)
-    # 🔥 FIX: Make sure patient is linked to logged-in user
+
     if patient and patient.user_id is None and db_user_id is not None:
         patient.user_id = db_user_id
         db.commit()
 
     doctor_name = get_default_doctor(db)
-    # ❌ Prevent double booking for same doctor
     if check_doctor_conflict(db, doctor_name, dt_final_utc):
-        return None, None, f"{doctor_name} already has an appointment at that time."
+        return None, None
 
     appt = Appointment(
         patient_id=patient.id,
@@ -333,44 +358,74 @@ def execute_booking(db: Session, st: dict, db_user_id: Optional[int] = None) -> 
     )
 
     db.add(appt); db.commit()
-
     return dt_final_utc, preferred_dt_user_tz
 
-# VOICE HANDLER
+# -------------------------
+# VOICE HANDLER (RL-enabled)
+# -------------------------
 async def handle_user_utterance(ws: WebSocket, text: str, db_user_id: Optional[int] = None, clerk_name: Optional[str] = None):
     cid = id(ws)
     db = SessionLocal()
     st = voice_states.get(cid, {})
+
     if clerk_name and "name" not in st:
         st["name"] = clerk_name
+
     user_name = st.get("name", "Patient")
     greetings = ["hi","hello","hey","hola","namaste","bonjour"]
+
     if "first" not in st:
-        st["first"] = False; voice_states[cid] = st
+        st["first"] = False
+        voice_states[cid] = st
         return await send_bot(ws, f"Hi {user_name}! Welcome to Smile Artists Dental Studio! How can I help you today?")
+
     if text.strip().lower() in greetings:
         return await send_bot(ws, f"Hello {user_name}! How can I assist you today?")
 
+    # AUTOCORRECT
     corrected_text = aggressive_autocorrect(text)
+
+    # EMBEDDING FOR RL CONTEXT
+    query_emb = np.array(embed_with_client(genai_client, corrected_text), dtype=float)
+
+    # Resize to expected bandit dim
+    x_context = query_emb
+    if x_context.shape[0] != bandit.d:
+        if x_context.shape[0] > bandit.d:
+            x_context = x_context[: bandit.d]
+        else:
+            pad = np.zeros(bandit.d - x_context.shape[0], dtype=float)
+            x_context = np.concatenate([x_context, pad])
+
+    # RL action selection
+    chosen_action_id, _ = bandit.choose(x_context, eps=0.1)
+    prompt_idx, temp, ctx_size, model_idx = ACTIONS[chosen_action_id]
+    chosen_prompt_template = PROMPT_VARIANTS[prompt_idx]
+    chosen_model = MODELS[model_idx]
+
+    # Build prompt (voice-specific extension)
     current_time_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    prompt = f"""
-You are FlossyAI (VOICE MODE), the virtual dental assistant.
+    voice_extension = f"""
+VOICE_MODE: True
 PATIENT_NAME: {user_name}
-Rules:
-- Name is known. NEVER ask for the user's name.
-- Booking requires date, time, phone, symptom_message.
-- Cancellation requires phone.
-- Ask one-by-one: symptoms -> date -> time -> phone.
-- If vague time given, set it into the "time" field as text.
-ORIGINAL_USER_MESSAGE: "{text}"
-AUTOCORRECTED_MESSAGE: "{corrected_text}"
-CURRENT TIME: {current_time_utc}
+CURRENT_TIME: {current_time_utc}
 STATE: {st}
+ORIGINAL_MESSAGE: "{text}"
+AUTOCORRECTED_MESSAGE: "{corrected_text}"
 """
-    ai = await ask_gemini(prompt)
+    prompt = chosen_prompt_template + voice_extension
+
+    # Generate using RL-chosen model + temp
+    raw = ai_generate(prompt, temperature=temp, model=chosen_model, client_override=genai_client)
+    try:
+        ai = json.loads(raw)
+    except:
+        ai = None
+
     if not ai:
         return await send_bot(ws, "Sorry, I couldn't understand that. Could you repeat?")
 
+    # Update dialogue state
     if ai.get("date") and "date" not in st:
         st["date"] = normalize_relative_date(ai["date"])
     if ai.get("time"):
@@ -382,19 +437,45 @@ STATE: {st}
     st["raw_text"] = text
     voice_states[cid] = st
 
+    # RL metrics (for nightly training)
+    answer_text = ai.get("message", "")
+    answer_vec = np.array(embed_with_client(genai_client, answer_text), dtype=float)
+    context_vec = np.array(embed_with_client(genai_client, prompt), dtype=float)
+
+    semantic_similarity = cos_sim(x_context[:answer_vec.shape[0]], answer_vec) if x_context.size and answer_vec.size else 0.0
+    groundedness = cos_sim(answer_vec, context_vec) if answer_vec.size and context_vec.size else 0.0
+
+    # Log interaction for nightly audit / RL update
+    request_id = str(uuid.uuid4())
+    interaction = LLMInteraction(
+        request_id=request_id,
+        doctor_id="VOICE_AGENT",
+        query=text,
+        response=answer_text,
+        context_used=prompt,
+        semantic_similarity=semantic_similarity,
+        groundedness=groundedness,
+        prompt_variant=prompt_idx,
+        action_id=chosen_action_id,
+        temp_used=temp,
+        model_used=chosen_model,
+        ctx_size_used=ctx_size,
+        timestamp=datetime.utcnow()
+    )
+    db.add(interaction)
+    db.commit()
+
+    # Booking / cancellation logic
     if ai.get("ready_for_booking"):
         dt_final_utc, preferred_dt_user_tz = execute_booking(db, st, db_user_id)
+        if not dt_final_utc:
+            return await send_bot(ws, "Sorry, couldn't find an available slot. Try another time.")
         dt_local = dt_final_utc.astimezone(USER_TZ)
         formatted_local = dt_local.strftime("%A, %B %d at %I:%M %p %Z")
-        time_changed = (dt_local.hour != preferred_dt_user_tz.hour) or (dt_local.minute != preferred_dt_user_tz.minute)
-        reason_msg = ""
-        if time_changed:
-            preferred_time = preferred_dt_user_tz.strftime("%I:%M %p")
-            booked_time = dt_local.strftime("%I:%M %p")
-            reason_msg = f"We had to move your appointment to {booked_time} as the {preferred_time} slot was just filled. "
         voice_states[cid] = {}
         doctor_name = get_default_doctor(db)
-        return await send_bot(ws, f"All set, {user_name}! Your appointment with {doctor_name} is booked for {formatted_local}. {reason_msg}We've noted your reason as: {st.get('symptom_message','')}.")
+        return await send_bot(ws, f"All set, {user_name}! Your appointment with {doctor_name} is booked for {formatted_local}. We've noted your reason as: {st.get('symptom_message','')}.")
+
     if ai.get("ready_for_cancellation"):
         phone = st.get("phone")
         if not phone:
@@ -405,42 +486,71 @@ STATE: {st}
         appt = db.query(Appointment).filter(Appointment.patient_id == p.id, Appointment.status == "scheduled").first()
         if not appt:
             return await send_bot(ws, "There is no appointment to cancel.")
-        appt.status = "cancelled"; db.commit(); voice_states[cid] = {}
+        appt.status = "cancelled"
+        db.commit()
+        voice_states[cid] = {}
         return await send_bot(ws, "Your appointment has been cancelled.")
-    return await send_bot(ws, ai.get("message", "How can I help you?"))
 
-# TEXT HANDLER
+    # Default reply
+    return await send_bot(ws, answer_text)
+
+# -------------------------
+# TEXT HANDLER (RL-enabled)
+# -------------------------
 async def handle_user_utterance_text(query: str, user: str = "default", db_user_id: Optional[int] = None, clerk_name: Optional[str] = None):
     db = SessionLocal()
     st = text_states.get(user, {})
+
     if clerk_name and "name" not in st:
         st["name"] = clerk_name
-    current_time_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    greetings = ["hi","hello","hey","hola","namaste","bonjour"]
-    first_msg = "first" not in st
-    if first_msg and query.strip().lower() in greetings:
-        st["first"] = False; name = st.get("name", clerk_name or "Patient")
-        return f"Hi {name}! Welcome to Smile Artists Dental Studio! I am Flossy AI. How can I help you?"
 
+    greetings = ["hi","hello","hey","hola","namaste","bonjour"]
+    if "first" not in st and query.strip().lower() in greetings:
+        st["first"] = False
+        name = st.get("name", clerk_name or "Patient")
+        text_states[user] = st
+        return f"Hi {name}! I am Flossy AI. How can I help you today?"
+
+    # Autocorrect
     corrected_query = aggressive_autocorrect(query)
-    prompt = f"""
-You are FlossyAI (TEXT MODE), the virtual assistant for Smile Artists Dental Studio.
+
+    # RL embedding
+    query_emb = np.array(embed_with_client(genai_client, corrected_query), dtype=float)
+    x_context = query_emb
+    if x_context.shape[0] != bandit.d:
+        if x_context.shape[0] > bandit.d:
+            x_context = x_context[: bandit.d]
+        else:
+            pad = np.zeros(bandit.d - x_context.shape[0], dtype=float)
+            x_context = np.concatenate([x_context, pad])
+
+    # RL action selection
+    chosen_action_id, _ = bandit.choose(x_context, eps=0.1)
+    prompt_idx, temp, ctx_size, model_idx = ACTIONS[chosen_action_id]
+    chosen_prompt = PROMPT_VARIANTS[prompt_idx]
+    chosen_model = MODELS[model_idx]
+
+    current_time_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    prompt = f"""{chosen_prompt}
+TEXT_MODE: True
 PATIENT_NAME: {st.get("name")}
-Rules:
-- Name is known. NEVER ask for it.
-- Booking requires only: date, time, phone, symptom_message.
-- Cancellation requires only: phone.
-- Ask one-by-one: symptoms -> date -> time -> phone.
-- Vague time should be placed in "time" (e.g., "tomorrow afternoon" -> time="afternoon").
+CURRENT_TIME: {current_time_utc}
+STATE: {st}
 ORIGINAL_USER: "{query}"
 AUTOCORRECTED: "{corrected_query}"
-CURRENT TIME: {current_time_utc}
-STATE: {st}
 """
-    ai = await ask_gemini(prompt)
+
+    raw = ai_generate(prompt, temperature=temp, model=chosen_model, client_override=genai_client)
+    try:
+        ai = json.loads(raw)
+    except:
+        ai = None
+
     if not ai:
         return "Sorry, I couldn’t understand that."
 
+    # Update state
     if ai.get("date") and "date" not in st:
         st["date"] = normalize_relative_date(ai["date"])
     if ai.get("time"):
@@ -452,26 +562,38 @@ STATE: {st}
     st["raw_text"] = query
     text_states[user] = st
 
-    if st.get("waiting_for_confirmation") and st.get("suggested_slot_utc"):
-        user_raw = query.lower().strip()
-        if ai.get("slot_confirmed") is True or user_raw in ["yes","yeah","yep","ok","okay"]:
-            suggested_dt_utc = dtparser.parse(st["suggested_slot_utc"]).replace(tzinfo=timezone.utc)
-            suggested_local = suggested_dt_utc.astimezone(USER_TZ)
-            st["date"] = suggested_local.strftime("%Y-%m-%d")
-            st["time"] = suggested_local.strftime("%I:%M %p")
-            st["ready_for_booking"] = True
-            st.pop("waiting_for_confirmation"); st.pop("suggested_slot_utc")
-        elif ai.get("slot_confirmed") is False or user_raw in ["no","nope"]:
-            st.pop("waiting_for_confirmation"); st.pop("suggested_slot_utc")
-            text_states[user] = st
-            return "No problem! What other day or time works better for you?"
-        elif ai.get("date") or ai.get("time") or ai.get("intent") != "smalltalk":
-            st.pop("waiting_for_confirmation"); st.pop("suggested_slot_utc")
+    # RL metrics
+    answer_text = ai.get("message", "")
+    answer_vec = np.array(embed_with_client(genai_client, answer_text), dtype=float)
+    ctx_vec = np.array(embed_with_client(genai_client, prompt), dtype=float)
 
+    semantic_similarity = cos_sim(x_context[:answer_vec.shape[0]], answer_vec) if x_context.size and answer_vec.size else 0.0
+    groundedness = cos_sim(answer_vec, ctx_vec) if answer_vec.size and ctx_vec.size else 0.0
+
+    # Save interaction
+    request_id = str(uuid.uuid4())
+    interaction = LLMInteraction(
+        request_id=request_id,
+        doctor_id="TEXT_AGENT",
+        query=query,
+        response=answer_text,
+        context_used=prompt,
+        semantic_similarity=semantic_similarity,
+        groundedness=groundedness,
+        prompt_variant=prompt_idx,
+        action_id=chosen_action_id,
+        temp_used=temp,
+        model_used=chosen_model,
+        ctx_size_used=ctx_size,
+        timestamp=datetime.utcnow()
+    )
+    db.add(interaction)
+    db.commit()
+
+    # Booking / cancellation follow-up (keep your previous logic — simplified here)
     if st.get("date") and st.get("time") and not st.get("phone") and not st.get("ready_for_booking"):
         normalized_time = normalize_vague_time(st.get("date"), st.get("time"), st.get("raw_text"))
         raw_dt = f"{st['date']} {normalized_time}"
-        preferred_dt_user_tz = None
         try:
             parsed = dtparser.parse(raw_dt, fuzzy=False)
             if parsed.tzinfo is None:
@@ -483,37 +605,31 @@ STATE: {st}
             preferred_dt_user_tz = None
 
         if preferred_dt_user_tz:
-            
-            # ... (Existing preferred_dt_user_tz calculation) ...
-            
             dt_final_utc = find_next_available_slot(db, preferred_dt_user_tz)
             dt_local = dt_final_utc.astimezone(USER_TZ)
             preferred_slotted = _ceil_to_slot(preferred_dt_user_tz)
 
-            # Check for non-business hours/weekends
             is_weekend = preferred_slotted.weekday() >= 5
             is_outside_hours = not (BUSINESS_START_HOUR <= preferred_slotted.hour < BUSINESS_END_HOUR)
-            
-            # --- New Logic for Negotiation Message ---
+
             if dt_local.replace(tzinfo=None) != preferred_slotted.replace(tzinfo=None):
                 suggested_time = dt_local.strftime("%I:%M %p")
                 requested_time = preferred_slotted.strftime("%I:%M %p")
-                
-                reason_detail = f"The clinic is closed on weekends." if is_weekend else ""
-                reason_detail = f"That time ({requested_time}) is outside our business hours." if is_outside_hours and not is_weekend else reason_detail
-                reason_detail = f"The {requested_time} slot is currently full." if not reason_detail else reason_detail # Default to full if no other reason applies
-                
-                # Update state to wait for confirmation
+                reason_detail = ""
+                if is_weekend:
+                    reason_detail = "The clinic is closed on weekends."
+                elif is_outside_hours:
+                    reason_detail = f"That time ({requested_time}) is outside our business hours."
+                else:
+                    reason_detail = f"The {requested_time} slot is currently full."
                 st["waiting_for_confirmation"] = True
                 st["suggested_slot_utc"] = dt_final_utc.isoformat()
                 st["original_request_time"] = requested_time
                 text_states[user] = st
-                
                 return (
-                    f"{reason_detail} The next opening is **{suggested_time}** on "
+                    f"{reason_detail} The next opening is {suggested_time} on "
                     f"{dt_local.strftime('%A, %B %d')}. Does that work for you?"
                 )
-            # ... (rest of the block) ...
             else:
                 st["original_request_time"] = preferred_slotted.strftime("%I:%M %p")
                 text_states[user] = st
@@ -522,23 +638,16 @@ STATE: {st}
         return ai.get("message", "I need a more specific date and time, please.")
 
     if ai.get("ready_for_booking") or st.get("ready_for_booking"):
-        dt_final_utc, preferred_dt_user_tz_actual = execute_booking(db, st, db_user_id)
+        dt_final_utc, _ = execute_booking(db, st, db_user_id)
+        if not dt_final_utc:
+            return "Sorry, couldn't book that slot."
         dt_local = dt_final_utc.astimezone(USER_TZ)
         formatted = dt_local.strftime("%A, %B %d at %I:%M %p %Z")
-        original_request = st.get("original_request_time")
-        booked_time = dt_local.strftime("%I:%M %p")
-        reason_msg = ""
-        if original_request and original_request != booked_time:
-            reason_msg = (
-                f"Your original request for {original_request} was unavailable, "
-                f"so we booked the nearest available slot at {booked_time}. "
-            )
         text_states[user] = {}
         doctor_name = get_default_doctor(db)
         return (
             f"All set, {st.get('name','Patient')}! 🎉 Your appointment with {doctor_name} "
-            f"is booked for {formatted}. {reason_msg}"
-            f"We have recorded your reason as: {st.get('symptom_message','')}."
+            f"is booked for {formatted}. We've recorded your reason as: {st.get('symptom_message','')}."
         )
 
     if ai.get("ready_for_cancellation"):
@@ -551,12 +660,33 @@ STATE: {st}
         appt = db.query(Appointment).filter(Appointment.patient_id == p.id, Appointment.status == "scheduled").first()
         if not appt:
             return "There is no appointment to cancel."
-        appt.status = "cancelled"; db.commit(); text_states[user] = {}
+        appt.status = "cancelled"
+        db.commit()
+        text_states[user] = {}
         return "Your appointment has been cancelled 😊"
 
-    return ai.get("message", "How can I help you?")
+    return answer_text
 
+# -------------------------
+# Helper to handle and store symptoms
+# -------------------------
+async def handle_and_store_symptoms(db: Session, patient_id: int, message_text: str):
+    kb = get_symptom_kb(db)
+    result = await kb.process_text(message_text)
+    summary = ", ".join([r["display"] for r in result.get("extracted", [])])
+    interaction = Interaction(
+        patient_id=patient_id,
+        channel="text",
+        message=message_text,
+        created_at=datetime.utcnow()
+    )
+    db.add(interaction)
+    db.commit()
+    return result
+
+# -------------------------
 # WEBSOCKET ENDPOINT
+# -------------------------
 @app.websocket("/ws/agent")
 async def agent_ws_endpoint(ws: WebSocket):
     await ws.accept()
@@ -573,6 +703,7 @@ async def agent_ws_endpoint(ws: WebSocket):
                 transcript = await google_stt_stream(buffer)
                 buffer = []
                 await ws.send_text(json.dumps({"type":"transcript","final":True,"text":transcript}))
+                # create task so websocket loop isn't blocked by long processing
                 asyncio.create_task(handle_user_utterance(ws, transcript))
     except WebSocketDisconnect:
         voice_states.pop(cid, None)

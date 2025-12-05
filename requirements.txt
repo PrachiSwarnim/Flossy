@@ -12,3 +12,4 @@ google-genai
 pyttsx3
 python-dateutil
 psycopg2
+scikit-learn
