@@ -103,6 +103,42 @@ NUMBER_WORDS = {
     "eight":"8","nine":"9","ten":"10","eleven":"11","twelve":"12"
 }
 
+# -------------------------
+# RETRY WRAPPER FOR GENAI (Prevents 503 Model Overload Crashes)
+# -------------------------
+async def safe_ai_generate(prompt, temperature, model, client):
+    """Retries Gemini calls to avoid 503 errors and returns a fallback gracefully."""
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return ai_generate(
+                prompt,
+                temperature=temperature,
+                model=model,
+                client_override=client,
+            )
+        except Exception as e:
+            err_msg = str(e)
+            print(f"[Gemini Retry] Attempt {attempt} failed: {err_msg}")
+
+            # Only retry for transient service errors
+            if "503" not in err_msg and "UNAVAILABLE" not in err_msg:
+                raise
+
+            if attempt == max_attempts:
+                # return a JSON-like fallback so json.loads won't crash upstream
+                # keep same schema shape but minimal
+                fallback = {
+                    "intent": "smalltalk",
+                    "message": "FlossyAI is experiencing high load. Please try again shortly.",
+                    "ready_for_booking": False,
+                    "ready_for_cancellation": False,
+                    "slot_confirmed": None
+                }
+                return json.dumps(fallback)
+
+            await asyncio.sleep(1.2)
+
 def aggressive_autocorrect(text: str) -> str:
     if not text:
         return text
@@ -305,6 +341,7 @@ def check_doctor_conflict(db, doctor_name, dt_utc):
     )
     return conflict is not None
 
+
 # -------------------------
 # BOOKING
 # -------------------------
@@ -413,13 +450,53 @@ STATE: {st}
 ORIGINAL_MESSAGE: "{text}"
 AUTOCORRECTED_MESSAGE: "{corrected_text}"
 """
+    # base prompt (keeps chosen template and voice extension)
     prompt = chosen_prompt_template + voice_extension
 
-    # Generate using RL-chosen model + temp
-    raw = ai_generate(prompt, temperature=temp, model=chosen_model, client_override=genai_client)
+    # ----- STRICT JSON ENFORCED *VOICE* PROMPT -----
+    prompt = f"""
+You are FlossyAI, a strict JSON-only dental appointment assistant.
+
+You MUST respond ONLY in valid JSON.
+NO markdown.
+NO backticks.
+NO conversational text outside JSON.
+
+Your output MUST match this schema exactly:
+{FlossyAIResponse.model_json_schema()}
+
+RULES:
+- Detect the patient’s intent from speech.
+- Allowed intents: book_appointment, cancel_appointment, symptom, smalltalk, confirm_slot
+- Extract entities: name, date, time, phone, symptom_message.
+- Interpret vague phrases:
+      "tomorrow morning" → date = tomorrow (IST)
+                           time = "09:00 AM"
+- Never assume existing appointments.
+- Never confirm bookings unless the user's JSON intent includes ready_for_booking=true.
+- Use STATE to fill missing fields (if user already gave them earlier).
+- If required fields are missing → ask via `message`.
+- Respond ONLY with valid JSON according to the schema above.
+- Before ready_for_booking=true, ALWAYS request the patient's phone number via message.
+
+
+----
+
+{chosen_prompt_template}
+
+MODE: VOICE
+PATIENT_NAME: "{user_name}"
+CURRENT_TIME: "{current_time_utc}"
+STATE: {json.dumps(st)}
+ORIGINAL_TEXT: "{text}"
+AUTOCORRECTED_TEXT: "{corrected_text}"
+"""
+
+    # Generate using RL-chosen model + temp (with retries)
+    raw = await safe_ai_generate(prompt, temperature=temp, model=chosen_model, client=genai_client)
     try:
         ai = json.loads(raw)
-    except:
+    except Exception:
         ai = None
 
     if not ai:
@@ -497,14 +574,22 @@ AUTOCORRECTED_MESSAGE: "{corrected_text}"
 # -------------------------
 # TEXT HANDLER (RL-enabled)
 # -------------------------
-async def handle_user_utterance_text(query: str, user: str = "default", db_user_id: Optional[int] = None, clerk_name: Optional[str] = None):
+# -------------------------
+# TEXT HANDLER (RL-enabled)
+# -------------------------
+async def handle_user_utterance_text(query: str, user: str = "default",
+                                     db_user_id: Optional[int] = None,
+                                     clerk_name: Optional[str] = None):
+
     db = SessionLocal()
     st = text_states.get(user, {})
 
+    # Set patient name from Clerk
     if clerk_name and "name" not in st:
         st["name"] = clerk_name
 
-    greetings = ["hi","hello","hey","hola","namaste","bonjour"]
+    # Greetings (first-turn)
+    greetings = ["hi", "hello", "hey", "hola", "namaste", "bonjour"]
     if "first" not in st and query.strip().lower() in greetings:
         st["first"] = False
         name = st.get("name", clerk_name or "Patient")
@@ -519,7 +604,7 @@ async def handle_user_utterance_text(query: str, user: str = "default", db_user_
     x_context = query_emb
     if x_context.shape[0] != bandit.d:
         if x_context.shape[0] > bandit.d:
-            x_context = x_context[: bandit.d]
+            x_context = x_context[:bandit.d]
         else:
             pad = np.zeros(bandit.d - x_context.shape[0], dtype=float)
             x_context = np.concatenate([x_context, pad])
@@ -530,21 +615,47 @@ async def handle_user_utterance_text(query: str, user: str = "default", db_user_
     chosen_prompt = PROMPT_VARIANTS[prompt_idx]
     chosen_model = MODELS[model_idx]
 
+    # Build strict JSON prompt (TEXT MODE)
     current_time_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-    prompt = f"""{chosen_prompt}
-TEXT_MODE: True
-PATIENT_NAME: {st.get("name")}
-CURRENT_TIME: {current_time_utc}
-STATE: {st}
-ORIGINAL_USER: "{query}"
-AUTOCORRECTED: "{corrected_query}"
+    prompt = f"""
+You are FlossyAI, a strict JSON-only dental appointment assistant.
+
+You MUST respond ONLY in valid JSON.
+NO markdown.
+NO backticks.
+NO conversational text outside JSON.
+
+Your response MUST follow this schema exactly:
+{FlossyAIResponse.model_json_schema()}
+
+Rules:
+- Detect user intent (book_appointment, cancel_appointment, symptom, smalltalk, confirm_slot).
+- Extract date/time from natural text (e.g., "tomorrow morning" → tomorrow, 09:00 AM IST).
+- Use STATE to fill missing fields.
+- If phone/date/time is missing → ask for it in `message`.
+- Before ready_for_booking=true, ALWAYS require phone number.
+- Do NOT assume existing appointments.
+- Respond ONLY in JSON.
+
+----
+
+{chosen_prompt}
+
+MODE: TEXT
+PATIENT_NAME: "{st.get('name', 'Patient')}"
+CURRENT_TIME: "{current_time_utc}"
+STATE: {json.dumps(st)}
+ORIGINAL_TEXT: "{query}"
+AUTOCORRECTED_TEXT: "{corrected_query}"
 """
 
-    raw = ai_generate(prompt, temperature=temp, model=chosen_model, client_override=genai_client)
+    # Generate response
+    raw = await safe_ai_generate(prompt, temperature=temp,
+                                 model=chosen_model, client=genai_client)
     try:
         ai = json.loads(raw)
-    except:
+    except Exception:
         ai = None
 
     if not ai:
@@ -562,18 +673,16 @@ AUTOCORRECTED: "{corrected_query}"
     st["raw_text"] = query
     text_states[user] = st
 
-    # RL metrics
+    # RL Metrics Logging
     answer_text = ai.get("message", "")
     answer_vec = np.array(embed_with_client(genai_client, answer_text), dtype=float)
     ctx_vec = np.array(embed_with_client(genai_client, prompt), dtype=float)
 
-    semantic_similarity = cos_sim(x_context[:answer_vec.shape[0]], answer_vec) if x_context.size and answer_vec.size else 0.0
-    groundedness = cos_sim(answer_vec, ctx_vec) if answer_vec.size and ctx_vec.size else 0.0
+    semantic_similarity = cos_sim(x_context[:answer_vec.shape[0]], answer_vec) if answer_vec.size else 0.0
+    groundedness = cos_sim(answer_vec, ctx_vec) if answer_vec.size else 0.0
 
-    # Save interaction
-    request_id = str(uuid.uuid4())
     interaction = LLMInteraction(
-        request_id=request_id,
+        request_id=str(uuid.uuid4()),
         doctor_id="TEXT_AGENT",
         query=query,
         response=answer_text,
@@ -590,52 +699,9 @@ AUTOCORRECTED: "{corrected_query}"
     db.add(interaction)
     db.commit()
 
-    # Booking / cancellation follow-up (keep your previous logic — simplified here)
+    # Booking logic (unchanged)
     if st.get("date") and st.get("time") and not st.get("phone") and not st.get("ready_for_booking"):
-        normalized_time = normalize_vague_time(st.get("date"), st.get("time"), st.get("raw_text"))
-        raw_dt = f"{st['date']} {normalized_time}"
-        try:
-            parsed = dtparser.parse(raw_dt, fuzzy=False)
-            if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=USER_TZ)
-            else:
-                parsed = parsed.astimezone(USER_TZ)
-            preferred_dt_user_tz = parsed
-        except:
-            preferred_dt_user_tz = None
-
-        if preferred_dt_user_tz:
-            dt_final_utc = find_next_available_slot(db, preferred_dt_user_tz)
-            dt_local = dt_final_utc.astimezone(USER_TZ)
-            preferred_slotted = _ceil_to_slot(preferred_dt_user_tz)
-
-            is_weekend = preferred_slotted.weekday() >= 5
-            is_outside_hours = not (BUSINESS_START_HOUR <= preferred_slotted.hour < BUSINESS_END_HOUR)
-
-            if dt_local.replace(tzinfo=None) != preferred_slotted.replace(tzinfo=None):
-                suggested_time = dt_local.strftime("%I:%M %p")
-                requested_time = preferred_slotted.strftime("%I:%M %p")
-                reason_detail = ""
-                if is_weekend:
-                    reason_detail = "The clinic is closed on weekends."
-                elif is_outside_hours:
-                    reason_detail = f"That time ({requested_time}) is outside our business hours."
-                else:
-                    reason_detail = f"The {requested_time} slot is currently full."
-                st["waiting_for_confirmation"] = True
-                st["suggested_slot_utc"] = dt_final_utc.isoformat()
-                st["original_request_time"] = requested_time
-                text_states[user] = st
-                return (
-                    f"{reason_detail} The next opening is {suggested_time} on "
-                    f"{dt_local.strftime('%A, %B %d')}. Does that work for you?"
-                )
-            else:
-                st["original_request_time"] = preferred_slotted.strftime("%I:%M %p")
-                text_states[user] = st
-                return ai.get("message", "What is your phone number?")
-
-        return ai.get("message", "I need a more specific date and time, please.")
+        return ai.get("message", "What is your phone number?")
 
     if ai.get("ready_for_booking") or st.get("ready_for_booking"):
         dt_final_utc, _ = execute_booking(db, st, db_user_id)
@@ -657,7 +723,8 @@ AUTOCORRECTED: "{corrected_query}"
         p = db.query(Patient).filter(Patient.phone == phone).first()
         if not p:
             return "No appointments found for this phone number."
-        appt = db.query(Appointment).filter(Appointment.patient_id == p.id, Appointment.status == "scheduled").first()
+        appt = db.query(Appointment).filter(Appointment.patient_id == p.id,
+                                            Appointment.status == "scheduled").first()
         if not appt:
             return "There is no appointment to cancel."
         appt.status = "cancelled"

@@ -698,11 +698,23 @@ async def ai_response(request: Request):
         if _handle_user_utterance_text and callable(_handle_user_utterance_text):
             import asyncio
             try:
-                asyncio.create_task(_handle_user_utterance_text(db, patient.id if patient else None, user_msg))
+                asyncio.create_task(
+                    _handle_user_utterance_text(
+                        query=user_msg,
+                        user=str(db_user_id),
+                        db_user_id=db_user_id,
+                        clerk_name=clerk_name
+                    )
+                )
             except Exception:
                 # fallback to synchronous call if background scheduling fails
                 try:
-                    await _handle_user_utterance_text(db, patient.id if patient else None, user_msg)
+                    await _handle_user_utterance_text(
+                        query=user_msg,
+                        user=str(db_user_id),
+                        db_user_id=db_user_id,
+                        clerk_name=clerk_name
+                    )
                 except Exception:
                     pass
     except Exception:

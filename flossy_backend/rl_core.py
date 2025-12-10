@@ -39,7 +39,11 @@ QUESTION:
 
 TEMPS = [0.0, 0.2, 0.4]
 CTX_SIZES = [1, 3, 5]
-MODELS = ["gemini-2.5-flash"]
+MODELS = [
+    "models/gemini-2.5-flash",
+    "models/gemini-2.5-pro",
+    "models/gemini-2.0-flash-lite-001",
+]
 
 ACTIONS = build_actions(PROMPT_VARIANTS, TEMPS, CTX_SIZES, MODELS)
 ACTION_IDS = list(range(len(ACTIONS)))

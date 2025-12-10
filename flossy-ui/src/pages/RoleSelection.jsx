@@ -13,6 +13,8 @@ export default function RoleSelection() {
 
   // 🔥 IMPORTANT: Your backend CANNOT be on Vite dev server
   const API_BASE = "http://localhost:8000"; // <-- change to your backend port
+  // const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000"; // <-- change to your backend port
+
 
   async function pickRole(role) {
     if (!session) {
