@@ -1,35 +1,37 @@
-from operator import index
+# main.py
 import os
+import json
+import uuid
 import jwt
 import requests
-import json
-import numpy as np
-import uuid
-from datetime import datetime, timezone, timedelta
-from fastapi import FastAPI, Request, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
-from routers.sms import router as sms_router
-from agent_server import app as agent_app, handle_user_utterance_text
-from database import init_db, SessionLocal
-from models import User, Patient, Appointment, Interaction, LLMInteraction, final_score
-from dotenv import load_dotenv
-from sqlalchemy.orm import Session, joinedload
-from jwt import PyJWKClient
 import faiss
-from google.genai import Client
-from rl_core import bandit, ACTIONS, PROMPT_VARIANTS, MODELS, build_actions, LinUCB
-from llm_client import genai_client
+import numpy as np
+from datetime import datetime, timezone, timedelta
+from typing import Callable, Optional
+
+from fastapi import FastAPI, Request, HTTPException, Depends, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+from sqlalchemy.orm import Session, joinedload
+from dotenv import load_dotenv
+from jwt import PyJWKClient
+
+# ----- project-specific imports (adjust paths if needed) -----
+from routers.sms import router as sms_router            # optional
+from agent_server import app as agent_app, handle_user_utterance_text  # optional
+from database import init_db, SessionLocal
+from models import User, Patient, Appointment, Interaction, LLMInteraction
 from utils import ai_generate, cos_sim, embed_with_client
+from llm_client import genai_client
+from rl_core import bandit, ACTIONS, PROMPT_VARIANTS, MODELS, LinUCB
 
-# --------------------------------------------------------------------------
-#                         ENV + CLERK SETUP
-# --------------------------------------------------------------------------
-
+# ------------------------------------------------------------------
+# Environment + Clerk settings
+# ------------------------------------------------------------------
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")
-CLERK_API_BASE = "https://api.clerk.dev/v1"
 CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
 CLERK_PUBLISHABLE_KEY = os.getenv("CLERK_PUBLISHABLE_KEY")
 CLERK_CLIENT_ID = os.getenv("CLERK_CLIENT_ID")
@@ -40,57 +42,55 @@ JWKS_URL = f"{CLERK_ISSUER}/.well-known/jwks.json"
 if not GEMINI_API_KEY:
     print("⚠️ GOOGLE_API_KEY not set — some features will fail if called.")
 
-# instantiate genai_client if not already imported (llm_client should provide it, but keep safe)
+# make sure genai_client exists
 try:
     genai_client = genai_client
 except Exception:
+    from google.genai import Client
     genai_client = Client(api_key=GEMINI_API_KEY)
 
-# --------------------------------------------------------------------------
-#                            FASTAPI SETUP
-# --------------------------------------------------------------------------
+# RL bandit safety
+try:
+    bandit = bandit
+except Exception:
+    D = 768
+    bandit = LinUCB(bandit_name="doctor_global_v1", actions=list(range(len(ACTIONS))), d=D, alpha=1.0)
 
-app = FastAPI(title="FlossyAI", description="AI Dental Assistant Platform")
+# ------------------------------------------------------------------
+# FastAPI app
+# ------------------------------------------------------------------
+app = FastAPI(title="FlossyAI API", description="AI Dental Assistant API-only backend")
+
+# Allow CORS for local frontend during development
+FRONTEND_ORIGINS = os.getenv("FRONTEND_ORIGINS", "*")
+if FRONTEND_ORIGINS == "*":
+    allow_origins = ["*"]
+else:
+    allow_origins = [o.strip() for o in FRONTEND_ORIGINS.split(",")]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# If you still have a separate agent app, mount it (optional)
+try:
+    app.mount("/agent", agent_app)
+except Exception:
+    pass
+
+# optional: mount static for any static assets (keep or remove as needed)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 static_dir = os.path.join(BASE_DIR, "flossy_web")
-app.mount("/agent", agent_app)
 if os.path.isdir(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-TEMPS = [0.0, 0.2, 0.4]
-CTX_SIZES = [1, 3, 5]
-
-
-ACTION_IDS = list(range(len(ACTIONS)))
-
-# choose embedding dims for LinUCB context dimension
-D = 768
-try:
-    bandit = bandit
-except Exception:
-    bandit = LinUCB(bandit_name="doctor_global_v1", actions=ACTION_IDS, d=D, alpha=1.0)
-
-# --------------------------------------------------------------------------
-#                         Helper functions
-# --------------------------------------------------------------------------
-def load_html(filename: str):
-    try:
-        file_path = os.path.join("flossy_web", filename)
-        with open(file_path, "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read(), status_code=200)
-    except Exception as e:
-        return HTMLResponse(content=f"<h1>Error loading {filename}</h1><p>{e}</p>", status_code=500)
-
-
+# ------------------------------------------------------------------
+# Database helpers
+# ------------------------------------------------------------------
 def get_db():
     db = SessionLocal()
     try:
@@ -98,27 +98,24 @@ def get_db():
     finally:
         db.close()
 
+# ------------------------------------------------------------------
+# Clerk JWT verification helper
+# ------------------------------------------------------------------
+_jwks_client: Optional[PyJWKClient] = None
 
-def get_or_create_patient(db: Session, user: User, clerk_name: str = None, phone: str = None):
-    patient = db.query(Patient).filter(Patient.user_id == user.id).first()
-    if patient:
-        return patient
+def get_jwks_client() -> PyJWKClient:
+    global _jwks_client
+    if _jwks_client is None:
+        _jwks_client = PyJWKClient(JWKS_URL)
+    return _jwks_client
 
-    new_patient = Patient(
-        name=clerk_name or "Unknown",
-        phone=phone or "0000000000",
-        user_id=user.id,
-        contact_datetime=datetime.now(timezone.utc)
-    )
-    db.add(new_patient)
-    db.commit()
-    db.refresh(new_patient)
-    return new_patient
-
-
-def verify_token(token: str):
+def verify_token(token: str) -> dict:
+    """
+    Verifies Clerk JWT using JWKS. Raises HTTPException(401) on failure.
+    Returns the decoded payload.
+    """
     try:
-        jwks_client = PyJWKClient(JWKS_URL)
+        jwks_client = get_jwks_client()
         signing_key = jwks_client.get_signing_key_from_jwt(token)
         payload = jwt.decode(
             token,
@@ -128,199 +125,174 @@ def verify_token(token: str):
             options={"verify_aud": False, "verify_iat": False},
             leeway=10
         )
-        print("✅ Token verified:", {k: payload.get(k) for k in ("sub", "email", "email_address")})
         return payload
     except Exception as e:
-        print("❌ JWT verification failed:", e)
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        # log error server-side for debugging
+        print("JWT verification failed:", e)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
+# ------------------------------------------------------------------
+# Middleware: auto-verify Clerk token and attach user info
+# ------------------------------------------------------------------
+EXEMPT_PATHS = {
+    "/health",
+    "/openapi.json",
+    "/docs",
+    "/redoc",
+    "/api/public",     # any public API prefix you want to keep open
+    "/agent",          # if agent sub-app should be accessible
+    "/static",
+}
 
-def store_user_if_new(db: Session, email: str, role: str = None, name: str = None):
-    user = None
-    try:
+class ClerkAuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: Callable):
+        path = request.url.path
+
+        # Allow exempt paths
+        if any(path.startswith(p) for p in EXEMPT_PATHS):
+            return await call_next(request)
+
+        # Allow OPTIONS preflight
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
+        auth = request.headers.get("Authorization")
+        if not auth or not auth.startswith("Bearer "):
+            return JSONResponse({"detail": "Missing authorization token"}, status_code=401)
+
+        token = auth.split(" ")[1]
+        try:
+            payload = verify_token(token)
+            # attach to request.state for downstream handlers
+            request.state.user = payload
+        except HTTPException as e:
+            return JSONResponse({"detail": e.detail}, status_code=e.status_code)
+
+        return await call_next(request)
+
+app.add_middleware(ClerkAuthMiddleware)
+
+# ------------------------------------------------------------------
+# Role requirement dependency
+# ------------------------------------------------------------------
+def require_role(role: str):
+    """
+    Returns a dependency function that verifies the user in request.state has the given role
+    by checking the application's User table. Raises 403 if mismatch.
+    """
+    def _require_role(request: Request, db: Session = Depends(get_db)):
+        user_payload = getattr(request.state, "user", None)
+        if not user_payload:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+
+        email = (user_payload.get("email") or user_payload.get("email_address") or "").lower()
         if not email:
-            print("⚠️ No email provided — skipping user creation.")
-            return None
-
-        email = email.lower().strip()
-        valid_roles = {"dentist", "patient"}
+            raise HTTPException(status_code=400, detail="Email missing in token")
 
         user = db.query(User).filter(User.email.ilike(email)).first()
-        if not user:
-            new_user = User(
-                email=email,
-                role=role if role in valid_roles else None,
-                created_at=datetime.now(timezone.utc)
-            )
-            db.add(new_user)
-            db.commit()
-            db.refresh(new_user)
-            print(f"✅ Added new user: {email} ({new_user.role or 'no role'})")
-            user = new_user
-        elif user.role is None and role in valid_roles:
-            user.role = role
-            db.commit()
-            db.refresh(user)
-            print(f"🔄 Updated {email} role → {role}")
-        else:
-            print(f"ℹ️ User exists: {email} ({user.role})")
+        if not user or user.role != role:
+            raise HTTPException(status_code=403, detail="Insufficient role permissions")
+        # return the user DB object for convenience
         return user
-    except Exception as e:
-        db.rollback()
-        print(f"⚠️ Error storing user {email}: {e}")
-        return user
+    return _require_role
 
-# utilities
-def update_implicit_reward(request_id, value):
-    db = SessionLocal()
-    try:
-        row = db.query(LLMInteraction).filter_by(request_id=request_id).first()
-        if row:
-            row.implicit_reward = value
-            db.commit()
-    finally:
-        db.close()
+# ------------------------------------------------------------------
+# API: Health + Public
+# ------------------------------------------------------------------
+@app.get("/health")
+def health():
+    return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
 
-# --------------------------------------------------------------------------
-#                            ROUTES (kept intact)
-# --------------------------------------------------------------------------
+@app.get("/api/public")
+def public_info():
+    return {"service": "FlossyAI API", "version": "1.0"}
 
-@app.get("/", response_class=HTMLResponse)
-def serve_landing():
-    return load_html("landing.html")
+# ------------------------------------------------------------------
+# API: Auth endpoints
+# ------------------------------------------------------------------
+@app.post("/api/auth/select_role")
+def select_role(payload: dict, request: Request, db: Session = Depends(get_db)):
+    """
+    Body: { role: "patient" | "dentist" }
+    Requires Clerk Bearer token (middleware attaches request.state.user).
+    """
+    role = payload.get("role")
+    if role not in {"patient", "dentist"}:
+        raise HTTPException(status_code=400, detail="Invalid role")
 
+    user_payload = getattr(request.state, "user", None)
+    if not user_payload:
+        raise HTTPException(status_code=401, detail="Authentication required")
 
-@app.get("/login", response_class=HTMLResponse)
-def login_page():
-    return load_html("login.html")
-
-
-@app.get("/signup", response_class=HTMLResponse)
-def signup_page():
-    return load_html("signup.html")
-
-
-@app.get("/role_selection", response_class=HTMLResponse)
-def role_selection():
-    return load_html("role_selection.html")
-
-
-@app.get("/dental_tourism", response_class=HTMLResponse)
-def dental_tourism():
-    return load_html("dental_tourism.html")
-
-
-@app.get("/services", response_class=HTMLResponse)
-def services():
-    return load_html("services.html")
-
-
-@app.get("/logout", response_class=HTMLResponse)
-def logout():
-    return RedirectResponse(url="/", status_code=302)
-
-@app.get("/post_login", response_class=HTMLResponse)
-async def post_login(request: Request):
-    return load_html("post_login.html")
-
-@app.get("/redirect_user")
-async def redirect_user(request: Request, db: Session = Depends(get_db)):
-    clerk_token = request.query_params.get("token")
-    role_param = request.query_params.get("role")
-    email_param = request.query_params.get("email")
-
-    if not clerk_token:
-        return RedirectResponse(url="/login?error=missing_token", status_code=302)
-
-    try:
-        payload = verify_token(clerk_token)
-        user_id_clerk = payload.get("sub")
-
-        # ----------------------------
-        # Extract user email
-        # ----------------------------
-        email = (email_param or "").strip() or None
-        if not email:
-            email = payload.get("email") or payload.get("email_address") or None
-
-        # fallback
-        if not email:
-            email = f"{user_id_clerk}@auto.clerk"
-
-        email = email.lower().strip()
-
-        # ----------------------------
-        # Create/update user in DB
-        # ----------------------------
-        user = store_user_if_new(db, email, role=role_param)
-
-        if not user:
-            return RedirectResponse(url="/login?error=user_creation_failed", status_code=302)
-
-        # ----------------------------
-        # Redirect based on role
-        # ----------------------------
-        if user.role == "dentist":
-            return RedirectResponse(url=f"/dentist?token={clerk_token}", status_code=302)
-
-        if user.role == "patient":
-            return RedirectResponse(url=f"/patient?token={clerk_token}", status_code=302)
-
-        return RedirectResponse(url=f"/role_selection?token={clerk_token}&email={email}", status_code=302)
-
-    except Exception as e:
-        print("❌ redirect_user failure:", e)
-        return RedirectResponse(url="/login?error=redirect_failure", status_code=302)
-
-@app.get("/dentist", response_class=HTMLResponse)
-def user_dashboard(request: Request):
-    token = request.query_params.get("token")
-    if not token:
-        return RedirectResponse(url="/login")
-
-    try:
-        verify_token(token)
-    except HTTPException:
-        print("⚠️ Token failed verification. Redirecting user to /login.")
-        return RedirectResponse(url="/login?reason=token_expired", status_code=302)
-
-    return load_html("user_dashboard.html")
-
-@app.get("/patient", response_class=HTMLResponse)
-def patient_dashboard(request: Request):
-    token = request.query_params.get("token")
-    if not token:
-        return RedirectResponse(url="/login")
-
-    try:
-        verify_token(token)
-    except HTTPException:
-        print("⚠️ Token failed verification. Redirecting user to /login.")
-        return RedirectResponse(url="/login?reason=token_expired", status_code=302)
-
-    return load_html("patient_dashboard.html")
-
-@app.get("/signup/sso-callback")
-async def clerk_signup_callback():
-    return RedirectResponse(url="/post_login")
-
-
-@app.get("/appointments/today")
-def get_today_appointments(request: Request, db: Session = Depends(get_db)):
-    token = request.query_params.get("token")
-    if not token:
-        raise HTTPException(status_code=400, detail="Missing token")
-
-    payload = verify_token(token)
-    email = payload.get("email") or payload.get("email_address")
+    email = (user_payload.get("email") or user_payload.get("email_address") or "").lower().strip()
     if not email:
-        raise HTTPException(status_code=401, detail="Email missing in token")
+        raise HTTPException(status_code=400, detail="Email missing in token")
+
+    # Create or update user record
+    user = db.query(User).filter(User.email.ilike(email)).first()
+    if not user:
+        user = User(email=email, role=role, created_at=datetime.now(timezone.utc))
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        user.role = role
+        db.commit()
+
+    # Ensure Patient row if patient role
+    if role == "patient":
+        patient = db.query(Patient).filter(Patient.user_id == user.id).first()
+        if not patient:
+            patient = Patient(name=email.split("@")[0], phone="0000000000", user_id=user.id, contact_datetime=datetime.now(timezone.utc))
+            db.add(patient)
+            db.commit()
+
+    return {"success": True, "role": role, "email": email}
+
+@app.post("/api/auth/post_login")
+def post_login(request: Request, db: Session = Depends(get_db)):
+    """
+    Optional route: returns user DB info and role after a successful Clerk login.
+    Expects Authorization header with Clerk session token.
+    """
+    user_payload = getattr(request.state, "user", None)
+    if not user_payload:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    email = (user_payload.get("email") or user_payload.get("email_address") or "").lower().strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Email missing in token")
 
     user = db.query(User).filter(User.email.ilike(email)).first()
     if not user:
-        user = store_user_if_new(db, email)
-        if not user:
-            raise HTTPException(status_code=500, detail="User creation failed")
+        # create user record with no role
+        user = User(email=email, created_at=datetime.now(timezone.utc))
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    return {"user": {"id": user.id, "email": user.email, "role": user.role}}
+
+# ------------------------------------------------------------------
+# API: Appointments
+# ------------------------------------------------------------------
+@app.get("/api/appointments/today")
+def get_today_appointments(request: Request, db: Session = Depends(get_db)):
+    """
+    Returns today's appointments for the authenticated user.
+    If dentist: returns appointments for that dentist. If patient: for that patient.
+    """
+    user_payload = getattr(request.state, "user", None)
+    if not user_payload:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    email = (user_payload.get("email") or user_payload.get("email_address") or "").lower()
+    user = db.query(User).filter(User.email.ilike(email)).first()
+    if not user:
+        user = User(email=email, created_at=datetime.now(timezone.utc))
+        db.add(user)
+        db.commit()
+        db.refresh(user)
 
     now = datetime.now(timezone.utc)
     start = datetime(now.year, now.month, now.day, 0, 0, tzinfo=timezone.utc)
@@ -349,6 +321,7 @@ def get_today_appointments(request: Request, db: Session = Depends(get_db)):
             return {"appointments": []}
         appts = base_query.filter(Appointment.patient_id == patient.id).all()
 
+    # map latest interactions per patient
     patient_ids = [a.patient_id for a in appts] if appts else []
     latest_interactions = []
     if patient_ids:
@@ -376,18 +349,17 @@ def get_today_appointments(request: Request, db: Session = Depends(get_db)):
 
     return {"appointments": result}
 
-
-@app.get("/appointments/dentist_upcoming")
+@app.get("/api/appointments/dentist_upcoming")
 def dentist_upcoming(request: Request, db: Session = Depends(get_db)):
-    token = request.query_params.get("token")
-    if not token:
-        raise HTTPException(status_code=400, detail="Missing token")
+    """
+    Returns today's and upcoming appointments for the dentist.
+    Requires authenticated user whose email maps to a dentist role.
+    """
+    user_payload = getattr(request.state, "user", None)
+    if not user_payload:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
-    payload = verify_token(token)
-    email = payload.get("email") or payload.get("email_address")
-    if not email:
-        raise HTTPException(status_code=401, detail="Email missing")
-
+    email = (user_payload.get("email") or user_payload.get("email_address") or "").lower()
     user = db.query(User).filter(User.email.ilike(email)).first()
     if not user or user.role != "dentist":
         return {"today": [], "upcoming": []}
@@ -424,7 +396,7 @@ def dentist_upcoming(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
-    def format_appt(a):
+    def fmt(a):
         return {
             "id": a.id,
             "time": a.datetime.isoformat(),
@@ -434,14 +406,10 @@ def dentist_upcoming(request: Request, db: Session = Depends(get_db)):
             "reason": a.reason,
         }
 
-    return {
-        "today": [format_appt(a) for a in today_appts],
-        "upcoming": [format_appt(a) for a in upcoming_appts],
-    }
+    return {"today": [fmt(a) for a in today_appts], "upcoming": [fmt(a) for a in upcoming_appts]}
 
-
-@app.post("/appointments/mark_completed/{appt_id}")
-def mark_completed(appt_id: int, db: Session = Depends(get_db)):
+@app.post("/api/appointments/mark_completed/{appt_id}")
+def mark_completed(appt_id: int, db: Session = Depends(get_db), user = Depends(require_role("dentist"))):
     appt = db.query(Appointment).filter(Appointment.id == appt_id).first()
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
@@ -449,18 +417,56 @@ def mark_completed(appt_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"success": True}
 
+@app.get("/api/appointments/next")
+def get_next_appointment(request: Request, db: Session = Depends(get_db)):
+    user_payload = getattr(request.state, "user", None)
+    if not user_payload:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
-# --------------------------------------------------------------------------
-#                          RL DOCTOR API (core)
-# --------------------------------------------------------------------------
-@app.post("/doctor_ai/query")
+    email = (user_payload.get("email") or user_payload.get("email_address") or "").lower()
+    user = db.query(User).filter(User.email.ilike(email)).first()
+    if not user:
+        return {"appointment": None}
+
+    now = datetime.now(timezone.utc)
+    query = (
+        db.query(Appointment)
+        .options(joinedload(Appointment.patient))
+        .filter(
+            Appointment.datetime >= now,
+            Appointment.status == "scheduled"
+        )
+        .order_by(Appointment.datetime.asc())
+    )
+
+    if user.role != "dentist":
+        patient = db.query(Patient).filter(Patient.user_id == user.id).first()
+        if not patient:
+            return {"appointment": None}
+        query = query.filter(Appointment.patient_id == patient.id)
+
+    appt = query.first()
+    if not appt:
+        return {"appointment": None}
+
+    return {"appointment": {
+        "time": appt.datetime.isoformat(),
+        "doctor_name": appt.doctor_name,
+        "reason": appt.reason,
+        "patient_name": appt.patient.name if appt.patient else "Unknown"
+    }}
+
+# ------------------------------------------------------------------
+# AI / RL Endpoints
+# ------------------------------------------------------------------
+@app.post("/api/doctor_ai/query")
 async def doctor_ai(request: Request):
     payload = await request.json()
     query = payload.get("query", "").strip()
     if not query:
         return JSONResponse({"answer": "No query provided."}, status_code=400)
 
-    # identify doctor name if token present
+    # Identify doctor name if token present
     auth = request.headers.get("Authorization")
     doctor_name = "Doctor"
     if auth and auth.startswith("Bearer "):
@@ -471,7 +477,7 @@ async def doctor_ai(request: Request):
             if clerk_user_id:
                 headers = {"Authorization": f"Bearer {CLERK_SECRET_KEY}"}
                 try:
-                    resp = requests.get(f"{CLERK_API_BASE}/users/{clerk_user_id}", headers=headers, timeout=5)
+                    resp = requests.get(f"https://api.clerk.dev/v1/users/{clerk_user_id}", headers=headers, timeout=5)
                     if resp.status_code == 200:
                         data = resp.json()
                         doctor_name = data.get("full_name") or ((data.get("first_name") or "") + " " + (data.get("last_name") or "")).strip() or "Doctor"
@@ -480,13 +486,12 @@ async def doctor_ai(request: Request):
         except Exception:
             pass
 
-    # FAISS + KB
+    # Retrieval & generation (FAISS + your RL bandit)
     index = faiss.read_index("dental_embeddings.faiss")
     with open("dental_meta.json", "r", encoding="utf-8") as f:
         meta = json.load(f)
     chunks = meta.get("chunks", [])
 
-    # embed query
     query_emb = np.array(embed_with_client(genai_client, query), dtype=float)
     x_context = query_emb
     if x_context.shape[0] != bandit.d:
@@ -501,17 +506,15 @@ async def doctor_ai(request: Request):
     chosen_prompt_template = PROMPT_VARIANTS[prompt_idx]
     chosen_model = MODELS[model_idx]
 
-    # retrieval
     qvec = np.array([query_emb], dtype="float32")
     ctx_size = max(1, min(ctx_size, len(chunks)))
     Dvals, I = index.search(qvec, ctx_size)
     context = "\n\n".join(chunks[i] for i in I[0] if i < len(chunks))
 
-    # build prompt & generate
     prompt = chosen_prompt_template.format(doctor=doctor_name, context=context, query=query)
     answer = ai_generate(prompt, temperature=temp, model=chosen_model, client_override=genai_client)
 
-    # immediate metrics
+    # metrics
     try:
         answer_vec = np.array(embed_with_client(genai_client, answer), dtype=float)
     except Exception:
@@ -524,7 +527,7 @@ async def doctor_ai(request: Request):
     semantic_similarity = float(cos_sim(query_emb, answer_vec))
     groundedness = float(cos_sim(answer_vec, context_vec))
 
-    # persist interaction (for nightly RL updates)
+    # persist interaction
     request_id = str(uuid.uuid4())
     db = SessionLocal()
     try:
@@ -550,21 +553,19 @@ async def doctor_ai(request: Request):
 
     return {"answer": answer, "request_id": request_id}
 
-
-# --------------------------------------------------------------------------
-#                          Patient AI (text) — RL-enabled
-# --------------------------------------------------------------------------
-@app.post("/ai_response")
-async def ai_response(request: Request, payload: dict, db: Session = Depends(get_db)):
+@app.post("/api/ai_response")
+async def ai_response(request: Request):
+    payload = await request.json()
     user_msg = payload.get("query", "")
     if not user_msg:
         return {"answer": "I didn't receive any message. Could you please repeat that?"}
 
+    db = SessionLocal()
     db_user_id = None
     clerk_name = "Patient"
     patient = None
 
-    # AUTH → Resolve user if token present
+    # AUTH → resolve user if token present
     try:
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
@@ -576,7 +577,7 @@ async def ai_response(request: Request, payload: dict, db: Session = Depends(get
             # fetch clerk profile for clerk_name
             try:
                 headers = {"Authorization": f"Bearer {CLERK_SECRET_KEY}"}
-                resp = requests.get(f"{CLERK_API_BASE}/users/{clerk_user_id}", headers=headers, timeout=6)
+                resp = requests.get(f"https://api.clerk.dev/v1/users/{clerk_user_id}", headers=headers, timeout=6)
                 if resp.status_code == 200:
                     data = resp.json()
                     full = data.get("full_name")
@@ -595,120 +596,54 @@ async def ai_response(request: Request, payload: dict, db: Session = Depends(get
     except Exception:
         pass
 
-    # symptom KB async process (fire & forget; non-blocking)
-    if db_user_id and patient and user_msg:
+    # optional: async KB storage call (if agent_server exposes helper)
+    try:
+        from agent_server import handle_and_store_symptoms as kb_async_fn
         try:
-            # handle_and_store_symptoms is async in agent_server; we call as background task if available
-            from agent_server import handle_and_store_symptoms as kb_async_fn
-            try:
-                asyncio.create_task(kb_async_fn(db, patient.id, user_msg))
-            except Exception:
-                # If cannot create task, call synchronously
-                await kb_async_fn(db, patient.id, user_msg)
+            # schedule background task - rely on agent_server / event loop
+            import asyncio
+            asyncio.create_task(kb_async_fn(db, patient.id, user_msg))
         except Exception:
-            # If not available, ignore
-            pass
+            # fallback synchronous
+            await kb_async_fn(db, patient.id, user_msg)
+    except Exception:
+        pass
 
-    # call into your text handler (already RL-enabled inside agent_server)
+    # call into your existing handler
     try:
-        reply = await handle_user_utterance_text(
-            user_msg,
-            user=str(db_user_id),
-            db_user_id=db_user_id,
-            clerk_name=clerk_name
-        )
+        reply = await handle_user_utterance_text(user_msg, user=str(db_user_id), db_user_id=db_user_id, clerk_name=clerk_name)
     except Exception as e:
-        print("⚠ Error in handle_user_utterance_text:", e)
-        # fallback: return brief failure message
+        print("Error in handle_user_utterance_text:", e)
         return JSONResponse({"answer": "Sorry, I couldn't process that right now."}, status_code=500)
-
-    return JSONResponse({"answer": reply})
-
-
-# --------------------------------------------------------------------------
-#                           Monitoring & feedback endpoints
-# --------------------------------------------------------------------------
-
-@app.get("/llm_feedback")
-async def llm_feedback(payload: dict):
-    request_id = payload.get("request_id")
-    reward = payload.get("reward")
-    db = SessionLocal()
-    try:
-        row = db.query(LLMInteraction).filter_by(request_id=request_id).first()
-        if row:
-            row.explicit_reward = reward
-            db.commit()
     finally:
         db.close()
-    return {"status": "ok"}
 
+    return {"answer": reply}
 
-@app.get("/metrics/llm")
-def llm_metrics():
-    db = SessionLocal()
-    try:
-        rows = db.query(LLMInteraction).all()
-        data = [{
-            "request_id": r.request_id,
-            "query": r.query,
-            "semantic_similarity": r.semantic_similarity,
-            "groundedness": r.groundedness,
-            "instruction_score": r.instruction_score,
-            "safety_score": r.safety_score,
-            "coherence_score": r.coherence_score,
-            "accuracy_score": r.accuarcy_score,
-            "timestamp": r.timestamp
-        } for r in rows]
-    finally:
-        db.close()
+# ------------------------------------------------------------------
+# Monitoring & metrics endpoints
+# ------------------------------------------------------------------
+@app.get("/api/metrics/llm")
+def llm_metrics(db: Session = Depends(get_db)):
+    rows = db.query(LLMInteraction).all()
+    data = [{
+        "request_id": r.request_id,
+        "query": r.query,
+        "semantic_similarity": r.semantic_similarity,
+        "groundedness": r.groundedness,
+        "instruction_score": r.instruction_score,
+        "safety_score": r.safety_score,
+        "coherence_score": r.coherence_score,
+        "accuracy_score": r.accuarcy_score,
+        "timestamp": r.timestamp
+    } for r in rows]
     return {"interactions": data}
 
-
-@app.get("/appointments/next")
-def get_next_appointment(request: Request, db: Session = Depends(get_db)):
-    token = request.query_params.get("token")
-    if not token:
-        raise HTTPException(status_code=400, detail="Missing token")
-    payload = verify_token(token)
-    email = payload.get("email") or payload.get("email_address")
-    if not email:
-        raise HTTPException(status_code=401, detail="Email missing in token")
-    user = db.query(User).filter(User.email.ilike(email)).first()
-    if not user:
-        return {"appointment": None}
-    now = datetime.now(timezone.utc)
-    query = (
-        db.query(Appointment)
-        .options(joinedload(Appointment.patient))
-        .filter(
-            Appointment.datetime >= now,
-            Appointment.status == "scheduled"
-        )
-        .order_by(Appointment.datetime.asc())
-    )
-    if user.role != "dentist":
-        patient = db.query(Patient).filter(Patient.user_id == user.id).first()
-        if not patient:
-            return {"appointment": None}
-        query = query.filter(Appointment.patient_id == patient.id)
-    appt = query.first()
-    if not appt:
-        return {"appointment": None}
-    return {
-        "appointment": {
-            "time": appt.datetime.isoformat(),
-            "doctor_name": appt.doctor_name,
-            "reason": appt.reason,
-            "patient_name": appt.patient.name if appt.patient else "Unknown"
-        }
-    }
-
-
-# --------------------------------------------------------------------------
-#                         Startup initialization
-# --------------------------------------------------------------------------
+# ------------------------------------------------------------------
+# Startup
+# ------------------------------------------------------------------
 @app.on_event("startup")
 def on_startup():
     init_db()
-    print("✅ FlossyAI server started | Clerk OAuth & JWT ready.")
+    print("✅ FlossyAI API server started | Clerk JWT ready.")
+

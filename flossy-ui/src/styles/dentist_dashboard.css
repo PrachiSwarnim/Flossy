@@ -1,0 +1,188 @@
+body {
+    background: linear-gradient(135deg, #fffdf7, #fff8df);
+    font-family: "Sora", sans-serif;
+    width: 100vw;
+  }
+  
+/* -------------------------------
+   OUTER PAGE WRAPPER
+------------------------------- */
+.dentist-page {
+    width: 100%;
+    min-height: 100vh;
+    padding: 3rem 0 5rem;
+    background: linear-gradient(135deg, #fffdf7, #fff8df);
+    display: flex;
+    justify-content: center;
+  }
+  
+  /* -------------------------------
+     INNER CONTENT WRAPPER
+  ------------------------------- */
+  .dentist-container {
+    width: 100%;
+    max-width: 1100px;
+    padding: 0 1.5rem;
+    width: 100vw;
+  }
+  
+  /* Ensure no horizontal scrollbars */
+  .dentist-page,
+  .dentist-container {
+    box-sizing: border-box;
+    overflow-x: hidden;
+    width: 100vw;
+  }
+    
+  .welcome-title {
+    text-align: center;
+    font-size: 2rem;
+    background: linear-gradient(90deg, #f0b800, #ffcb05);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 2.5rem;
+  }
+  
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.8rem;
+  }
+  
+  /* CARDS */
+  .card {
+    background: white;
+    padding: 2rem;
+    border-radius: 1.2rem;
+    box-shadow: 0 6px 30px rgba(255,203,5,0.15);
+    border-left: 6px solid #ffcb05;
+    transition: 0.3s;
+  }
+  
+  .card:hover {
+    transform: translateY(-6px);
+  }
+  
+  .card h3 {
+    font-family: "Playfair Display", serif;
+    margin-bottom: 1rem;
+    color: #f0b800;
+  }
+  
+  /* APPOINTMENTS */
+  .appt-box {
+    background: #fffbea;
+    border-left: 6px solid #ffcb05;
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+  }
+  
+  .btn-complete {
+    background: #28a745;
+    padding: 6px 10px;
+    color: white;
+    border-radius: 6px;
+    margin-right: 8px;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .btn-call {
+    background: #007bff;
+    padding: 6px 10px;
+    color: white;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+  }
+  
+  /* LINKS */
+  .link {
+    color: #f0b800;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  
+  /* AI PANEL */
+  .ai-tab {
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #ffcb05;
+    padding: 1rem;
+    font-weight: bold;
+    border-radius: 12px 0 0 12px;
+    cursor: pointer;
+    writing-mode: vertical-rl;
+    z-index: 2000;
+  }
+  
+  .ai-panel {
+    position: fixed;
+    top: 0;
+    right: -380px;
+    width: 380px;
+    height: 100vh;
+    background: white;
+    border-left: 4px solid #ffcb05;
+    box-shadow: -4px 0 25px rgba(0, 0, 0, 0.15);
+    transition: 0.4s ease;
+    display: flex;
+    flex-direction: column;
+    z-index: 3000;
+  }
+  
+  .ai-panel.open {
+    right: 0;
+  }
+  
+  .ai-header {
+    background: #ffcb05;
+    padding: 1rem;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
+  
+  .close-btn {
+    float: right;
+    cursor: pointer;
+  }
+  
+  .ai-content {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+  }
+  
+  .msg-user {
+    margin-bottom: 1rem;
+    font-weight: bold;
+  }
+  
+  .msg-ai {
+    margin-bottom: 1rem;
+    color: #e3aa00;
+  }
+  
+  .ai-input-area {
+    padding: 1rem;
+    background: #fff7cd;
+    display: flex;
+    gap: 0.5rem;
+    border-top: 2px solid #ffe38a;
+  }
+  
+  .ai-input-area input {
+    flex: 1;
+    padding: 0.6rem;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    background: white;            /* ⭐ FIX */
+    color: #000;                  /* ensures text resets properly */
+    z-index: 10;                  /* protects from panel bleed */
+  }
+  
+  

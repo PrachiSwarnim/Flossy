@@ -1,0 +1,42 @@
+.contact-form-wrapper {
+    padding: 4rem 8%;
+    text-align: center;
+  }
+  
+  .contact-form-wrapper h2 {
+    font-family: "Playfair Display", serif;
+    color: #fca311;
+    margin-bottom: 2rem;
+  }
+  
+  .contact-form {
+    max-width: 600px;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .contact-form input,
+  .contact-form textarea {
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-size: 1rem;
+  }
+  
+  .contact-form button {
+    background: #fca311;
+    padding: 1rem;
+    border-radius: 8px;
+    border: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  
+  .contact-form button:hover {
+    opacity: 0.85;
+  }
+  

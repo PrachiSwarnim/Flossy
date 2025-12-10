@@ -1,0 +1,8 @@
+.services-grid {
+    padding: 2rem 8% 4rem 8%;
+    background: #fff8e6;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2.2rem;
+  }
+  

@@ -1,0 +1,72 @@
+/* PAGE BACKGROUND */
+.contact-modern {
+    width: 100%;
+    padding: 6rem 5%;
+    background: linear-gradient(180deg, #fef9f2 0%, #fff8ec 100%);
+    text-align: center;
+  }
+  
+  /* TITLE */
+  .contact-title {
+    font-size: 3rem;
+    font-family: "Playfair Display", serif;
+    font-weight: 700;
+    color: #f2a000;
+    margin-bottom: 4rem;
+    letter-spacing: 0.5px;
+  }
+  
+  /* CARDS CONTAINER */
+  .contact-cards {
+    display: grid;
+    gap: 2.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    padding: 0 2rem;
+  }
+  
+  /* MODERN CARD */
+  .contact-card-modern {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    border-radius: 22px;
+    padding: 2.8rem 2rem;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+  
+  /* HOVER EFFECT */
+  .contact-card-modern:hover {
+    transform: translateY(-12px) scale(1.03);
+    box-shadow: 0 20px 40px rgba(255, 163, 0, 0.25);
+  }
+  
+  /* CARD HEADING */
+  .contact-card-modern h2 {
+    font-size: 1.6rem;
+    color: #333;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+  }
+  
+  /* CARD TEXT */
+  .contact-card-modern p {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: #444;
+    margin-bottom: 0.5rem;
+  }
+  
+  /* MAP LINK */
+  .map-link {
+    margin-top: 1rem;
+    display: inline-block;
+    font-weight: 700;
+    color: #f2a000;
+    text-decoration: none;
+  }
+  
+  .map-link:hover {
+    text-decoration: underline;
+  }
+  

@@ -1,0 +1,6 @@
+.role-page{padding:3rem 4% 6rem;background:linear-gradient(180deg,#fffaf3,#fff4d2);width: 100vw;}
+.role-hero{text-align:center;margin-bottom:2.5rem}
+.role-grid{display:flex;gap:2rem;max-width:1100px;margin:0 auto;justify-content:center}
+.role-card{flex:1;min-width:260px;background:#fff;padding:2rem;border-radius:14px;box-shadow:0 14px 30px rgba(0,0,0,.08);cursor:pointer;transition:transform .18s,box-shadow .18s}
+.role-card:hover{transform:translateY(-6px);box-shadow:0 20px 40px rgba(0,0,0,.12)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600}

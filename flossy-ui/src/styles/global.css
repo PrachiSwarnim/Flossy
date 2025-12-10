@@ -1,0 +1,46 @@
+/* GLOBAL RESET */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  /* BODY STYLING */
+  body {
+    font-family: "Manrope", sans-serif;
+    background: #fff8e6;       /* Soft cream base like original website */
+    color: #1c1c1c;
+    overflow-x: hidden;
+    line-height: 1.6;
+  }
+  
+  /* DEFAULT TEXT BEHAVIOR */
+  p {
+    font-size: 1rem;
+    color: #444;
+  }
+  
+  /* HEADINGS */
+  h1, h2, h3 {
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  
+  /* BUTTON BASE STYLE */
+  .btn {
+    background: linear-gradient(135deg, #fca311, #ffd166);
+    color: #fff;
+    padding: 0.8rem 2rem;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    font-size: 1.05rem;
+    font-weight: 700;
+    transition: all 0.3s ease;
+  }
+  
+  .btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(252, 163, 17, 0.3);
+  }
+  

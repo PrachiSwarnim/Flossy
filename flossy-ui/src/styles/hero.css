@@ -1,0 +1,33 @@
+.hero {
+    height: 100vh;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4rem 8%;
+    background: radial-gradient(circle at top left, #fff6e1, #fffaf3 40%, #ffe8b8 100%);
+  }
+  
+  .hero-text h1 {
+    font-size: 4rem;
+    font-family: "Playfair Display", serif;
+    background: linear-gradient(90deg, #fca311, #ff7b00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .btn {
+    background: linear-gradient(135deg, #fca311, #ffd166);
+    color: white;
+    padding: 0.8rem 2rem;
+    margin: 0.8rem;
+    margin-left: 4px;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .hero-image img {
+    width: 450px;
+    border-radius: 30px;
+  }
+  

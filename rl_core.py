@@ -10,7 +10,8 @@ PROMPT_VARIANTS = [
     """
 You are FlossyAI Doctor Assistant.
 Provide a factual answer in ≤5 lines using ONLY the given context.
-If greeting, greet Dr. {doctor}. No hallucinations.
+If greeting, greet Dr. {doctor}. and say how you can help them today. No hallucinations.
+If there is a question with greeting then greet Dr. {doctor} and then give the factual answer.
 CONTEXT:
 {context}
 QUESTION:
@@ -38,7 +39,7 @@ QUESTION:
 
 TEMPS = [0.0, 0.2, 0.4]
 CTX_SIZES = [1, 3, 5]
-MODELS = ["gemini-2.5-flash", "gemini-2.5-pro"]
+MODELS = ["gemini-2.5-flash"]
 
 ACTIONS = build_actions(PROMPT_VARIANTS, TEMPS, CTX_SIZES, MODELS)
 ACTION_IDS = list(range(len(ACTIONS)))

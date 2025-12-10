@@ -1,0 +1,24 @@
+.tourism-hero {
+    background-color: #fef9f5;
+    padding: 4rem 8%;
+    text-align: center;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  
+  .tourism-hero h1 {
+    font-family: "Playfair Display", serif;
+    font-size: 2.6rem;
+    color: #fca311;
+  }
+  
+  .tourism-hero p {
+    max-width: 850px;
+    margin: 1.5rem auto 0;
+    color: #444;
+    line-height: 1.8;
+  }
+  

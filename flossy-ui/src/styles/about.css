@@ -1,0 +1,31 @@
+.about-section {
+    padding: 6rem 8%;
+    background-color: #fffbea;   /* correct light background */
+    color: #333;
+    text-align: center;
+    font-family: "Manrope", sans-serif;
+  }
+  
+  .about-section h2 {
+    font-family: "Playfair Display", serif;
+    font-size: 2.4rem;
+    margin-bottom: 1.8rem;
+    color: #ffb703;
+  }
+  
+  .about-section p {
+    max-width: 850px;
+    margin: 0 auto 1.5rem auto;
+    line-height: 1.8;
+    font-size: 1.1rem;
+    color: #444;
+  }
+  
+  .signature {
+    font-style: italic;
+    color: #666;
+    font-weight: 500;
+    margin-top: 2rem;
+  }
+  
+  

@@ -1,0 +1,50 @@
+.footer {
+    background: linear-gradient(
+      to bottom,
+      #f8d899 0%,   /* short soft gold */
+      #d59c47 15%,  /* quick fade */
+      #111 20%      /* dark footer quickly takes over */
+    );
+    color: #fff;
+    padding: 0.5rem 0;     /* MUCH thinner footer */
+    text-align: center;
+  }
+  
+  /* Remove social icons spacing bloat */
+  .footer-socials {
+    margin-bottom: 0.4rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.8rem;
+  }
+  
+  .footer-socials i {
+    font-size: 1.2rem;
+    color: #ffd580;
+    transition: 0.25s ease;
+  }
+  
+  .footer-socials i:hover {
+    transform: scale(1.1);
+    color: #fff;
+  }
+  
+  .footer-text,
+  .footer-credit {
+    font-size: 0.85rem;  /* smaller */
+    color: #eee;
+    margin: 2px 0;
+  }
+  
+  .footer-credit a {
+    color: #ffd580;
+    font-weight: 600;
+  }
+  
+  .footer-credit a:hover {
+    color: #fff;
+  }
+  
+  .footer-text {
+    margin-top: 15px;
+  }
