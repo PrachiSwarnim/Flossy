@@ -19,7 +19,6 @@ from dotenv import load_dotenv
 from jwt import PyJWKClient
 
 # ----- project-specific imports (adjust paths if needed) -----
-from routers.sms import router as sms_router            # optional
 from agent_server import app as agent_app, handle_user_utterance_text  # optional
 from database import init_db, SessionLocal
 from models import User, Patient, Appointment, Interaction, LLMInteraction
