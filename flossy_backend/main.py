@@ -509,6 +509,69 @@ def dentist_upcoming(request: Request,
         "upcoming": [fmt(a) for a in upcoming_appts],
     }
 
+@app.get("/api/appointments/patient_upcoming")
+def patient_upcoming(request: Request,
+                     db: Session = Depends(get_db),
+                     user = Depends(require_role("patient"))):
+
+    user_payload = getattr(request.state, "user", None)
+    if not user_payload:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    email = (user_payload.get("email") or user_payload.get("email_address") or "").lower()
+    user = db.query(User).filter(User.email.ilike(email)).first()
+
+    if not user or user.role != "patient":
+        return {"today": [], "upcoming": []}
+
+    patient = db.query(Patient).filter(Patient.user_id == user.id).first()
+    if not patient:
+        return {"today": [], "upcoming": []}
+
+    now = datetime.now(timezone.utc)
+    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    today_end = today_start + timedelta(days=1)
+
+    today_appts = (
+        db.query(Appointment)
+        .filter(Appointment.patient_id == patient.id,
+                Appointment.datetime >= today_start,
+                Appointment.datetime < today_end)
+        .order_by(Appointment.datetime.asc())
+        .all()
+    )
+
+    upcoming_appts = (
+        db.query(Appointment)
+        .filter(Appointment.patient_id == patient.id,
+                Appointment.datetime >= today_end)
+        .order_by(Appointment.datetime.asc())
+        .all()
+    )
+
+    def fmt(a):
+        return {
+            "id": a.id,
+            "time": a.datetime.isoformat(),
+            "doctor_name": a.doctor_name,
+            "reason": a.reason,
+            "status": a.status,
+        }
+
+    return {
+        "today": [fmt(a) for a in today_appts],
+        "upcoming": [fmt(a) for a in upcoming_appts],
+    }
+
+@app.post("/api/auth/check_email")
+def check_email(payload: dict, db: Session = Depends(get_db)):
+    email = payload.get("email", "").lower().strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Email required")
+
+    exists = db.query(User).filter(User.email.ilike(email)).first() is not None
+    return {"exists": exists}
+
 @app.post("/api/appointments/mark_completed/{appt_id}")
 def mark_completed(appt_id: int, db: Session = Depends(get_db), user = Depends(require_role("dentist"))):
     appt = db.query(Appointment).filter(Appointment.id == appt_id).first()
@@ -791,6 +854,10 @@ def llm_metrics(db: Session = Depends(get_db)):
         "timestamp": r.timestamp
     } for r in rows]
     return {"interactions": data}
+@app.get("/api/auth/email_exists")
+def email_exists(email: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email.ilike(email)).first()
+    return {"exists": user is not None}
 
 # ------------------------------------------------------------------
 # Startup event: lightweight init only

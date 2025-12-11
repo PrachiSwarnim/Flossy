@@ -3,6 +3,7 @@ import { useUser, useSession } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { PropagateLoader } from "react-spinners";
 import Header from "./DashboardHeader";
+import Footer from "../../components/Footer";
 import "../../styles/patient_dashboard.css";
 
 export default function PatientDashboard() {
@@ -11,66 +12,83 @@ export default function PatientDashboard() {
   const navigate = useNavigate();
 
   const [pageLoading, setPageLoading] = useState(true);
-  const [nextAppt, setNextAppt] = useState(null);
+  const [today, setToday] = useState([]);
+  const [upcoming, setUpcoming] = useState([]);
+
   const [messages, setMessages] = useState([]);
   const [aiOpen, setAiOpen] = useState(false);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
 
-  // 🔐 Block wrong roles
+  const API = "http://localhost:8000";
+
+  // 1️⃣ ROLE CHECK
   useEffect(() => {
     if (!isLoaded) return;
-    if (user?.publicMetadata?.role !== "patient") {
+    if (user && user.publicMetadata?.role !== "patient") {
       navigate("/not-authorized");
     }
-  }, [isLoaded, user, navigate]);
-
-  // ---- Artificial loading + appointment fetch ----
-  useEffect(() => {
-    if (!isLoaded || user?.publicMetadata?.role !== "patient") return;
-
-    setTimeout(() => {
-      loadAppointment().finally(() => setPageLoading(false));
-    }, 1000);
   }, [isLoaded, user]);
 
-  async function loadAppointment() {
-    const token = await session.getToken();
-    const res = await fetch("http://localhost:8000/api/appointments/next", {
+  // 2️⃣ LOAD APPOINTMENTS AFTER LOGIN
+  useEffect(() => {
+    if (!isLoaded || !session) return;
+    if (user?.publicMetadata?.role !== "patient") return;
+
+    const timer = setTimeout(() => {
+      loadAppointments().finally(() => setPageLoading(false));
+    }, 900);
+
+    return () => clearTimeout(timer);
+  }, [isLoaded, session, user]);
+
+  // HELPER — Remove appointments whose time already passed
+  function purgePastAppointments(list) {
+    const now = new Date();
+    return list.filter((appt) => new Date(appt.time) > now);
+  }
+
+  // Auto-purge past appointments every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setToday((prev) => purgePastAppointments(prev));
+      setUpcoming((prev) => purgePastAppointments(prev));
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // LOAD APPOINTMENTS
+  async function loadAppointments() {
+    if (!session) return;
+
+    const token = await session.getToken({ template: "default" });
+
+    const res = await fetch(`${API}/api/appointments/patient_upcoming`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
+    if (!res.ok) return;
+
     const data = await res.json();
-    setNextAppt(data.appointment || null);
+
+    setToday(purgePastAppointments(data.today || []));
+    setUpcoming(purgePastAppointments(data.upcoming || []));
   }
 
-  // 🟡 While LOADING → show only loader
-  if (!isLoaded || pageLoading) {
-    return (
-      <>
-        <Header />
-
-        <div className="page-loader">
-          <PropagateLoader color="#f0b800" size={15} />
-          <p>Loading dashboard...</p>
-        </div>
-      </>
-    );
-  }
-
-  // 🟢 Now safe to render full dashboard
-  const fullName = user?.firstName || user?.fullName || "Patient";
-
+  // AI CHAT HANDLER
   async function sendMessage() {
     if (!input.trim()) return;
+    if (!session) return;
 
     const msg = input;
     setInput("");
-    setMessages((p) => [...p, { from: "user", text: msg }]);
+    setMessages((prev) => [...prev, { from: "user", text: msg }]);
     setTyping(true);
 
-    const token = await session.getToken();
-    const res = await fetch("http://localhost:8000/api/ai_response", {
+    const token = await session.getToken({ template: "default" });
+
+    const aiRes = await fetch(`${API}/api/ai_response`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -79,85 +97,108 @@ export default function PatientDashboard() {
       body: JSON.stringify({ query: msg }),
     });
 
-    const data = await res.json();
-    setMessages((p) => [...p, { from: "ai", text: data.answer }]);
+    const aiData = await aiRes.json();
+
+    setMessages((prev) => [...prev, { from: "ai", text: aiData.answer }]);
     setTyping(false);
+
+    loadAppointments();
   }
+
+  // LOADING SCREEN
+  const loadingScreen = (
+    <>
+      <Header />
+      <div className="page-loader">
+        <PropagateLoader color="#f0b800" size={15} />
+        <p>Loading dashboard...</p>
+      </div>
+    </>
+  );
+
+  if (!isLoaded || !session || pageLoading || !user) {
+    return loadingScreen;
+  }
+
+  const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
 
   return (
     <>
       <Header openAI={() => setAiOpen(true)} />
 
-      <main className="patient-main">
+      <main className="dentist-main">
         <h2 id="welcomeMessage">Welcome back, {fullName}!</h2>
 
-        <div className="patient-card">
-          <h3>My Dental Records</h3>
-          <p>Last Visit: July 12, 2025</p>
-          <button className="p-btn">View Full History</button>
-        </div>
+        <div className="grid">
 
-        <div className="patient-card">
-          <h3>My Prescriptions</h3>
-          <p>• Antiseptic Mouthwash</p>
-          <button className="p-btn">Download</button>
-        </div>
+          {/* TODAY */}
+          <div className="card">
+            <h3>Today’s Appointments</h3>
+            {today.length ? (
+              today.map((a) => (
+                <div className="appt-item" key={a.id}>
+                  <b>{formatApptTime(a.time)}</b>
+                  <div>Doctor: {a.doctor_name}</div>
+                  <div>Reason: {a.reason}</div>
+                </div>
+              ))
+            ) : (
+              <p>No appointments today.</p>
+            )}
+          </div>
 
-        <div className="patient-card">
-          <h3>Upcoming Appointment</h3>
+          {/* UPCOMING */}
+          <div className="card">
+            <h3>Upcoming Appointments</h3>
+            {upcoming.length ? (
+              upcoming.map((a) => (
+                <div className="appt-item" key={a.id}>
+                  <b>{formatApptTime(a.time)}</b>
+                  <div>Doctor: {a.doctor_name}</div>
+                  <div>Reason: {a.reason}</div>
+                </div>
+              ))
+            ) : (
+              <p>No upcoming appointments.</p>
+            )}
+          </div>
 
-          {nextAppt ? (
-            <p>
-              {nextAppt.doctor_name} →{" "}
-              {new Date(nextAppt.time).toLocaleString()}
-            </p>
-          ) : (
-            <p>No upcoming appointments.</p>
-          )}
+          {/* AI CARE INSIGHTS */}
+          <div className="card">
+            <h3>AI Care Insights</h3>
+            <p>Your teeth & gums look great this month! 🦷✨</p>
+          </div>
 
-          <button className="p-btn">Reschedule</button>
-        </div>
+          {/* NOTIFICATIONS */}
+          <div className="card">
+            <h3>Notifications</h3>
+            <p>You have no new notifications.</p>
+          </div>
 
-        <div className="patient-card">
-          <h3>AI Appointment & Care Assistant</h3>
-          <p>Your smart dental partner for appointments, care & chat.</p>
-          <button className="ai-open-btn" onClick={() => setAiOpen(true)}>
-            💬 Chat with FlossyAI
-          </button>
         </div>
       </main>
 
-      {/* Floating AI Button */}
-      <div id="open-ai-panel" onClick={() => setAiOpen(true)}>
-        FlossyAI
-      </div>
-
-      {/* AI Drawer */}
-      <div className={`ai-panel ${aiOpen ? "open" : ""}`}>
-        <div className="ai-header">
-          🎛 FlossyAI — Assistant
-          <button className="close" onClick={() => setAiOpen(false)}>✖</button>
-        </div>
-
-        <div className="ai-content">
-          {messages.map((m, i) => (
-            <div key={i} className={m.from === "user" ? "msg-user" : "msg-ai"}>
-              <b>{m.from === "user" ? "You" : "FlossyAI"}:</b> {m.text}
-            </div>
-          ))}
-
-          {typing && <div className="typing">FlossyAI is typing…</div>}
-        </div>
-
-        <div className="ai-input-area">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask FlossyAI…"
-          />
-          <button onClick={sendMessage}>Send</button>
-        </div>
-      </div>
+      <Footer />
     </>
+  );
+}
+
+// Formatting Helper
+function formatApptTime(t) {
+  return (
+    new Date(t).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }) +
+    " • " +
+    new Date(t)
+      .toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })
+      .replace("am", "AM")
+      .replace("pm", "PM")
   );
 }

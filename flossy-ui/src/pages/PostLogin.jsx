@@ -8,37 +8,36 @@ export default function PostLogin() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isLoaded) return;
-
-    if (!user) {
-      navigate("/login");
-      return;
-    }
+    // Wait for Clerk hydration to finish
+    if (!isLoaded || !session || !user) return;
 
     const setup = async () => {
-      const token = await session.getToken();
+      const token = await session.getToken({ template: "default" });
+
       sessionStorage.setItem("flossy_token", token);
       sessionStorage.setItem("flossy_user", JSON.stringify(user));
 
-      // ------------------------------------------------------------------
-      // 1️⃣ Read Clerk metadata role FIRST (fastest & authoritative)
-      // ------------------------------------------------------------------
+      // 1️⃣ Clerk metadata role
       const clerkRole = user.publicMetadata?.role;
 
       if (clerkRole === "patient") {
         navigate("/patient");
         return;
-      } else if (clerkRole === "dentist") {
+      }
+
+      if (clerkRole === "dentist") {
         navigate("/dentist");
         return;
       }
 
-      // ------------------------------------------------------------------
-      // 2️⃣ If role NOT in Clerk metadata (first-time login), fetch from backend
-      // ------------------------------------------------------------------
+      // 2️⃣ Backend role fallback
       try {
         const res = await fetch("http://localhost:8000/api/auth/post_login", {
-          headers: { Authorization: `Bearer ${token}` }
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         });
 
         const data = await res.json();
@@ -47,17 +46,17 @@ export default function PostLogin() {
         if (backendRole === "patient") {
           navigate("/patient");
           return;
-        } else if (backendRole === "dentist") {
+        }
+
+        if (backendRole === "dentist") {
           navigate("/dentist");
           return;
         }
       } catch (err) {
-        console.error("Backend post_login failed:", err);
+        console.error("Backend post_login error:", err);
       }
 
-      // ------------------------------------------------------------------
-      // 3️⃣ No role anywhere → send to role selection
-      // ------------------------------------------------------------------
+      // 3️⃣ No role → go to role selection
       navigate("/role_selection");
     };
 
@@ -65,7 +64,7 @@ export default function PostLogin() {
   }, [isLoaded, session, user, navigate]);
 
   return (
-    <div style={{ padding: "5rem", textAlign: "center" }}>
+    <div style={{ padding: "5rem", textAlign: 'center' }}>
       <h2>Setting up your account…</h2>
     </div>
   );

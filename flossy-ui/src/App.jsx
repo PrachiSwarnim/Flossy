@@ -1,5 +1,10 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
+import {
+  SignedIn,
+  SignedOut,
+  RedirectToSignIn,
+  AuthenticateWithRedirectCallback,
+} from "@clerk/clerk-react";
 
 import Home from "./pages/Home";
 import Contact from "./pages/Contact";
@@ -21,19 +26,26 @@ export default function App() {
       <ScrollToHash />
 
       <Routes>
-        {/* Public pages */}
+        {/* PUBLIC ROUTES */}
         <Route path="/" element={<Home />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/services" element={<Services />} />
         <Route path="/tourism" element={<Tourism />} />
-        <Route path="/team" element={<Team />} /> 
+        <Route path="/team" element={<Team />} />
 
-        {/* Auth pages */}
+        {/* AUTH ROUTES */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/post_login" element={<PostLogin />} />
 
-        {/* Protected routes */}
+        {/* ⭐ REQUIRED: UNIVERSAL SSO CALLBACK */}
+        <Route
+          path="/sso-callback"
+          element={<AuthenticateWithRedirectCallback />}
+        />
+
+
+        {/* PROTECTED ROUTES */}
         <Route
           path="/role_selection"
           element={
@@ -61,7 +73,7 @@ export default function App() {
           }
         />
 
-        {/* Redirect signed-out users */}
+        {/* SIGNED OUT → LOGIN */}
         <Route
           path="*"
           element={
