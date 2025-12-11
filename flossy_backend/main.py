@@ -242,20 +242,28 @@ app.add_middleware(ClerkAuthMiddleware)
 # ------------------------------------------------------------------
 # Role requirement dependency
 # ------------------------------------------------------------------
-def require_role(role: str):
+def require_role(expected_role: str):
     def _require_role(request: Request, db: Session = Depends(get_db)):
         user_payload = getattr(request.state, "user", None)
         if not user_payload:
             raise HTTPException(status_code=401, detail="Not authenticated")
 
-        email = (user_payload.get("email") or user_payload.get("email_address") or "").lower()
+        # Clerk sends either email or email_address
+        email = (user_payload.get("email") or user_payload.get("email_address") or "").lower().strip()
         if not email:
             raise HTTPException(status_code=400, detail="Email missing in token")
 
+        # 🔥 ALWAYS get role from DB, NOT from Clerk JWT
         user = db.query(User).filter(User.email.ilike(email)).first()
-        if not user or user.role != role:
+        if not user:
+            raise HTTPException(status_code=403, detail="User not registered in backend")
+
+        # 🔥 Backend owns the role truth
+        if user.role != expected_role:
             raise HTTPException(status_code=403, detail="Insufficient role permissions")
+
         return user
+
     return _require_role
 
 # ------------------------------------------------------------------
@@ -306,6 +314,7 @@ def select_role(payload: dict, request: Request, db: Session = Depends(get_db)):
     if not email:
         raise HTTPException(status_code=400, detail="Email missing in token")
 
+    # --- Fetch or create user in DB ---
     user = db.query(User).filter(User.email.ilike(email)).first()
     if not user:
         user = User(email=email, role=role, created_at=datetime.now(timezone.utc))
@@ -316,12 +325,35 @@ def select_role(payload: dict, request: Request, db: Session = Depends(get_db)):
         user.role = role
         db.commit()
 
+    # --- AUTO-CREATE PATIENT PROFILE IF ROLE = PATIENT ---
     if role == "patient":
         patient = db.query(Patient).filter(Patient.user_id == user.id).first()
         if not patient:
-            patient = Patient(name=email.split("@")[0], phone="0000000000", user_id=user.id, contact_datetime=datetime.now(timezone.utc))
+            patient = Patient(
+                name=email.split("@")[0],
+                phone="0000000000",
+                user_id=user.id,
+                contact_datetime=datetime.now(timezone.utc)
+            )
             db.add(patient)
             db.commit()
+
+    # ---------------------------------------------------------
+    # ⭐ NEW: Write role to Clerk public metadata
+    # ---------------------------------------------------------
+    try:
+        headers = {"Authorization": f"Bearer {CLERK_SECRET_KEY}"}
+        clerk_user_id = user_payload["sub"]
+
+        requests.patch(
+            f"https://api.clerk.dev/v1/users/{clerk_user_id}",
+            headers=headers,
+            json={"public_metadata": {"role": role}}
+        )
+
+        print(f"Clerk metadata updated → role={role}")
+    except Exception as e:
+        print("Failed to update Clerk metadata:", e)
 
     return {"success": True, "role": role, "email": email}
 
@@ -416,20 +448,24 @@ def get_today_appointments(request: Request, db: Session = Depends(get_db)):
     return {"appointments": result}
 
 @app.get("/api/appointments/dentist_upcoming")
-def dentist_upcoming(request: Request, db: Session = Depends(get_db)):
+def dentist_upcoming(request: Request, 
+                     db: Session = Depends(get_db),
+                     user = Depends(require_role("dentist"))):
+
     user_payload = getattr(request.state, "user", None)
     if not user_payload:
         raise HTTPException(status_code=401, detail="Unauthorized")
-
+    print("DEBUG TOKEN PAYLOAD:", user_payload)
     email = (user_payload.get("email") or user_payload.get("email_address") or "").lower()
     user = db.query(User).filter(User.email.ilike(email)).first()
+
     if not user or user.role != "dentist":
         return {"today": [], "upcoming": []}
 
-    email_prefix = email.split("@")[0]
-    clean = email_prefix.replace(".", " ")
-    proper = " ".join([p.capitalize() for p in clean.split()])
-    dentist_name = f"Dr. {proper}"
+    # ✅ Clerk uses firstName + lastName (camelCase)
+    doctor_first = user_payload.get("first_name", "")
+    doctor_last = user_payload.get("last_name", "")
+    dentist_name = f"Dr. {doctor_first} {doctor_last}".strip()
 
     now = datetime.now(timezone.utc)
     today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
@@ -468,7 +504,10 @@ def dentist_upcoming(request: Request, db: Session = Depends(get_db)):
             "reason": a.reason,
         }
 
-    return {"today": [fmt(a) for a in today_appts], "upcoming": [fmt(a) for a in upcoming_appts]}
+    return {
+        "today": [fmt(a) for a in today_appts],
+        "upcoming": [fmt(a) for a in upcoming_appts],
+    }
 
 @app.post("/api/appointments/mark_completed/{appt_id}")
 def mark_completed(appt_id: int, db: Session = Depends(get_db), user = Depends(require_role("dentist"))):
@@ -480,7 +519,7 @@ def mark_completed(appt_id: int, db: Session = Depends(get_db), user = Depends(r
     return {"success": True}
 
 @app.get("/api/appointments/next")
-def get_next_appointment(request: Request, db: Session = Depends(get_db)):
+def get_next_appointment(request: Request, db: Session = Depends(get_db), user = Depends(require_role("patient"))):
     user_payload = getattr(request.state, "user", None)
     if not user_payload:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -522,7 +561,7 @@ def get_next_appointment(request: Request, db: Session = Depends(get_db)):
 # AI / RL Endpoints (use lazy loading inside)
 # ------------------------------------------------------------------
 @app.post("/api/doctor_ai/query")
-async def doctor_ai(request: Request):
+async def doctor_ai(request: Request, user = Depends(require_role("dentist"))):
     payload = await request.json()
     query = payload.get("query", "").strip()
     if not query:
@@ -647,7 +686,7 @@ async def doctor_ai(request: Request):
     return {"answer": answer, "request_id": request_id}
 
 @app.post("/api/ai_response")
-async def ai_response(request: Request):
+async def ai_response(request: Request, user=Depends(require_role("patient"))):
     payload = await request.json()
     user_msg = payload.get("query", "")
     if not user_msg:

@@ -15,11 +15,53 @@ export default function PostLogin() {
       return;
     }
 
-    session.getToken().then((token) => {
+    const setup = async () => {
+      const token = await session.getToken();
       sessionStorage.setItem("flossy_token", token);
       sessionStorage.setItem("flossy_user", JSON.stringify(user));
+
+      // ------------------------------------------------------------------
+      // 1️⃣ Read Clerk metadata role FIRST (fastest & authoritative)
+      // ------------------------------------------------------------------
+      const clerkRole = user.publicMetadata?.role;
+
+      if (clerkRole === "patient") {
+        navigate("/patient");
+        return;
+      } else if (clerkRole === "dentist") {
+        navigate("/dentist");
+        return;
+      }
+
+      // ------------------------------------------------------------------
+      // 2️⃣ If role NOT in Clerk metadata (first-time login), fetch from backend
+      // ------------------------------------------------------------------
+      try {
+        const res = await fetch("http://localhost:8000/api/auth/post_login", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const data = await res.json();
+        const backendRole = data?.user?.role;
+
+        if (backendRole === "patient") {
+          navigate("/patient");
+          return;
+        } else if (backendRole === "dentist") {
+          navigate("/dentist");
+          return;
+        }
+      } catch (err) {
+        console.error("Backend post_login failed:", err);
+      }
+
+      // ------------------------------------------------------------------
+      // 3️⃣ No role anywhere → send to role selection
+      // ------------------------------------------------------------------
       navigate("/role_selection");
-    });
+    };
+
+    setup();
   }, [isLoaded, session, user, navigate]);
 
   return (

@@ -1,183 +1,203 @@
 import { useEffect, useState } from "react";
-import {
-  useUser,
-  useSession,
-  useClerk,
-  SignedIn,
-  UserButton
-} from "@clerk/clerk-react";
-import { Link } from "react-router-dom";
+import { useUser, useSession } from "@clerk/clerk-react";
+import { useNavigate } from "react-router-dom";
+import { PropagateLoader } from "react-spinners";
+import Header from "./DashboardHeader";
 import Footer from "../../components/Footer";
 import "../../styles/dentist_dashboard.css";
 
 export default function DentistDashboard() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const { session } = useSession();
-  const { signOut } = useClerk();
+  const navigate = useNavigate();
 
+  // 🔒 BLOCK ACCESS UNTIL LOADED
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const role = user?.publicMetadata?.role;
+
+    if (role !== "dentist") {
+      navigate("/not-authorized");
+    }
+  }, [isLoaded, user, navigate]);
+
+  // === Missing State (RESTORED) ===
+  const [pageLoading, setPageLoading] = useState(true);
   const [today, setToday] = useState([]);
   const [upcoming, setUpcoming] = useState([]);
+  const [aiOpen, setAiOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [aiOpen, setAiOpen] = useState(false);
 
-  const API_BASE = "http://localhost:8000";
+  const API = "http://localhost:8000";
 
-  const tokenPromise = async () => await session.getToken();
-
-  const fullName = `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
-  const dentistName = `Dr. ${fullName}`;
-
-  /* ---------------- FETCH APPOINTMENTS ---------------- */
+  // === Fetch Appointments ===
   async function loadAppointments() {
-    const token = await tokenPromise();
-    const res = await fetch(`${API_BASE}/api/appointments/dentist_upcoming`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const token = await session.getToken({ template: "default"});
+    const res = await fetch(`${API}/api/appointments/dentist_upcoming`, {
+      headers: { Authorization: `Bearer ${token}` },
     });
+
     const data = await res.json();
     setToday(data.today || []);
     setUpcoming(data.upcoming || []);
   }
 
-  /* ---------------- MARK COMPLETED ---------------- */
+  // === Artificial Delay + Load Data ===
+  useEffect(() => {
+    if (!isLoaded || user?.publicMetadata?.role !== "dentist") return;
+
+    setTimeout(() => {
+      loadAppointments().finally(() => setPageLoading(false));
+    }, 1000);
+  }, [isLoaded, user]);
+
+  // === Full Name ===
+  const fullName =
+    `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Doctor";
+
+  useEffect(() => {
+    if (fullName) {
+      document.title = `Dr. ${fullName} | Smile Artists Dental Studio`;
+    }
+  }, [fullName]);
+
   async function markCompleted(id) {
-    const token = await session.getToken();
-    await fetch(`${API_BASE}/api/appointments/mark_completed/${id}`, {
+    const token = await session.getToken({ template: "default" });
+  
+    await fetch(`${API}/api/appointments/mark_completed/${id}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
-      },
+        Authorization: `Bearer ${token}`
+      }
     });
+  
+    // Refresh appointment list
     loadAppointments();
   }
+  
 
-  /* ---------------- FLOSSYAI CHAT ---------------- */
+  function capitalizeFullName(name) {
+    if (!name) return "";
+    return name
+      .trim()
+      .split(/\s+/)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(" ");
+  }
+  
+
+  // === AI Chat ===
   async function sendMessage() {
     if (!input.trim()) return;
 
-    const userText = input;
+    const text = input;
     setInput("");
+    setMessages((prev) => [...prev, { from: "user", text }]);
 
-    const token = await tokenPromise();
+    const token = await session.getToken();
+    const res = await fetch(`${API}/api/doctor_ai/query`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ query: text }),
+    });
 
-    setMessages((prev) => [...prev, { from: "user", text: userText }]);
-
-    try {
-      const res = await fetch(`${API_BASE}/api/doctor_ai/query`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ query: userText }),
-      });
-
-      const data = await res.json();
-
-      setMessages((prev) => [...prev, { from: "ai", text: data.answer }]);
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { from: "ai", text: "⚠️ Error connecting to FlossyAI." },
-      ]);
-    }
+    const data = await res.json();
+    setMessages((prev) => [...prev, { from: "ai", text: data.answer }]);
   }
 
-  const handleEnter = (e) => {
-    if (e.key === "Enter") sendMessage();
-  };
+  // 🔄 STILL LOADING → show loader only
+  if (!isLoaded || pageLoading) {
+    return (
+      <>
+        <Header />
+        <div className="page-loader">
+          <PropagateLoader color="#f0b800" size={15} />
+          <p>Loading dashboard...</p>
+        </div>
+      </>
+    );
+  }
 
-  /* ---------------- LOAD ON START ---------------- */
-  useEffect(() => {
-    if (user) loadAppointments();
-  }, [user]);
-
+  // === Render Dashboard ===
   return (
     <>
-      {/* ⭐ NEW DASHBOARD HEADER — clean & focused */}
-      <header className="dashboard-header">
-        <div className="dash-logo">
-          <Link to="/">🦷 Smile Artists Dashboard</Link>
-        </div>
+      <Header openAI={() => setAiOpen(true)} />
 
-        <div className="dash-actions">
-          <SignedIn>
-            <button
-              className="logout-btn"
-              onClick={() => signOut(() => (window.location.href = "/"))}
-            >
-              Logout
-            </button>
+      <main className="dentist-main">
+        <h2 id="welcomeMessage">Welcome back, Dr. {fullName}!</h2>
 
-            <UserButton afterSignOutUrl="/" />
-          </SignedIn>
-        </div>
-      </header>
-
-      {/* ⭐ REST OF DASHBOARD REMAINS SAME */}
-      <div className="dentist-page">
-        <div className="dentist-container">
-          <h1 className="welcome-title">Welcome back, {dentistName}!</h1>
-
-          <div className="dashboard-grid">
-            <div className="card">
-              <h3>Today’s Appointments</h3>
-              {today.length === 0 ? (
-                <p>No appointments today.</p>
-              ) : (
-                today.map((a) => (
-                  <div key={a.id} className="appt-box">
-                    <b>
-                      {new Date(a.time).toLocaleTimeString([], {
+        <div className="grid">
+          <div className="card">
+            <h3>Today’s Appointments</h3>
+            {today.length ? (
+              today.map((a) => (
+                <div className="appt-item" key={a.id}>
+                  <b>
+                    {new Date(a.time).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric"
+                    })}{" "}
+                    •{" "}
+                    {new Date(a.time)
+                      .toLocaleTimeString("en-IN", {
                         hour: "2-digit",
                         minute: "2-digit",
-                      })}
-                    </b>
-                    <p><strong>{a.patient_name}</strong></p>
-                    <p>Reason: {a.reason}</p>
-                    <p>Phone: {a.phone}</p>
-
-                    <button className="btn-complete" onClick={() => markCompleted(a.id)}>
+                        hour12: true
+                      })
+                      .replace("am", "AM")
+                      .replace("pm", "PM")}
+                  </b>
+                  <div>{capitalizeFullName(a.patient_name)}</div>
+                  <div>Reason: {a.reason}</div>
+                  <div>Phone: {a.phone}</div>
+                  {/* 🔥 Mark Completed button */}
+                  {a.status !== "completed" && (
+                    <button className="done-btn" onClick={() => markCompleted(a.id)}>
                       Mark Completed
                     </button>
+                  )}
 
-                    <button className="btn-call" onClick={() => (window.location.href = `tel:${a.phone}`)}>
-                      Call Patient
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
+                  {a.status === "completed" && (
+                    <span className="completed-tag">Completed ✔</span>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p>No appointments today.</p>
+            )}
+          </div>
 
-            <div className="card">
-              <h3>Recent Interactions</h3>
-              <p>Loading…</p>
-            </div>
+          <div className="card">
+            <h3>Recent Interactions</h3>
+            <p>Loading...</p>
+          </div>
 
-            <div className="card">
-              <h3>AI Insights</h3>
-              <p>FlossyAI detected gum disease risk cases this week.</p>
-              <p className="link">View Report</p>
-            </div>
+          <div className="card">
+            <h3>AI Insights</h3>
+            <p>FlossyAI detected gum disease risk this week.</p>
+          </div>
 
-            <div className="card">
-              <h3>Notifications</h3>
-              <p>2 new appointment requests pending approval.</p>
-              <p className="link">Review Now</p>
-            </div>
+          <div className="card">
+            <h3>Notifications</h3>
+            <p>2 new appointment requests.</p>
           </div>
         </div>
-      </div>
+      </main>
 
-      {/* ⭐ AI PANEL */}
-      <button className="ai-tab" onClick={() => setAiOpen(true)}>FlossyAI</button>
+      <div id="open-ai-panel" onClick={() => setAiOpen(true)}>
+        FlossyAI
+      </div>
 
       <div className={`ai-panel ${aiOpen ? "open" : ""}`}>
         <div className="ai-header">
           🦷 FlossyAI Assistant
-          <span className="close-btn" onClick={() => setAiOpen(false)}>✖</span>
+          <button className="close" onClick={() => setAiOpen(false)}>✖</button>
         </div>
 
         <div className="ai-content">
@@ -192,8 +212,7 @@ export default function DentistDashboard() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleEnter}
-            placeholder="Ask FlossyAI…"
+            placeholder="Ask FlossyAI..."
           />
           <button onClick={sendMessage}>Send</button>
         </div>

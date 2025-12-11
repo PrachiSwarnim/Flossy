@@ -11,6 +11,7 @@ import RoleSelection from "./pages/RoleSelection";
 import PatientDashboard from "./pages/dashboards/PatientDashboard";
 import DentistDashboard from "./pages/dashboards/DentistDashboard";
 import PostLogin from "./pages/PostLogin";
+import Team from "./components/Team";
 
 import ScrollToHash from "./utils/ScrollToHash";
 
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/services" element={<Services />} />
         <Route path="/tourism" element={<Tourism />} />
+        <Route path="/team" element={<Team />} /> 
 
         {/* Auth pages */}
         <Route path="/login" element={<Login />} />

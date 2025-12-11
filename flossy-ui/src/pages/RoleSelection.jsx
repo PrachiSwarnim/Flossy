@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSession, useUser } from "@clerk/clerk-react";
-import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "../styles/role_selection.css";
+import RoleHeader from "../components/RoleHeader";
 
 export default function RoleSelection() {
+  useEffect(() => {
+    document.title = "Role Selection — Smile Artists Dental Studio";
+  }, []);
   const navigate = useNavigate();
   const { session } = useSession();
   const { user, isLoaded } = useUser();
@@ -66,7 +69,7 @@ export default function RoleSelection() {
 
   return (
     <>
-      <Header />
+      <RoleHeader />
 
       <main className="role-page">
         <section className="role-hero">
@@ -88,7 +91,6 @@ export default function RoleSelection() {
 
         {loading && <div className="overlay">Applying role…</div>}
       </main>
-
       <Footer />
     </>
   );

@@ -21,7 +21,9 @@ export default function Home() {
         <Carousel />
         <Hero />
         <About />
-        <Team />
+        <div id="team">
+            <Team />
+        </div>
         <AISection />
         <InstagramSection />
 

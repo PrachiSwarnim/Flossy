@@ -1,6 +1,89 @@
-.role-page{padding:3rem 4% 6rem;background:linear-gradient(180deg,#fffaf3,#fff4d2);width: 100vw;}
-.role-hero{text-align:center;margin-bottom:2.5rem}
-.role-grid{display:flex;gap:2rem;max-width:1100px;margin:0 auto;justify-content:center}
-.role-card{flex:1;min-width:260px;background:#fff;padding:2rem;border-radius:14px;box-shadow:0 14px 30px rgba(0,0,0,.08);cursor:pointer;transition:transform .18s,box-shadow .18s}
-.role-card:hover{transform:translateY(-6px);box-shadow:0 20px 40px rgba(0,0,0,.12)}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600}
+/* ====== PAGE WRAPPER ====== */
+.role-page {
+    padding: 4rem 4% 4rem;
+    background: linear-gradient(180deg, #fffaf3, #ffe9c2);
+    width: 100%; /* ✔ FIXED */
+    flex: 1;
+    overflow-x: hidden; /* extra safeguard */
+  }
+  
+  
+  /* ====== HERO SECTION ====== */
+  .role-hero {
+    text-align: center;
+    margin-bottom: 3.5rem;
+  }
+  
+  .role-hero h1 {
+    font-family: "Playfair Display", serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #d08400;   /* deep warm gold for visibility */
+    margin-bottom: 0.5rem;
+  }
+  
+  .role-hero p {
+    color: #6e6250;   /* darker neutral for readability */
+    font-size: 1.05rem;
+    margin-bottom: 2.5rem;
+  }
+  
+  
+  /* ====== GRID ====== */
+  .role-grid {
+    display: flex;
+    gap: 2.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    justify-content: center;
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  
+  /* ====== ROLE CARD ====== */
+  .role-card {
+    flex: 1;
+    min-width: 300px;
+    background: #ffffff;
+    padding: 2.2rem;
+    border-radius: 18px;
+    box-shadow: 0 12px 32px rgba(255, 180, 55, 0.2);
+    border-left: 6px solid #f7b733;
+    cursor: pointer;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+  
+  .role-card h3 {
+    font-family: "Playfair Display", serif;
+    font-size: 1.6rem;
+    color: #f8a500;
+    margin-bottom: 0.6rem;
+  }
+  
+  .role-card p {
+    font-size: 1rem;
+    color: #333;
+    line-height: 1.5;
+  }
+  
+  /* Hover Effect - Glow + Lift */
+  .role-card:hover {
+    transform: translateY(-10px) scale(1.03);
+    box-shadow: 0 20px 50px rgba(255, 180, 55, 0.3);
+    border-color: #ffbe3d;
+  }
+  
+  /* ====== LOADING OVERLAY ====== */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 600;
+    font-size: 1.2rem;
+    z-index: 2000;
+  }
+  

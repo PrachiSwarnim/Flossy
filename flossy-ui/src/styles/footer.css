@@ -1,14 +1,21 @@
 .footer {
-    background: linear-gradient(
-      to bottom,
-      #f8d899 0%,   /* short soft gold */
-      #d59c47 15%,  /* quick fade */
-      #111 20%      /* dark footer quickly takes over */
-    );
-    color: #fff;
-    padding: 0.5rem 0;     /* MUCH thinner footer */
-    text-align: center;
-  }
+  margin-top: auto;            /* makes footer stick */
+  bottom: 0;                  /* attach to bottom */
+  left: 0;
+  width: 100%;                /* full-width footer */
+  z-index: 100;               /* ensure it's above content */
+  background: linear-gradient(
+    to bottom,
+    #f8d899 0%,   
+    #d59c47 15%,  
+    #111 20%
+  );
+  color: #fff;
+  padding: 0.5rem 0;
+  text-align: center;
+  box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.2);
+  margin-top: auto;
+}
   
   /* Remove social icons spacing bloat */
   .footer-socials {

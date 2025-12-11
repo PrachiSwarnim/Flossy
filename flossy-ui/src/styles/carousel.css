@@ -1,56 +1,83 @@
+/* OUTER CONTAINER */
 .carousel {
-    width: 100%;
-    height: 90vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: #ffffff;
-    overflow: hidden;
-    position: relative;
-    min-height: 400px;
+  width: 100%;
+  height: 90vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #ffffff;
+  overflow: hidden;
+  position: relative;
+  min-height: 400px;
+}
+
+/* INNER WRAPPER WITH RADIUS */
+.carousel-inner {
+  width: 92%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 24px;
+  position: relative;
+}
+
+/* TRACK THAT MOVES CONTINUOUSLY */
+.carousel-track {
+  display: flex;
+  width: calc(200%); /* duplicate images → smooth loop */
+  height: 100%;
+  animation: scroll 35s linear infinite; /* adjust speed here */
+}
+
+/* EACH SLIDE */
+/* Each slide becomes a white framed box */
+.slide {
+  flex: 0 0 100%;
+  height: 100%;
+  background: white;                      /* 🔥 white background on sides */
+  display: flex;
+  justify-content: center;                /* center image horizontally */
+  align-items: center;                    /* center vertically */
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+/* Image stays centered with white edges visible */
+.slide img {
+  width: 80%;                              /* 🔥 CONTROL IMAGE SIZE HERE */
+  height: 100%;
+  object-fit: contain;                      /* shows full image */
+  border-radius: 24px;
+}
+
+/* DOTS — still work visually, optional for continuous slider */
+.carousel-buttons {
+  position: absolute;
+  bottom: 20px;
+  display: flex;
+  gap: 10px;
+  z-index: 20;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: 0.25s ease;
+}
+
+.dot.active {
+  background: #fca311;
+  transform: scale(1.2);
+}
+
+/* SMOOTH INFINITE SLIDING */
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
   }
-  
-  .carousel-inner {
-    width: 92%;
-    height: 100%;
-    overflow: hidden;
-    border-radius: 24px;
+  100% {
+    transform: translateX(-50%);
   }
-  
-  .slides {
-    display: flex;
-    height: 100%;
-    transition: transform 0.7s ease;
-  }
-  
-  .slide {
-    flex: 0 0 100%;
-    height: 100%;
-  }
-  
-  .slide img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    border-radius: 24px;
-  }
-  
-  .carousel-buttons {
-    position: absolute;
-    bottom: 20px;
-    display: flex;
-    gap: 10px;
-  }
-  
-  .dot {
-    width: 12px;
-    height: 12px;
-    background: rgba(0,0,0,0.2);
-    border-radius: 50%;
-    cursor: pointer;
-  }
-  
-  .dot.active {
-    background: #fca311;
-  }
-  
+}

@@ -1,0 +1,134 @@
+/* == Header Wrapper == */
+.sa-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.08rem 4%;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(40px);
+  position: sticky;
+  top: 0;
+  z-index: 1200;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* == LOGO == */
+.sa-logo {
+  display: flex;
+  align-items: center;
+  gap: 1.8rem;
+  font-family: "Playfair Display", serif;
+  font-size: 1.5rem;       /* smaller */
+  font-weight: 700;
+  color: #fca311;
+}
+
+.sa-logo img {
+  width: 45px;             /* smaller */
+  height: 45px;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.sa-logo:hover img {
+  transform: scale(1.5);
+}
+
+/* == NAV RIGHT SIDE == */
+.sa-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 1.8rem;             /* reduced gaps */
+}
+
+/* == NAV MENU == */
+nav ul {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 1.4rem;             /* smaller spacing */
+}
+
+nav ul li {
+  display: flex;
+  align-items: center;
+}
+
+/* == NAV BUTTONS & LINKS == */
+nav ul li a,
+.nav-btn {
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: #545144;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  font-family: "Playfair Display", serif;
+  cursor: pointer;
+
+  /* REMOVE BOXES */
+  background: none !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  transition: color 0.25s ease, transform 0.2s ease;
+}
+
+/* Hover effect stays clean */
+nav ul li a:hover,
+.nav-btn:hover {
+  color: #fca311;
+  transform: translateY(-1px);
+}
+
+/* == LOGOUT BUTTON == */
+.logout-btn {
+  background: linear-gradient(135deg, #fca311, #fff);
+  height: 32px;
+  padding: 0 1rem;
+  border-radius: 30px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* KEEP only this shadow */
+  box-shadow: 0 4px 10px rgba(252, 163, 17, 0.35);
+  transition: all 0.25s ease;
+}
+
+.logout-btn:hover {
+  transform: translateY(-3.2px);
+  box-shadow: 0 6px 16px rgba(229, 145, 9, 0.4);
+}
+
+/* == CLERK USER BUTTON == */
+.cl-userButton-root {
+  height: 32px !important;    /* slightly smaller */
+  width: 32px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: none !important; /* remove any built-in shadows */
+}
+
+.cl-userButton-root:hover {
+  transform: scale(1.08);
+}
+
+.cl-avatarBox {
+  height: 42px !important;
+  width: 42px !important;
+}

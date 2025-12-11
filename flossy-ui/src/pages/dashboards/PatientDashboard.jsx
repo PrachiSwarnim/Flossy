@@ -1,158 +1,142 @@
 import { useEffect, useState } from "react";
-import { useUser, useSession, useClerk } from "@clerk/clerk-react";
-import Footer from "../../components/Footer";
+import { useUser, useSession } from "@clerk/clerk-react";
+import { useNavigate } from "react-router-dom";
+import { PropagateLoader } from "react-spinners";
+import Header from "./DashboardHeader";
 import "../../styles/patient_dashboard.css";
 
 export default function PatientDashboard() {
   const { user, isLoaded } = useUser();
   const { session } = useSession();
-  const { signOut } = useClerk();
+  const navigate = useNavigate();
 
+  const [pageLoading, setPageLoading] = useState(true);
   const [nextAppt, setNextAppt] = useState(null);
   const [messages, setMessages] = useState([]);
   const [aiOpen, setAiOpen] = useState(false);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
 
-  // const API_BASE = import.meta.env.VITE_API_URL;
-  const API_BASE = "http://localhost:8000"
-
-  /* ---------------- FETCH UPCOMING APPOINTMENT ---------------- */
+  // 🔐 Block wrong roles
   useEffect(() => {
-    async function loadNext() {
-      if (!session) return;
-
-      try {
-        const token = await session.getToken();
-        const res = await fetch(`${API_BASE}/api/appointments/next`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const data = await res.json();
-        setNextAppt(data.appointment || null);
-      } catch (err) {
-        console.error("Error loading appointment:", err);
-      }
+    if (!isLoaded) return;
+    if (user?.publicMetadata?.role !== "patient") {
+      navigate("/not-authorized");
     }
+  }, [isLoaded, user, navigate]);
 
-    loadNext();
-  }, [session]);
+  // ---- Artificial loading + appointment fetch ----
+  useEffect(() => {
+    if (!isLoaded || user?.publicMetadata?.role !== "patient") return;
 
-  /* ---------------- AI CHAT ---------------- */
+    setTimeout(() => {
+      loadAppointment().finally(() => setPageLoading(false));
+    }, 1000);
+  }, [isLoaded, user]);
+
+  async function loadAppointment() {
+    const token = await session.getToken();
+    const res = await fetch("http://localhost:8000/api/appointments/next", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const data = await res.json();
+    setNextAppt(data.appointment || null);
+  }
+
+  // 🟡 While LOADING → show only loader
+  if (!isLoaded || pageLoading) {
+    return (
+      <>
+        <Header />
+
+        <div className="page-loader">
+          <PropagateLoader color="#f0b800" size={15} />
+          <p>Loading dashboard...</p>
+        </div>
+      </>
+    );
+  }
+
+  // 🟢 Now safe to render full dashboard
+  const fullName = user?.firstName || user?.fullName || "Patient";
+
   async function sendMessage() {
     if (!input.trim()) return;
 
-    const userText = input;
+    const msg = input;
     setInput("");
-    setMessages((prev) => [...prev, { from: "user", text: userText }]);
-
+    setMessages((p) => [...p, { from: "user", text: msg }]);
     setTyping(true);
 
-    try {
-      const token = await session.getToken();
-      const res = await fetch(`${API_BASE}/api/ai_response`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ query: userText }),
-      });
+    const token = await session.getToken();
+    const res = await fetch("http://localhost:8000/api/ai_response", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ query: msg }),
+    });
 
-      const data = await res.json();
-      const reply = data.answer || "No response.";
-      setMessages((prev) => [...prev, { from: "ai", text: reply }]);
-    } catch (err) {
-      console.error("AI error:", err);
-      setMessages((prev) => [...prev, { from: "ai", text: "⚠️ Error contacting FlossyAI." }]);
-    } finally {
-      setTyping(false);
-    }
+    const data = await res.json();
+    setMessages((p) => [...p, { from: "ai", text: data.answer }]);
+    setTyping(false);
   }
-
-  const handleEnter = (e) => {
-    if (e.key === "Enter") sendMessage();
-  };
-
-  if (!isLoaded) return <div>Loading...</div>;
 
   return (
     <>
-      {/* HEADER — converted from HTML */}
-      <header className="header">
-        <div className="logo">
-          <img src="/static/assets/logo.png" alt="logo" />
-          <span>Smile Artists</span>
-        </div>
+      <Header openAI={() => setAiOpen(true)} />
 
-        <nav>
-          <a href="/">Home</a>
-          <a href="/user">Dashboard</a>
+      <main className="patient-main">
+        <h2 id="welcomeMessage">Welcome back, {fullName}!</h2>
 
-          <button
-            className="logout-btn"
-            onClick={() => signOut(() => (window.location.href = "/"))}
-          >
-            Logout
-          </button>
-        </nav>
-      </header>
-
-      <main className="pd-main">
-        <h2 id="welcomeMessage">
-          Welcome back, {user?.firstName || "Patient"}!
-        </h2>
-
-        {/* My Dental Records */}
-        <div className="card">
+        <div className="patient-card">
           <h3>My Dental Records</h3>
           <p>Last Visit: July 12, 2025</p>
-          <button className="btn">View Full History</button>
+          <button className="p-btn">View Full History</button>
         </div>
 
-        {/* Prescriptions */}
-        <div className="card">
+        <div className="patient-card">
           <h3>My Prescriptions</h3>
           <p>• Antiseptic Mouthwash</p>
-          <button className="btn">Download</button>
+          <button className="p-btn">Download</button>
         </div>
 
-        {/* Upcoming Appointment */}
-        <div className="card">
+        <div className="patient-card">
           <h3>Upcoming Appointment</h3>
-          {!nextAppt ? (
-            <p>No upcoming appointments.</p>
-          ) : (
+
+          {nextAppt ? (
             <p>
-              {nextAppt.doctor_name} —{" "}
+              {nextAppt.doctor_name} →{" "}
               {new Date(nextAppt.time).toLocaleString()}
             </p>
+          ) : (
+            <p>No upcoming appointments.</p>
           )}
-          <button className="btn">Reschedule</button>
+
+          <button className="p-btn">Reschedule</button>
         </div>
 
-        {/* AI Assistant */}
-        <div className="card">
+        <div className="patient-card">
           <h3>AI Appointment & Care Assistant</h3>
-          <p>Your smart dental assistant for care, questions, and voice support.</p>
-
-          <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
-            <button className="ai-btn" onClick={() => setAiOpen(true)}>
-              💬 Chat
-            </button>
-          </div>
+          <p>Your smart dental partner for appointments, care & chat.</p>
+          <button className="ai-open-btn" onClick={() => setAiOpen(true)}>
+            💬 Chat with FlossyAI
+          </button>
         </div>
       </main>
 
-      {/* AI PANEL */}
-      <button className="ai-tab" onClick={() => setAiOpen(true)}>
+      {/* Floating AI Button */}
+      <div id="open-ai-panel" onClick={() => setAiOpen(true)}>
         FlossyAI
-      </button>
+      </div>
 
+      {/* AI Drawer */}
       <div className={`ai-panel ${aiOpen ? "open" : ""}`}>
         <div className="ai-header">
           🎛 FlossyAI — Assistant
-          <span className="close-btn" onClick={() => setAiOpen(false)}>✖</span>
+          <button className="close" onClick={() => setAiOpen(false)}>✖</button>
         </div>
 
         <div className="ai-content">
@@ -162,25 +146,18 @@ export default function PatientDashboard() {
             </div>
           ))}
 
-          {typing && (
-            <div className="typing">
-              <span className="typing-dots">FlossyAI is typing</span>
-            </div>
-          )}
+          {typing && <div className="typing">FlossyAI is typing…</div>}
         </div>
 
         <div className="ai-input-area">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleEnter}
-            placeholder="Ask about appointments, prescriptions, or say hello..."
+            placeholder="Ask FlossyAI…"
           />
           <button onClick={sendMessage}>Send</button>
         </div>
       </div>
-
-      <Footer />
     </>
   );
 }
