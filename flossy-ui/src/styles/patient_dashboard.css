@@ -26,7 +26,7 @@ body {
   border-radius: 1.2rem;
   padding: 2rem;
   margin-bottom: 2rem;
-  box-shadow: 0 6px 30px rgba(255,203,5,0.15);
+  box-shadow: 0 6px 30px rgba(255, 203, 5, 0.15);
   border-left: 6px solid #ffcb05;
 }
 
@@ -66,7 +66,6 @@ body {
   position: fixed;
   right: 0;
   top: 50%;
-  transform: translateY(-50%);
   background: #ffcb05;
   padding: 0.8rem 1rem;
   border-radius: 12px 0 0 12px;
@@ -176,8 +175,9 @@ body {
   animation: fadeIn 0.35s ease;
 }
 
-.page-loader > span {
-  transform: scale(0.6); /* shrink full animation */
+.page-loader>span {
+  transform: scale(0.6);
+  /* shrink full animation */
 }
 
 .page-loader p {
@@ -189,6 +189,11 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }

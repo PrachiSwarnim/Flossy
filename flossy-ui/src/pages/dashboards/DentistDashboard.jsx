@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useUser, useSession } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { PropagateLoader } from "react-spinners";
+import { useVoiceAgent } from "../../hooks/useVoiceAgent";
 import Header from "./DashboardHeader";
 import Footer from "../../components/Footer";
 import "../../styles/dentist_dashboard.css";
@@ -30,18 +31,40 @@ export default function DentistDashboard() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
 
+  // VOICE AGENT
+  const { isListening, start, stop, messages: agentMessages } = useVoiceAgent();
+
+  // Sync voice messages to main chat
+  useEffect(() => {
+    const lastMsg = agentMessages[agentMessages.length - 1];
+    if (lastMsg) {
+      setMessages(prev => {
+        if (prev.length > 0 && prev[prev.length - 1].text === lastMsg.text) return prev;
+        return [...prev, lastMsg];
+      });
+    }
+  }, [agentMessages]);
+
   const API = "http://localhost:8000";
 
   // === Fetch Appointments ===
   async function loadAppointments() {
-    const token = await session.getToken({ template: "default"});
+    const token = await session.getToken({ template: "default" });
     const res = await fetch(`${API}/api/appointments/dentist_upcoming`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
     const data = await res.json();
-    setToday(data.today || []);
-    setUpcoming(data.upcoming || []);
+
+    // Filter out appointments strictly before today (local time)
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const validToday = (data.today || []).filter(a => new Date(a.time) >= startOfToday);
+    const validUpcoming = (data.upcoming || []).filter(a => new Date(a.time) >= startOfToday);
+
+    setToday(validToday);
+    setUpcoming(validUpcoming);
   }
 
   // === Artificial Delay + Load Data ===
@@ -65,18 +88,18 @@ export default function DentistDashboard() {
 
   async function markCompleted(id) {
     const token = await session.getToken({ template: "default" });
-  
+
     await fetch(`${API}/api/appointments/mark_completed/${id}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`
       }
     });
-  
+
     // Refresh appointment list
     loadAppointments();
   }
-  
+
 
   function capitalizeFullName(name) {
     if (!name) return "";
@@ -86,7 +109,7 @@ export default function DentistDashboard() {
       .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
       .join(" ");
   }
-  
+
 
   // === AI Chat ===
   async function sendMessage() {
@@ -132,30 +155,24 @@ export default function DentistDashboard() {
         <h2 id="welcomeMessage">Welcome back, Dr. {fullName}!</h2>
 
         <div className="grid">
-          <div className="card">
-            <h3>Today’s Appointments</h3>
+          <div className="card animate-fade-up" style={{ animationDelay: "0.1s" }}>
+            <div className="card-header">
+              <h3>Today’s Appointments</h3>
+              <i className="fas fa-calendar-check card-icon"></i>
+            </div>
             {today.length ? (
               today.map((a) => (
                 <div className="appt-item" key={a.id}>
                   <b>
-                    {new Date(a.time).toLocaleDateString("en-IN", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric"
-                    })}{" "}
-                    •{" "}
-                    {new Date(a.time)
-                      .toLocaleTimeString("en-IN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true
-                      })
-                      .replace("am", "AM")
-                      .replace("pm", "PM")}
+                    {new Date(a.time).toLocaleTimeString("en-IN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true
+                    })}
                   </b>
-                  <div>{capitalizeFullName(a.patient_name)}</div>
-                  <div>Reason: {a.reason}</div>
-                  <div>Phone: {a.phone}</div>
+                  <div className="appt-patient">{capitalizeFullName(a.patient_name)}</div>
+                  <div className="appt-reason">{a.reason}</div>
+
                   {/* 🔥 Mark Completed button */}
                   {a.status !== "completed" && (
                     <button className="done-btn" onClick={() => markCompleted(a.id)}>
@@ -164,28 +181,43 @@ export default function DentistDashboard() {
                   )}
 
                   {a.status === "completed" && (
-                    <span className="completed-tag">Completed ✔</span>
+                    <span className="completed-tag">Completed <i className="fas fa-check-circle"></i></span>
                   )}
                 </div>
               ))
             ) : (
-              <p>No appointments today.</p>
+              <p className="empty-state">No appointments remaining today.</p>
             )}
           </div>
 
-          <div className="card">
-            <h3>Recent Interactions</h3>
-            <p>Loading...</p>
+          <div className="card animate-fade-up" style={{ animationDelay: "0.2s" }}>
+            <div className="card-header">
+              <h3>Recent Interactions</h3>
+              <i className="fas fa-history card-icon"></i>
+            </div>
+            <p className="placeholder-text">Checking patient history...</p>
           </div>
 
-          <div className="card">
-            <h3>AI Insights</h3>
-            <p>FlossyAI detected gum disease risk this week.</p>
+          <div className="card animate-fade-up" style={{ animationDelay: "0.3s" }}>
+            <div className="card-header">
+              <h3>AI Insights</h3>
+              <i className="fas fa-brain card-icon"></i>
+            </div>
+            <div className="info-box warning">
+              <i className="fas fa-exclamation-triangle"></i>
+              <span>FlossyAI detected gum disease risk this week.</span>
+            </div>
           </div>
 
-          <div className="card">
-            <h3>Notifications</h3>
-            <p>2 new appointment requests.</p>
+          <div className="card animate-fade-up" style={{ animationDelay: "0.4s" }}>
+            <div className="card-header">
+              <h3>Notifications</h3>
+              <i className="fas fa-bell card-icon"></i>
+            </div>
+            <div className="info-box info">
+              <i className="fas fa-info-circle"></i>
+              <span>2 new appointment requests pending approval.</span>
+            </div>
           </div>
         </div>
       </main>
@@ -214,6 +246,13 @@ export default function DentistDashboard() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask FlossyAI..."
           />
+          <button
+            onClick={isListening ? stop : start}
+            title={isListening ? "Stop Speaking" : "Start Voice Agent"}
+            style={{ background: isListening ? "#ff4d4d" : "#ffcb05" }}
+          >
+            {isListening ? "🛑" : "🎤"}
+          </button>
           <button onClick={sendMessage}>Send</button>
         </div>
       </div>

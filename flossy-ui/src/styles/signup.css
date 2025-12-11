@@ -1,6 +1,6 @@
 /* FULL PAGE */
 .signup-page {
-  min-height: 100vh;
+  /* min-height handled by parent wrapper */
   width: 100%;
   display: flex;
   justify-content: center;
@@ -29,6 +29,7 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   margin-bottom: 8px;
+  font-family: "Playfair Display", serif;
 }
 
 /* SUBTEXT */
@@ -36,6 +37,7 @@
   color: #444;
   font-size: 0.95rem;
   margin-bottom: 1.4rem;
+  font-family: "Playfair Display", serif;
 }
 
 /* INPUT */

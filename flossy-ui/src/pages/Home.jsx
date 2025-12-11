@@ -10,24 +10,58 @@ import Team from "../components/Team";
 import AISection from "../components/AISection";
 import InstagramSection from "../components/InstagramSection";
 
+import AppointmentRequestForm from "../components/AppointmentRequestForm";
+
+// SPA Imports
+import ServicesHero from "../components/ServicesHero";
+import ServicesGrid from "../components/ServicesGrid";
+import TourismHero from "../components/TourismHero";
+import TourismContent from "../components/TourismContent";
+import TourismGallery from "../components/TourismGallery";
+
+import { services } from "../data/services";
+
 export default function Home() {
     useEffect(() => {
         document.title = "Smile Artists";
-      }, []);
+    }, []);
+
     return (
         <>
-        <Header />
+            <Header />
 
-        <Carousel />
-        <Hero />
-        <About />
-        <div id="team">
-            <Team />
-        </div>
-        <AISection />
-        <InstagramSection />
+            <Carousel />
+            <Hero />
 
-        <Footer />
+            <div id="about">
+                <About />
+            </div>
+
+            <div id="services">
+                <ServicesHero />
+                <ServicesGrid services={services} />
+            </div>
+
+            <div id="tourism">
+                <TourismHero />
+                <TourismContent />
+                <TourismGallery />
+            </div>
+
+            <div id="team">
+                <Team />
+            </div>
+
+            <AISection />
+
+            {/* APPOINTMENT FORM */}
+            <div id="appointment">
+                <AppointmentRequestForm />
+            </div>
+
+            <InstagramSection />
+
+            <Footer />
         </>
     );
 }

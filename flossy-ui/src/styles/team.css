@@ -1,80 +1,117 @@
 .team-section {
-    padding: 6rem 8%;
-    background: #fff;
-    text-align: center;
-  }
-  
-  .team-section h2 {
-    font-family: "Playfair Display", serif;
-    font-size: 2.6rem;
-    color: #fca311;
-    margin-bottom: 1rem;
-  }
-  
-  .team-intro {
-    max-width: 800px;
-    margin: 0 auto 3rem auto;
-    color: #444;
-    font-size: 1.1rem;
-    line-height: 1.7;
-  }
-  
-  .team-grid {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 2rem;
-  }
-  
-  .member {
-    background: #fff;
-    border-radius: 20px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-    width: 300px;
-    padding: 1.5rem;
-    transition: all 0.4s ease;
-    cursor: pointer;
-  }
-  
-  .member:hover {
-    transform: translateY(-10px) scale(1.03);
-    box-shadow: 0 15px 30px rgba(252, 163, 17, 0.25);
-  }
-  
-  .member img {
-    width: 100%;
-    height: 280px;
-    object-fit: cover;
-    border-radius: 50%;
-    transition: transform 0.4s ease;
-  }
-  
-  .member:hover img {
-    transform: scale(1.08);
-  }
-  
-  .member h3 {
-    margin-top: 1rem;
-    font-family: "Playfair Display", serif;
-    color: #fca311;
-    font-size: 1.3rem;
-  }
-  
-  .member p {
-    font-size: 0.95rem;
-    color: #555;
-    line-height: 1.6;
-    margin-top: 0.5rem;
-  }
-  
-  .member i {
-    margin-top: 0.8rem;
-    font-size: 1.6rem;
-    color: #0077b5;
-    transition: 0.3s ease;
-  }
-  
-  .member i:hover {
-    transform: rotate(10deg) scale(1.2);
-  }
-  
+  padding: 4rem 8% 2rem;
+  background: #fff;
+  text-align: center;
+  position: relative;
+}
+
+.team-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100px;
+  background: linear-gradient(180deg, var(--bg-cream), #fff);
+}
+
+.team-section h2 {
+  font-family: var(--font-heading);
+  font-size: 3rem;
+  color: var(--primary-gold);
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.team-intro {
+  max-width: 700px;
+  margin: 0 auto 4rem auto;
+  color: var(--text-grey);
+  font-size: 1.15rem;
+  position: relative;
+}
+
+.team-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3rem;
+}
+
+.member {
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: var(--shadow-soft);
+  width: 320px;
+  padding: 2rem;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.02);
+  position: relative;
+  overflow: hidden;
+}
+
+.member::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: var(--primary-gold-gradient);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s ease;
+}
+
+.member:hover {
+  transform: translateY(-15px);
+  box-shadow: var(--shadow-hover);
+}
+
+.member img {
+  width: 160px;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin-bottom: 1.5rem;
+  border: 4px solid #fff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  transition: transform 0.4s ease;
+}
+
+.member:hover img {
+  transform: scale(1.1);
+  border-color: var(--primary-gold);
+}
+
+.member h3 {
+  font-family: var(--font-heading);
+  color: var(--text-dark);
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.member p {
+  font-size: 1rem;
+  color: var(--text-grey);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+  font-family: "Playfair Display", serif;
+}
+
+.member i {
+  font-size: 1.4rem;
+  color: #cbd5e0;
+  /* subtle grey initially */
+  transition: 0.3s ease;
+  margin-top: 1rem;
+}
+
+.member:hover i {
+  color: #0077b5;
+  transform: scale(1.2);
+}

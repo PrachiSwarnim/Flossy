@@ -3,12 +3,12 @@ import "../styles/carousel.css";
 
 export default function Carousel() {
   const images = [
-    "/static/assets/download.jpeg",
-    "/static/assets/download (1).jpeg",
-    "/static/assets/download (2).jpeg",
-    "/static/assets/images.jpeg",
-    "/static/assets/images (1).jpeg",
-    "/static/assets/images (2).jpeg",
+    "flossy-ui/public/static/assets/download.jpeg",
+    "flossy-ui/public/static/assets/download (1).jpeg",
+    "flossy-ui/public/static/assets/download (2).jpeg",
+    "flossy-ui/public/static/assets/images.jpeg",
+    "flossy-ui/public/static/assets/images (1).jpeg",
+    "flossy-ui/public/static/assets/images (2).jpeg",
   ];
 
   const [index, setIndex] = useState(0);

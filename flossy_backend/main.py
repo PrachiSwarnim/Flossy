@@ -581,6 +581,41 @@ def mark_completed(appt_id: int, db: Session = Depends(get_db), user = Depends(r
     db.commit()
     return {"success": True}
 
+@app.post("/api/contact_request")
+def contact_request(payload: dict, db: Session = Depends(get_db)):
+    name = payload.get("name", "Unknown")
+    phone = payload.get("phone")
+    reason = payload.get("reason", "")
+
+    if not phone:
+        raise HTTPException(status_code=400, detail="Phone number is required")
+
+    # Check if patient exists
+    patient = db.query(Patient).filter(Patient.phone == phone).first()
+    
+    if not patient:
+        patient = Patient(
+            name=name,
+            phone=phone,
+            user_id=None, # Guest
+            contact_datetime=datetime.now(timezone.utc)
+        )
+        db.add(patient)
+        db.commit()
+        db.refresh(patient)
+    
+    # Record interaction
+    interaction = Interaction(
+        patient_id=patient.id,
+        channel="contact_form",
+        message=f"New Patient Inquiry: {reason}",
+        created_at=datetime.now(timezone.utc)
+    )
+    db.add(interaction)
+    db.commit()
+
+    return {"success": True, "message": "Inquiry received"}
+
 @app.get("/api/appointments/next")
 def get_next_appointment(request: Request, db: Session = Depends(get_db), user = Depends(require_role("patient"))):
     user_payload = getattr(request.state, "user", None)

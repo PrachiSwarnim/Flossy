@@ -1,45 +1,45 @@
 .insta-section {
-    padding: 6rem 8%;
-    background: #fff7e6; /* Softer warm cream like original site */
-    text-align: center;
-    border-top: 1px solid rgba(0,0,0,0.05);
-    padding-bottom: 3rem;
-  }
-  
-  .insta-section h2 {
-    font-family: "Playfair Display", serif;
-    font-size: 2.6rem;
-    background: linear-gradient(90deg, #fca311, #ff8800);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 1rem;
-  }
-  
-  .insta-subtext {
-    color: #555;
-    font-size: 1.15rem;
-    max-width: 700px;
-    margin: 0 auto 2rem auto;
-    line-height: 1.7;
-  }
-  
-  .instagram-placeholder {
-    margin: 2.5rem auto 4rem auto;
-    padding: 2rem;
-    width: 90%;
-    max-width: 900px;
-    
-    background: #fff4c2;
-    border-radius: 18px;
-    color: #444;
-    font-size: 1.15rem;
-  
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 120px;
-  
-    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-    border: 1px solid rgba(0,0,0,0.05);
-  }
-  
+  padding: 3rem 8%;
+  background: #fff7e6;
+  /* Softer warm cream like original site */
+  text-align: center;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  padding-bottom: 3rem;
+}
+
+.insta-section h2 {
+  font-family: "Playfair Display", serif;
+  font-size: 2.6rem;
+  background: linear-gradient(90deg, #fca311, #ff8800);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 1rem;
+}
+
+.insta-subtext {
+  color: #555;
+  font-size: 1.15rem;
+  max-width: 700px;
+  margin: 0 auto 2rem auto;
+  line-height: 1.7;
+}
+
+.instagram-placeholder {
+  margin: 2.5rem auto 4rem auto;
+  padding: 2rem;
+  width: 90%;
+  max-width: 900px;
+
+  background: #fff4c2;
+  border-radius: 18px;
+  color: #444;
+  font-size: 1.15rem;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 120px;
+
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}

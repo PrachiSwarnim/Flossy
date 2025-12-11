@@ -28,14 +28,13 @@ export default function App() {
       <Routes>
         {/* PUBLIC ROUTES */}
         <Route path="/" element={<Home />} />
+        <Route path="/services" element={<Services />} /> {/* Added missing route */}
         <Route path="/contact" element={<Contact />} />
-        <Route path="/services" element={<Services />} />
-        <Route path="/tourism" element={<Tourism />} />
         <Route path="/team" element={<Team />} />
 
         {/* AUTH ROUTES */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        <Route path="/login/*" element={<Login />} />
+        <Route path="/signup/*" element={<Signup />} />
         <Route path="/post_login" element={<PostLogin />} />
 
         {/* ⭐ REQUIRED: UNIVERSAL SSO CALLBACK */}

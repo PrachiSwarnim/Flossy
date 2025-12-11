@@ -1,57 +1,63 @@
 .footer {
-  margin-top: auto;            /* makes footer stick */
-  bottom: 0;                  /* attach to bottom */
-  left: 0;
-  width: 100%;                /* full-width footer */
-  z-index: 100;               /* ensure it's above content */
-  background: linear-gradient(
-    to bottom,
-    #f8d899 0%,   
-    #d59c47 15%,  
-    #111 20%
-  );
-  color: #fff;
-  padding: 0.5rem 0;
-  text-align: center;
-  box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.2);
   margin-top: auto;
+  width: 100%;
+  background-color: #111;
+  border-top: 5px solid #d4af37;
+  /* Premium gold border */
+  color: #fff;
+  padding: 0.8rem 0;
+  /* More breathing room */
+  text-align: center;
+  position: relative;
+  z-index: 100;
 }
-  
-  /* Remove social icons spacing bloat */
-  .footer-socials {
-    margin-bottom: 0.4rem;
-    display: flex;
-    justify-content: center;
-    gap: 0.8rem;
-  }
-  
-  .footer-socials i {
-    font-size: 1.2rem;
-    color: #ffd580;
-    transition: 0.25s ease;
-  }
-  
-  .footer-socials i:hover {
-    transform: scale(1.1);
-    color: #fff;
-  }
-  
-  .footer-text,
-  .footer-credit {
-    font-size: 0.85rem;  /* smaller */
-    color: #eee;
-    margin: 2px 0;
-  }
-  
-  .footer-credit a {
-    color: #ffd580;
-    font-weight: 600;
-  }
-  
-  .footer-credit a:hover {
-    color: #fff;
-  }
-  
-  .footer-text {
-    margin-top: 15px;
-  }
+
+/* Remove social icons spacing bloat */
+.footer-socials {
+  margin-bottom: 0.4rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+}
+
+.footer-socials i {
+  font-size: 1.2rem;
+  color: #ffd580;
+  transition: 0.25s ease;
+}
+
+.footer-socials i:hover {
+  transform: scale(1.1);
+  color: #fff;
+}
+
+.footer-text,
+.footer-credit {
+  font-size: 0.85rem;
+  /* smaller */
+  color: #eee;
+  margin: 2px 0;
+  font-family: "Playfair Display", serif;
+}
+
+.footer-credit a {
+  color: #ffd580;
+  font-weight: 600;
+}
+
+.footer-credit a:hover {
+  color: #fff;
+}
+
+.footer-text {
+  margin-top: 10px;
+  font-family: "Playfair Display", serif;
+}
+
+.footer-copyright {
+  font-family: "Playfair Display", serif;
+}
+
+.footer-powered {
+  font-family: "Playfair Display", serif;
+}

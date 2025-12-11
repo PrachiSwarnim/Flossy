@@ -1,34 +1,131 @@
 import "../styles/header.css";
 
-export default function Header() {
+import { useState, useRef } from "react";
+import "../styles/header.css";
+import { services } from "../data/services";
+
+export default function Header({ openAI }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  const [showTopArrow, setShowTopArrow] = useState(false);
+  const [showBottomArrow, setShowBottomArrow] = useState(true);
+
+  const toggleMenu = () => setIsOpen(!isOpen);
+  const closeMenu = () => setIsOpen(false);
+
+  const handleScroll = () => {
+    if (dropdownRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = dropdownRef.current;
+      setShowTopArrow(scrollTop > 0);
+      setShowBottomArrow(Math.ceil(scrollTop + clientHeight) < scrollHeight - 5);
+    }
+  };
+
+  const scrollBottom = () => {
+    if (dropdownRef.current) {
+      dropdownRef.current.scrollTo({
+        top: dropdownRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    }
+  };
+
+  const scrollTop = () => {
+    if (dropdownRef.current) {
+      dropdownRef.current.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    }
+  };
+
   return (
-    <header className="header">
-      <div className="logo">
-        <img src="/static/assets/logo.png" alt="Smile Artists Logo" />
-        <span>Smile Artists</span>
-      </div>
+    <>
+      <header className="header">
+        <div className="logo">
+          <img src="/static/assets/logo.png" alt="Smile Artists Logo" />
+          <span>Smile Artists</span>
+        </div>
 
-      <nav>
-        <ul>
-          <li><a href="/#about">About</a></li>
-          <li><a href="/#ai">FlossyAI</a></li>
-          <li><a href="/services">Our Services</a></li>
-          <li><a href="/tourism">Dental Tourism</a></li>
-          <li><a href="/contact">Contact</a></li>
+        {/* Hamburger Icon */}
+        <div className="hamburger" onClick={toggleMenu}>
+          {isOpen ? <i className="fas fa-times"></i> : <i className="fas fa-bars"></i>}
+        </div>
+      </header>
 
-          <li>
-            <a href="/login">
-              <button className="login-btn">Login</button>
-            </a>
-          </li>
+      {/* Sidebar Overlay */}
+      <div className={`sidebar-overlay ${isOpen ? "open" : ""}`} onClick={closeMenu}></div>
 
-          <li>
-            <a href="/signup">
-              <button className="signup-btn">Sign Up</button>
-            </a>
-          </li>
-        </ul>
-      </nav>
-    </header>
+      {/* Sidebar Drawer */}
+      <aside className={`sidebar ${isOpen ? "open" : ""}`}>
+        <div className="sidebar-header">
+          <h3>Menu</h3>
+          <button className="close-btn" onClick={closeMenu}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+
+        <nav className="sidebar-nav">
+          <ul>
+            <li><a href="/#about" onClick={closeMenu}>About</a></li>
+
+            <li className="services-dropdown">
+              <a href="/#services" onClick={closeMenu}>
+                Our Services
+              </a>
+
+              <div className="services-list-container">
+                {/* Scroll Up Arrow */}
+                <div
+                  className={`scroll-arrow up ${showTopArrow ? 'visible' : ''}`}
+                  onClick={scrollTop}
+                  style={{ opacity: showTopArrow ? 1 : 0, pointerEvents: showTopArrow ? 'auto' : 'none' }}
+                >
+                  <i className="fas fa-chevron-up"></i>
+                </div>
+
+                <ul className="dropdown-menu" ref={dropdownRef} onScroll={handleScroll}>
+                  {services.map((s, i) => (
+                    <li key={i}>
+                      <a href={`/#services`} onClick={closeMenu}>{s.title}</a>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Scroll Down Arrow */}
+                <div
+                  className={`scroll-arrow down ${showBottomArrow ? 'visible' : ''}`}
+                  onClick={scrollBottom}
+                  style={{ opacity: showBottomArrow ? 1 : 0, pointerEvents: showBottomArrow ? 'auto' : 'none' }}
+                >
+                  <i className="fas fa-chevron-down"></i>
+                </div>
+              </div>
+            </li>
+
+            <li><a href="/#tourism" onClick={closeMenu}>Dental Tourism</a></li>
+            <li><a href="/#ai" onClick={closeMenu}>FlossyAI</a></li>
+            <li><a href="/contact" onClick={closeMenu}>Contact</a></li>
+          </ul>
+
+          <div className="sidebar-actions">
+            <div className="auth-item">
+              <span className="auth-text">Already a user?</span>
+              <a href="/login" onClick={closeMenu}>
+                <button className="login-btn">Login</button>
+              </a>
+            </div>
+
+            <div className="auth-item">
+              <span className="auth-text">New User?</span>
+              <a href="/signup" onClick={closeMenu}>
+                <button className="signup-btn">Sign Up</button>
+              </a>
+            </div>
+          </div>
+        </nav>
+      </aside>
+    </>
   );
 }

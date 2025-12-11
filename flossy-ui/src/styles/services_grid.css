@@ -1,8 +1,79 @@
+.services-carousel-container {
+  position: relative;
+  padding: 2rem 5%;
+  background: #fff8e6;
+  display: flex;
+  align-items: center;
+}
+
 .services-grid {
-    padding: 2rem 8% 4rem 8%;
-    background: #fff8e6;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2.2rem;
+  display: flex;
+  gap: 2rem;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding: 1rem 0;
+  /* Space for shadow */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/Edge */
+  scroll-snap-type: x mandatory;
+  /* Enable snapping */
+}
+
+/* Hide scrollbar for Chrome/Safari */
+.services-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.service-card {
+  min-width: 300px;
+  /* Fixed width for carousel items */
+  max-width: 320px;
+  flex-shrink: 0;
+  scroll-snap-align: center;
+  /* Snap cards to center */
+}
+
+.carousel-btn {
+  background: rgba(252, 163, 17, 0.8);
+  color: white;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.carousel-btn:hover {
+  background: #fca311;
+  transform: scale(1.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.carousel-btn.left {
+  margin-right: 1rem;
+}
+
+.carousel-btn.right {
+  margin-left: 1rem;
+}
+
+@media (max-width: 768px) {
+  .services-carousel-container {
+    padding: 2rem 1rem;
   }
-  
+
+  .carousel-btn {
+    width: 35px;
+    height: 35px;
+    font-size: 1rem;
+  }
+}

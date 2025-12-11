@@ -1,67 +1,74 @@
 .login-page {
-    min-height: 100vh;
-    width: 100vw;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: linear-gradient(160deg, #fffaf3 0%, #fff4d2 100%);
-    margin: 0;
-    padding: 0;
-  }
-      
-  /* Center card */
-  .login-box {
-    width: 100%;
-    max-width: 420px;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(20px);
-    padding: 2rem 2.2rem;
-    border-radius: 22px;
-    box-shadow: 0 10px 40px rgba(252, 163, 17, 0.25);
-    text-align: center;
-  }
-  
-  /* Title section */
-  .welcome-text h1 {
-    font-size: 2rem;
-    font-weight: 700;
-    background: linear-gradient(90deg, #ffb703, #fca311);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-  
-  .welcome-text p {
-    color: #333;
-    margin-bottom: 1.5rem;
-  }
-  
-  /* Loading spinner */
-  .loading {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #ffd166;
-    border-top-color: #fca311;
-    border-radius: 50%;
-    margin: 1.5rem auto;
-    animation: spin 1s linear infinite;
-  }
-  
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  
-  /* Force center ANY Clerk sign-in root */
-    .sign-in-container,
-    .cl-rootBox,
-    .cl-card {
-    margin: 4vh auto !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    }
+  /* min-height handled by parent wrapper */
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(160deg, #fffaf3 0%, #fff4d2 100%);
+  margin: 0;
+  padding: 0;
+}
 
-    .cl-rootBox {
-        width: 100% !important;
-        max-width: 420px !important;
-      }
-      
+
+/* Center card */
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  margin-top: 2rem;
+  padding: 2rem 2.2rem;
+  border-radius: 22px;
+  box-shadow: 0 10px 40px rgba(252, 163, 17, 0.25);
+  text-align: center;
+}
+
+/* Title section */
+.login-card h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(90deg, #ffb703, #fca311);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-family: "Playfair Display", serif;
+}
+
+.login-card p {
+  color: #333;
+  margin-bottom: 1.5rem;
+  font-family: "Playfair Display", serif;
+}
+
+/* Loading spinner */
+.loading {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #ffd166;
+  border-top-color: #fca311;
+  border-radius: 50%;
+  margin: 1.5rem auto;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Force center ANY Clerk sign-in root */
+.sign-in-container,
+.cl-rootBox,
+.cl-card {
+  margin: 2vh auto !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding-top: auto;
+}
+
+.cl-rootBox {
+  width: 100% !important;
+  max-width: 420px !important;
+  font-family: "Playfair Display", serif;
+}

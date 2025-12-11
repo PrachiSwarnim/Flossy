@@ -1,102 +1,163 @@
 /* GLOBAL RESET */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  /* BODY STYLING */
-  html, body {
-    font-family: "Manrope", sans-serif;
-    background: linear-gradient(180deg, #fffaf3, #ffe9c2);
-    color: #1c1c1c;
-    overflow-x: hidden;
-    line-height: 1.6;
-    padding-bottom: 80px;
-    height: 100%;
-    margin: 0;
-  }
-  
-  /* DEFAULT TEXT BEHAVIOR */
-  p {
-    font-size: 1rem;
-    color: #444;
-  }
-  
-  /* HEADINGS */
-  h1, h2, h3 {
-    font-weight: 700;
-    line-height: 1.2;
-  }
-  
-  /* BUTTON BASE STYLE */
-  .btn {
-    background: linear-gradient(135deg, #fca311, #ffd166);
-    color: #fff;
-    padding: 0.8rem 2rem;
-    border-radius: 50px;
-    border: none;
-    cursor: pointer;
-    font-size: 1.05rem;
-    font-weight: 700;
-    transition: all 0.3s ease;
-  }
-  
-  .btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(252, 163, 17, 0.3);
-  }
-  
-  #root {
-    min-height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .footer {
-    margin-top: auto;
-  }
-  
-  footer.footer {
-    margin-top: auto;
-  }
+:root {
+  --primary-gold: #fca311;
+  /* Updated to match Our Services title */
+  --primary-gold-gradient: linear-gradient(135deg, #fca311 0%, #ffc857 100%);
+  /* Updated gradient */
+  --text-dark: #1a1a1a;
+  --text-grey: #4a4a4a;
+  --bg-cream: #fffaf3;
+  --bg-gradient: linear-gradient(180deg, #fffaf3 0%, #ffffff 100%);
+  --font-heading: "Playfair Display", serif;
+  --font-body: "Inter", sans-serif;
+  /* Switched to Inter for cleaner look */
+  --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.05);
+  --shadow-hover: 0 20px 60px rgba(212, 175, 55, 0.15);
+}
 
-  #clerk-components {
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
-  }
-  
-  /* Loader overlay container */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* BODY STYLING */
+html,
+body {
+  font-family: var(--font-body);
+  background: var(--bg-gradient);
+  color: var(--text-dark);
+  overflow-x: hidden;
+  line-height: 1.6;
+  padding-bottom: 80px;
+  height: 100%;
+  margin: 0;
+}
+
+/* DEFAULT TEXT BEHAVIOR */
+p {
+  font-size: 1.05rem;
+  color: var(--text-grey);
+  line-height: 1.7;
+}
+
+/* HEADINGS */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--primary-gold);
+  /* Updated to match theme */
+}
+
+/* BUTTON BASE STYLE */
+.btn {
+  background: var(--primary-gold-gradient);
+  color: #fff;
+  padding: 0.9rem 2.2rem;
+  border-radius: 50px;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+}
+
+.btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4);
+}
+
+#root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.footer {
+  margin-top: auto;
+}
+
+footer.footer {
+  margin-top: auto;
+}
+
+#clerk-components {
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Loader overlay container */
 .loader-box {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  
+
   display: flex;
   justify-content: center;
   align-items: center;
   flex-direction: column;
 
-  background: rgba(255, 250, 230, 0.7);
-  backdrop-filter: blur(6px);
+  background: rgba(255, 250, 230, 0.85);
+  backdrop-filter: blur(8px);
 
   z-index: 5000;
 }
 
 /* Shrinks PropagateLoader animation width */
-.loader-box > span {
-  transform: scale(0.55);
+.loader-box>span {
+  transform: scale(0.6);
 }
 
 /* Optional loading text */
 .loader-box p {
-  margin-top: 15px;
-  font-family: "Sora", sans-serif;
-  font-size: 1rem;
+  margin-top: 20px;
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
   font-weight: 600;
-  color: #c89a05;
+  color: var(--primary-gold);
+}
+
+/* UTILITY ANIMATIONS */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
 }

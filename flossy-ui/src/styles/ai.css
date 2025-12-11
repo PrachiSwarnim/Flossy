@@ -1,26 +1,26 @@
 .ai-section {
-    background: linear-gradient(160deg, #fff4d2 0%, #fffaf3 100%);
-    padding: 6rem 8%;
-    text-align: center;
-    border-top: 1px solid rgba(0,0,0,0.05);
-  }
-  
-  .ai-section h2 {
-    font-family: "Playfair Display", serif;
-    font-size: 2.4rem;
-    color: #1c1c1c;
-    margin-bottom: 1.2rem;
-  }
-  
-  .ai-section p {
-    max-width: 700px;
-    margin: 0 auto;
-    color: #555;
-    font-size: 1.1rem;
-    line-height: 1.7;
-  }
-  
-  .ai-section .btn {
-    margin-top: 2rem;
-  }
-  
+  background: linear-gradient(160deg, #fff4d2 0%, #fffaf3 100%);
+  padding: 6rem 8%;
+  text-align: center;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  padding-bottom: 0.8rem;
+}
+
+.ai-section h2 {
+  font-family: "Playfair Display", serif;
+  font-size: 2.4rem;
+  color: #1c1c1c;
+  margin-bottom: 1.2rem;
+}
+
+.ai-section p {
+  max-width: 700px;
+  margin: 0 auto;
+  color: #555;
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+.ai-section .btn {
+  margin-top: 2rem;
+}

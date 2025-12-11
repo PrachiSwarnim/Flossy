@@ -1,28 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Ancizar+Serif:wght@300..900&family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
 
 .services-hero {
-    padding: 2.5rem 8% 3rem;
-    text-align: center;
-    background: #fff8e6;
-  }
+  padding: 6rem 8% 3rem;
+  text-align: center;
+  background: #fff8e6;
+}
 
-  .services-hero h2 {
-    font-family: "Playfair Display", serif;
-    font-size: 3.5rem;
-    color: #fca311;
-  }
-  
-  .services-hero h1 {
-    font-family: "Playfair Display", serif;
-    font-size: 2.8rem;
-    color: #fca311;
-  }
-  
-  .services-hero p {
-    font-size: 1.15rem;
-    margin-top: 0.8rem;
-    color: #463105;
-    font-family: "Lora", sans-serif;
-    font-weight: 300;
-  }
-  
+.services-hero h2 {
+  font-family: "Playfair Display", serif;
+  font-size: 3.5rem;
+  color: #fca311;
+}
+
+.services-hero h1 {
+  font-family: "Playfair Display", serif;
+  font-size: 2.8rem;
+  color: #fca311;
+}
+
+.services-hero p {
+  font-size: 1.15rem;
+  margin-top: 0.8rem;
+  color: #463105;
+  font-family: "Lora", sans-serif;
+  font-weight: 300;
+}

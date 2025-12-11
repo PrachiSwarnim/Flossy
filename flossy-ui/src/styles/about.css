@@ -1,31 +1,59 @@
 .about-section {
-    padding: 6rem 8%;
-    background-color: #fffbea;   /* correct light background */
-    color: #333;
-    text-align: center;
-    font-family: "Manrope", sans-serif;
-  }
-  
-  .about-section h2 {
-    font-family: "Playfair Display", serif;
-    font-size: 2.4rem;
-    margin-bottom: 1.8rem;
-    color: #ffb703;
-  }
-  
-  .about-section p {
-    max-width: 850px;
-    margin: 0 auto 1.5rem auto;
-    line-height: 1.8;
-    font-size: 1.1rem;
-    color: #444;
-  }
-  
-  .signature {
-    font-style: italic;
-    color: #666;
-    font-weight: 500;
-    margin-top: 2rem;
-  }
-  
-  
+  padding: 6rem 8% 4rem;
+  background-color: var(--bg-cream);
+  color: var(--text-dark);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.about-section::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.about-section h2 {
+  font-family: var(--font-heading);
+  font-size: 3rem;
+  margin-bottom: 2rem;
+  color: var(--primary-gold);
+  position: relative;
+  display: inline-block;
+}
+
+.about-section h2::after {
+  content: '';
+  display: block;
+  width: 60px;
+  height: 3px;
+  background: var(--primary-gold);
+  margin: 1rem auto 0;
+  border-radius: 2px;
+}
+
+.about-section p {
+  max-width: 800px;
+  margin: 0 auto 2rem auto;
+  line-height: 1.9;
+  font-size: 1.15rem;
+  color: var(--text-grey);
+  position: relative;
+  font-family: "Playfair Display", serif;
+}
+
+.signature {
+  font-family: "Playfair Display", serif;
+  /* Keeping signature font distinct */
+  font-style: italic;
+  color: var(--primary-gold);
+  font-weight: 600;
+  font-size: 1.3rem;
+  margin-top: 3rem;
+}
