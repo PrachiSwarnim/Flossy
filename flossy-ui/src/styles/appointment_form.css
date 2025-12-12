@@ -1,6 +1,7 @@
 /* Main Wrapper */
 .appointment-section-wrapper {
-    padding: 4rem 1rem;
+    padding: 1rem;
+    /* Drastically reduced from 4rem */
     background: linear-gradient(180deg, #fffaf3 0%, #ffffff 100%);
     display: flex;
     justify-content: center;
@@ -11,26 +12,29 @@
     display: flex;
     flex-direction: row;
     background: #ffffff;
-    border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
-    /* softer, premium shadow */
+    border-radius: 16px;
+    /* Slightly tighter radius */
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
     overflow: hidden;
     max-width: 900px;
     width: 100%;
+    /* Limit height to ensure it fits better */
+    max-height: 500px;
+    /* Constraint height */
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     border: 1px solid rgba(0, 0, 0, 0.02);
 }
 
 .appointment-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.1);
 }
 
 /* Left Image Side */
 .appointment-image {
     flex: 1;
     position: relative;
-    min-height: 400px;
+    /* Removed min-height to allow shrinking */
     overflow: hidden;
 }
 
@@ -51,22 +55,23 @@
     left: 0;
     width: 100%;
     background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
-    padding: 2rem;
+    padding: 1.5rem;
     color: white;
 }
 
 .image-overlay h4 {
     font-family: "Playfair Display", serif;
-    font-size: 1.5rem;
+    font-size: 1.3rem;
+    /* Reduced */
     margin: 0;
     font-weight: 500;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* Right Form Side */
 .appointment-form-content {
     flex: 1;
-    padding: 3rem;
+    padding: 1.5rem;
+    /* Reduced from 3rem */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -75,77 +80,59 @@
 
 .appointment-form-content h3 {
     font-family: "Playfair Display", serif;
-    font-size: 2rem;
+    font-size: 1.6rem;
+    /* Reduced form 2rem */
     color: #1a1a1a;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.2rem;
     background: linear-gradient(90deg, #d4af37, #f7c14b);
-    /* Gold gradient text */
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
-.appointment-form-content p {
-    color: #666;
-    font-family: "Playfair Display", serif;
-    /* Kept per request */
-    margin: 0;
-    font-size: 1.05rem;
-}
-
 .appointment-form-content .subtitle-gap {
-    margin-top: 0.3rem;
-    margin-bottom: 2rem;
+    margin-top: 0.1rem;
+    margin-bottom: 1rem;
+    /* Reduced from 2rem */
+    font-size: 0.95rem;
 }
 
 /* Form Elements */
 .appt-request-form {
     display: flex;
     flex-direction: column;
-    gap: 1.2rem;
-}
-
-.input-group {
-    position: relative;
+    gap: 0.8rem;
+    /* Reduced from 1.2rem */
 }
 
 .appt-request-form input,
 .appt-request-form textarea {
     width: 100%;
-    padding: 1rem 1.2rem;
+    padding: 0.7rem 1rem;
+    /* Reduced from 1rem */
     border: 1px solid #eee;
     background: #fdfdfd;
-    border-radius: 8px;
-    font-size: 1rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
     font-family: "Inter", sans-serif;
-    /* Cleaner font for inputs */
     transition: all 0.3s ease;
-}
-
-.appt-request-form input:focus,
-.appt-request-form textarea:focus {
-    outline: none;
-    border-color: #f7c14b;
-    background: #fff;
-    box-shadow: 0 0 0 4px rgba(247, 193, 75, 0.1);
 }
 
 /* Button */
 .submit-btn {
-    margin-top: 1rem;
+    margin-top: 0.5rem;
     background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
     color: #fff;
-    padding: 1.2rem;
-    font-size: 1.1rem;
+    padding: 0.9rem;
+    /* Reduced from 1.2rem */
+    font-size: 1rem;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.3s ease;
     text-transform: uppercase;
     letter-spacing: 1px;
     font-weight: 600;
-    position: relative;
-    overflow: hidden;
 }
 
 .submit-btn:hover {

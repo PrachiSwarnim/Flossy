@@ -48,9 +48,13 @@ export default function Header({ openAI }) {
           <span>Smile Artists</span>
         </div>
 
-        {/* Hamburger Icon */}
-        <div className="hamburger" onClick={toggleMenu}>
-          {isOpen ? <i className="fas fa-times"></i> : <i className="fas fa-bars"></i>}
+        {/* Header Actions */}
+        <div className="header-actions">
+          <a href="/#contact" className="header-simple-link">Contact Us</a>
+          <a href="/#appointment" className="header-outline-btn">Book Appointment</a>
+          <div className="hamburger" onClick={toggleMenu}>
+            {isOpen ? <i className="fas fa-times"></i> : <i className="fas fa-bars"></i>}
+          </div>
         </div>
       </header>
 

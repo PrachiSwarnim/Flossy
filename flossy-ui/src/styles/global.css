@@ -27,11 +27,21 @@ body {
   font-family: var(--font-body);
   background: var(--bg-gradient);
   color: var(--text-dark);
+  color: var(--text-dark);
   overflow-x: hidden;
   line-height: 1.6;
   padding-bottom: 80px;
   height: 100%;
   margin: 0;
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/Edge */
+}
+
+/* Hide Scrollbar Global */
+::-webkit-scrollbar {
+  display: none;
 }
 
 /* DEFAULT TEXT BEHAVIOR */
@@ -158,6 +168,58 @@ footer.footer {
   animation: fadeInUp 0.8s ease-out forwards;
 }
 
+
 .animate-float {
   animation: float 6s ease-in-out infinite;
+}
+
+/* COMPACT HOMEPAGE SECTION */
+/* COMPACT HOMEPAGE SECTION */
+/* COMPACT HOMEPAGE SECTION */
+/* COMPACT HOMEPAGE SECTION */
+.homepage-section {
+  position: relative;
+  width: 100%;
+  margin-bottom: 2rem !important;
+}
+
+/* WIDE CENTERED SEPARATOR */
+.homepage-section::after {
+  content: "";
+  display: block;
+  width: 85%;
+  /* Wide but not full edge-to-edge */
+  max-width: 1200px;
+  height: 1px;
+  background: rgba(252, 163, 17, 0.3);
+  /* Subtle gold line */
+  margin: 2rem auto 0 auto;
+  /* Centered with spacing */
+}
+
+/* Hide separators for last element */
+.homepage-section:last-of-type::after,
+.homepage-section:last-of-type {
+  margin-bottom: 0 !important;
+  display: block;
+  /* Ensure section is displayed */
+  background: transparent;
+  /* Hide line */
+}
+
+/* Target the ::after specifically to hide it on the last one */
+.homepage-section:last-of-type::after {
+  display: none;
+}
+
+/* COMPACT SECTION OVERRIDES - Force tight layout */
+.homepage-section>section,
+.homepage-section>div {
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+
+/* Remove default margins causing gaps */
+.homepage-section p:last-child {
+  margin-bottom: 0 !important;
 }

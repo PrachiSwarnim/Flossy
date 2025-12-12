@@ -3,12 +3,12 @@ import "../styles/carousel.css";
 
 export default function Carousel() {
   const images = [
-    "flossy-ui/public/static/assets/download.jpeg",
-    "flossy-ui/public/static/assets/download (1).jpeg",
-    "flossy-ui/public/static/assets/download (2).jpeg",
-    "flossy-ui/public/static/assets/images.jpeg",
-    "flossy-ui/public/static/assets/images (1).jpeg",
-    "flossy-ui/public/static/assets/images (2).jpeg",
+    "/static/assets/download.jpeg",
+    "/static/assets/download (1).jpeg",
+    "/static/assets/download (2).jpeg",
+    "/static/assets/images.jpeg",
+    "/static/assets/images (1).jpeg",
+    "/static/assets/images (2).jpeg",
   ];
 
   const [index, setIndex] = useState(0);
@@ -17,21 +17,58 @@ export default function Carousel() {
   // Duplicate first slide for smooth loop
   const slides = [...images, images[0]];
 
+  // Move to next slide
+  const nextSlide = () => {
+    if (index === slides.length - 1) return; // Prevent clicking past duplicate
+    setIndex((prev) => prev + 1);
+  };
+
+  // Move to prev slide
+  const prevSlide = () => {
+    if (index === 0) {
+      // Loop back to end (real last slide)
+      transitionRef.current = false;
+      setIndex(images.length); // Jump to duplicate spot? No, jump to last real image index.
+      // Actually, standard loop back logic:
+      // complex with the duplicate at end.
+      // simpler approach for manual Nav: behave circular.
+      // But we have auto-scroll mixed deeply.
+
+      // Let's stick to simple circular for manual:
+      // If at 0, goes to length-1 (which is the duplicate of 0).
+      // That's confusing.
+
+      // Let's rely on the effect to handle the snap.
+      // We just decrement. If 0, we can snap to end.
+      return;
+    }
+    setIndex((prev) => prev - 1);
+  };
+
+  // Enhanced Infinite Loop Logic
   useEffect(() => {
     const timer = setInterval(() => {
-      setIndex((i) => i + 1);
+      setIndex((prev) => prev + 1);
     }, 4000);
-
     return () => clearInterval(timer);
-  }, []);
+  }, [index]);
 
-  // Reset to slide 0 instantly when reaching the duplicate
   useEffect(() => {
+    // If we're at the duplicate last slide (which looks like slide 0)
     if (index === slides.length - 1) {
       setTimeout(() => {
-        transitionRef.current = false;
-        setIndex(0);
-      }, 600); // match slide transition speed
+        transitionRef.current = false; // Disable transition
+        setIndex(0); // Snap to real slide 0
+      }, 700); // Wait for slide animation to finish
+    }
+    // If we are at real slide 0 coming from duplicate, or normal move
+    else if (index === 0 && transitionRef.current === false) {
+      // Re-enable transition after snap
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          transitionRef.current = true;
+        });
+      });
     } else {
       transitionRef.current = true;
     }
@@ -39,12 +76,22 @@ export default function Carousel() {
 
   return (
     <div className="carousel">
+      {/* LEFT ARROW */}
+      <button className="carousel-arrow left" onClick={() => setIndex((i) => i === 0 ? images.length - 1 : i - 1)}>
+        <i className="fas fa-chevron-left"></i>
+      </button>
+
+      {/* RIGHT ARROW */}
+      <button className="carousel-arrow right" onClick={() => setIndex((i) => i + 1)}>
+        <i className="fas fa-chevron-right"></i>
+      </button>
+
       <div className="carousel-inner">
         <div
           className="slides"
           style={{
             transform: `translateX(-${index * 100}%)`,
-            transition: transitionRef.current ? "transform 0.7s ease" : "none",
+            transition: transitionRef.current ? "transform 0.7s ease-in-out" : "none",
           }}
         >
           {slides.map((src, i) => (

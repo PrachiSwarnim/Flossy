@@ -11,6 +11,7 @@ import AISection from "../components/AISection";
 import InstagramSection from "../components/InstagramSection";
 
 import AppointmentRequestForm from "../components/AppointmentRequestForm";
+import ContactSection from "../components/ContactSection";
 
 // SPA Imports
 import ServicesHero from "../components/ServicesHero";
@@ -33,30 +34,36 @@ export default function Home() {
             <Carousel />
             <Hero />
 
-            <div id="about">
+            <div id="about" className="homepage-section" style={{ scrollMarginTop: "100px" }}>
                 <About />
             </div>
 
-            <div id="services">
+            <div id="services" className="homepage-section" style={{ scrollMarginTop: "100px" }}>
                 <ServicesHero />
                 <ServicesGrid services={services} />
             </div>
 
-            <div id="tourism">
+            <div id="tourism" className="homepage-section" style={{ scrollMarginTop: "100px" }}>
                 <TourismHero />
                 <TourismContent />
                 <TourismGallery />
             </div>
 
-            <div id="team">
+            <div id="team" className="homepage-section" style={{ scrollMarginTop: "100px" }}>
                 <Team />
             </div>
 
-            <AISection />
+            <div id="ai" className="homepage-section" style={{ scrollMarginTop: "100px" }}>
+                <AISection />
+            </div>
 
             {/* APPOINTMENT FORM */}
-            <div id="appointment">
+            <div id="appointment" className="homepage-section" style={{ scrollMarginTop: "100px" }}>
                 <AppointmentRequestForm />
+            </div>
+
+            <div id="contact" className="homepage-section" style={{ scrollMarginTop: "100px" }}>
+                <ContactSection />
             </div>
 
             <InstagramSection />

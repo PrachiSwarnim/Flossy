@@ -1,83 +1,145 @@
 /* OUTER CONTAINER */
 .carousel {
   width: 100%;
-  height: 90vh;
+  height: calc(100vh - 80px);
+  /* Fill remaining screen height */
+  min-height: 600px;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #ffffff;
   overflow: hidden;
   position: relative;
-  min-height: 400px;
+  margin-bottom: 0;
+  /* Remove bottom margin */
+  padding: 0;
+  /* Remove padding */
 }
 
-/* INNER WRAPPER WITH RADIUS */
+/* INNER WRAPPER - FRAMED BUT FULL */
 .carousel-inner {
-  width: 92%;
+  width: 100%;
+  /* Full width */
   height: 100%;
   overflow: hidden;
-  border-radius: 24px;
+  border-radius: 0;
+  /* No radius for full screen feel */
   position: relative;
+  border: none;
+  /* Removed chunky border */
+  box-shadow: none;
+  /* The "Frame" */
+  outline: 1px solid rgba(0, 0, 0, 0.05);
+  /* Subtle outer edge */
 }
 
-/* TRACK THAT MOVES CONTINUOUSLY */
-.carousel-track {
+/* ARROWS */
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
   display: flex;
-  width: calc(200%); /* duplicate images → smooth loop */
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  z-index: 10;
+  color: #fca311;
+  font-size: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.carousel-arrow:hover {
+  background: #fca311;
+  color: white;
+  border-color: #fca311;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+}
+
+.carousel-arrow.left {
+  left: 2rem;
+}
+
+.carousel-arrow.right {
+  right: 2rem;
+}
+
+/* SLIDES CONTAINER (Flex) */
+.slides {
+  display: flex;
   height: 100%;
-  animation: scroll 35s linear infinite; /* adjust speed here */
+  width: 100%;
+  /* No width constraint, flex items will determine width */
 }
 
 /* EACH SLIDE */
-/* Each slide becomes a white framed box */
 .slide {
-  flex: 0 0 100%;
+  min-width: 100%;
+  /* Full width of container */
   height: 100%;
-  background: white;                      /* 🔥 white background on sides */
-  display: flex;
-  justify-content: center;                /* center image horizontally */
-  align-items: center;                    /* center vertically */
-  border-radius: 24px;
-  overflow: hidden;
+  position: relative;
 }
 
-/* Image stays centered with white edges visible */
+/* IMAGE */
 .slide img {
-  width: 80%;                              /* 🔥 CONTROL IMAGE SIZE HERE */
+  width: 100%;
   height: 100%;
-  object-fit: contain;                      /* shows full image */
-  border-radius: 24px;
+  object-fit: cover;
+  /* Fill the area nicely */
+  display: block;
 }
 
-/* DOTS — still work visually, optional for continuous slider */
+/* OVERLAY FOR DEPTH (Optional, makes dots readable) */
+.slide::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 40%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent);
+  pointer-events: none;
+}
+
+/* DOTS - PREMIUM PILL STYLE */
 .carousel-buttons {
   position: absolute;
-  bottom: 20px;
+  bottom: 25px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-  gap: 10px;
+  gap: 8px;
   z-index: 20;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .dot {
-  width: 12px;
-  height: 12px;
-  background: rgba(0,0,0,0.25);
+  width: 8px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.6);
   border-radius: 50%;
   cursor: pointer;
-  transition: 0.25s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dot.active {
   background: #fca311;
-  transform: scale(1.2);
+  transform: scale(1);
+  width: 24px;
+  /* Stretch to pill shape */
+  border-radius: 10px;
 }
 
-/* SMOOTH INFINITE SLIDING */
-@keyframes scroll {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
+.dot:hover {
+  background: #fff;
 }
