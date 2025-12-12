@@ -5,7 +5,11 @@ import { PropagateLoader } from "react-spinners";
 import { useVoiceAgent } from "../../hooks/useVoiceAgent";
 import Header from "./DashboardHeader";
 import Footer from "../../components/Footer";
+import AppointmentRequestForm from "../../components/AppointmentRequestForm";
 import "../../styles/patient_dashboard.css";
+import "../../styles/dashboard_extras_patient.css";
+import "../../styles/dashboard_modal.css";
+import "../../styles/ai_features.css";
 
 export default function PatientDashboard() {
   const { user, isLoaded } = useUser();
@@ -18,8 +22,38 @@ export default function PatientDashboard() {
 
   const [messages, setMessages] = useState([]);
   const [aiOpen, setAiOpen] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  const [myPrescriptions, setMyPrescriptions] = useState([]);
+
+  // LOAD PRESCRIPTIONS (Simulated Backend)
+  useEffect(() => {
+    if (!user) return;
+    const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+
+    // Poll for new prescriptions (Simulating real-time)
+    const interval = setInterval(() => {
+      try {
+        const allPresc = JSON.parse(localStorage.getItem("flossy_prescriptions") || "[]");
+        console.log("Checking prescriptions:", allPresc.length, "for user:", fullName);
+
+        const mine = allPresc.filter(p => {
+          if (!p.patient) return false; // Skip invalid entries
+          const pName = p.patient.toLowerCase();
+          const fName = fullName.toLowerCase();
+          return pName.includes(fName) || fName.includes(pName);
+        });
+
+        console.log("Found matches:", mine.length);
+        setMyPrescriptions(mine);
+      } catch (err) {
+        console.error("Error loading prescriptions:", err);
+      }
+    }, 2000); // Check every 2s
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   // VOICE AGENT
   const { isListening, start, stop, messages: agentMessages } = useVoiceAgent();
@@ -44,6 +78,14 @@ export default function PatientDashboard() {
       });
     }
   }, [agentMessages]);
+
+  const fullName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "";
+
+  useEffect(() => {
+    if (fullName) {
+      document.title = `${fullName}'s Dashboard | Smile Artists`;
+    }
+  }, [fullName]);
 
   const API = "http://localhost:8000";
 
@@ -108,6 +150,17 @@ export default function PatientDashboard() {
 
     const msg = input;
     setInput("");
+
+    // INTERCEPT: If user asks to book a cleaning via chip
+    if (msg === "Book a cleaning") {
+      setMessages(prev => [...prev, { from: "user", text: msg }]);
+      setTimeout(() => {
+        setMessages(prev => [...prev, { from: "ai", text: "I can help with that! Opening the booking form for you..." }]);
+        setIsBookingOpen(true); // Open the modal
+      }, 500);
+      return;
+    }
+
     setMessages((prev) => [...prev, { from: "user", text: msg }]);
     setTyping(true);
 
@@ -145,7 +198,7 @@ export default function PatientDashboard() {
     return loadingScreen;
   }
 
-  const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+  // Removed misplaced hook from here
 
   return (
     <>
@@ -173,7 +226,7 @@ export default function PatientDashboard() {
             ) : (
               <div className="empty-state">
                 <p>No upcoming appointments.</p>
-                <button className="p-btn" onClick={() => navigate("/#appointment")}>
+                <button className="p-btn" onClick={() => setIsBookingOpen(true)}>
                   Book Now <i className="fas fa-arrow-right"></i>
                 </button>
               </div>
@@ -191,7 +244,7 @@ export default function PatientDashboard() {
           </div>
 
           {/* AI INSIGHTS CARD */}
-          <div className="patient-card animate-fade-up" style={{ animationDelay: "0.3s" }}>
+          <div className="patient-card animate-fade-up" style={{ animationDelay: "0.3s", gridColumn: "1 / -1" }}>
             <div className="card-header">
               <h3>My Oral Health</h3>
               <i className="fas fa-smile-beam card-icon"></i>
@@ -201,8 +254,66 @@ export default function PatientDashboard() {
               <span>Your gum health score is excellent! Keep flossing.</span>
             </div>
           </div>
+
+          {/* PRESCRIPTIONS CARD */}
+          <div className="patient-card animate-fade-up" style={{ animationDelay: "0.4s", gridColumn: "span 2" }}>
+            <div className="card-header">
+              <h3>My Prescriptions</h3>
+              <i className="fas fa-pills card-icon"></i>
+            </div>
+
+            {myPrescriptions.length > 0 ? (
+              <div className="prescriptions-list">
+                {myPrescriptions.map((p) => (
+                  <div className="prescription-item" key={p.id}>
+                    <div className="presc-icon">
+                      <i className="fas fa-file-medical"></i>
+                    </div>
+                    <div className="presc-info">
+                      <h4>Prescribed by Dr. {p.doctor || "Dentist"}</h4>
+                      <span className="presc-date">{new Date(p.date).toLocaleDateString()}</span>
+                      <p className="presc-details">{p.details}</p>
+                    </div>
+                    <button className="download-btn">
+                      <i className="fas fa-download"></i> Download
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="empty-state">No prescriptions uploaded yet.</p>
+            )}
+          </div>
         </div>
       </main>
+
+      {/* BOOKING MODAL */}
+      {
+        isBookingOpen && (
+          <div className="modal-overlay" onClick={() => setIsBookingOpen(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <button className="modal-close" onClick={() => setIsBookingOpen(false)}>×</button>
+
+              {/* FLOSSY AI SMART SUGGESTION */}
+              <div className="flossy-ai-suggestion">
+                <div className="ai-avatar">AI</div>
+                <div className="ai-text">
+                  <span className="ai-label">FlossyAI Suggestion:</span>
+                  <p>
+                    Based on your history, it's been 6 months since your last cleaning.
+                    Would you like to book a <span className="highlight">Routine Check-up & Cleaning</span>?
+                  </p>
+                </div>
+              </div>
+
+              <div className="modal-form-wrapper">
+                <h3>Book Your Appointment</h3>
+                <AppointmentRequestForm className="dashboard-form" />
+              </div>
+            </div>
+          </div>
+        )
+      }
 
       {/* FLOATING TRIGGER */}
       <div id="open-ai-panel" onClick={() => setAiOpen(true)}>
@@ -218,17 +329,29 @@ export default function PatientDashboard() {
 
         <div className="ai-content">
           {messages.length === 0 && (
-            <p style={{ color: "#666", fontStyle: "italic", marginTop: "1rem" }}>
-              Hi! I'm FlossyAI. Ask me about your upcoming appointments or dental health tips.
-            </p>
+            <div className="ai-welcome">
+              <p>
+                Hi <b>{user.firstName}</b>!
+                {upcoming.length > 0
+                  ? " You have an upcoming appointment. Do you have any questions about it?"
+                  : " How can I help you with your dental health today?"}
+              </p>
+
+              <div className="ai-chips">
+                <button onClick={() => setInput("I have a toothache") || sendMessage()}>🦷 Toothache</button>
+                <button onClick={() => setInput("Cost of dental implants") || sendMessage()}>💰 Pricing</button>
+                <button onClick={() => setInput("Book a cleaning") || sendMessage()}>📅 Book Cleaning</button>
+                <button onClick={() => setInput("Post-op care instructions") || sendMessage()}>🩹 Post-op Care</button>
+              </div>
+            </div>
           )}
 
           {messages.map((m, i) => (
             <div key={i} className={m.from === "ai" ? "msg-ai" : "msg-user"}>
-              {m.text}
+              <b>{m.from === "ai" ? "FlossyAI" : "You"}:</b> {m.text}
             </div>
           ))}
-          {typing && <div className="typing">FlossyAI is typing…</div>}
+          {typing && <div className="typing">FlossyAI is typing<span className="dot-one">.</span><span className="dot-two">.</span><span className="dot-three">.</span></div>}
         </div>
 
         <div className="ai-input-area">

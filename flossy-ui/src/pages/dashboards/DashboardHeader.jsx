@@ -32,8 +32,6 @@ export default function Header({ openAI }) {
               <button className="nav-btn" onClick={openAI}>FlossyAI</button>
             </li>
 
-            <li><Link to="/contact">Contact</Link></li>
-
             <SignedIn>
               <li>
                 <button

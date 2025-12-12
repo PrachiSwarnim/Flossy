@@ -1,16 +1,22 @@
-html, body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-  }
-  
-  #root {
-    min-height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  footer.footer {
-    margin-top: auto;
-  }
-  
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #151515 !important;
+  /* Force Dark Theme */
+  background: #151515 !important;
+  color: #f4f4f4;
+}
+
+#root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #151515 !important;
+  /* Force Dark */
+}
+
+footer.footer {
+  margin-top: auto;
+}

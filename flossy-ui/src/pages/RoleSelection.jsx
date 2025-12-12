@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSession, useUser } from "@clerk/clerk-react";
 import Footer from "../components/Footer";
 import "../styles/role_selection.css";
-import RoleHeader from "../components/RoleHeader";
+import RoleHeader from "../components/RoleHeader"; /* Using dedicated Auth Header */
 
 export default function RoleSelection() {
   useEffect(() => {
@@ -68,13 +68,14 @@ export default function RoleSelection() {
   if (!isLoaded) return <div className="center-loading">Loading…</div>;
 
   return (
-    <>
+
+    <div style={{ background: "var(--bg-dark)", minHeight: "100vh", color: "var(--text-light)" }}>
       <RoleHeader />
 
-      <main className="role-page">
-        <section className="role-hero">
-          <h1>Choose your role</h1>
-          <p>Select whether you're visiting as a patient or signing in as a dental professional.</p>
+      <main className="role-page" style={{ paddingTop: "2rem" }}>
+        <section className="role-hero" style={{ textAlign: "center", marginBottom: "3rem" }}>
+          <h1 style={{ color: "var(--primary-gold)", fontSize: "2.5rem", fontFamily: "var(--font-heading)" }}>Choose your role</h1>
+          <p style={{ color: "var(--text-muted)", marginTop: "1rem" }}>Select whether you're visiting as a patient or signing in as a dental professional.</p>
         </section>
 
         <section className="role-grid">
@@ -92,6 +93,6 @@ export default function RoleSelection() {
         {loading && <div className="overlay">Applying role…</div>}
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

@@ -1,7 +1,7 @@
 import "../styles/header.css";
 
+import "../styles/sidebar_footer.css";
 import { useState, useRef } from "react";
-import "../styles/header.css";
 import { services } from "../data/services";
 
 export default function Header({ openAI }) {
@@ -17,7 +17,9 @@ export default function Header({ openAI }) {
   const handleScroll = () => {
     if (dropdownRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = dropdownRef.current;
+      // Show UP arrow if we have scrolled down (scrollTop > 0)
       setShowTopArrow(scrollTop > 0);
+      // Show DOWN arrow if we are NOT at the bottom
       setShowBottomArrow(Math.ceil(scrollTop + clientHeight) < scrollHeight - 5);
     }
   };
@@ -110,7 +112,7 @@ export default function Header({ openAI }) {
 
             <li><a href="/#tourism" onClick={closeMenu}>Dental Tourism</a></li>
             <li><a href="/#ai" onClick={closeMenu}>FlossyAI</a></li>
-            <li><a href="/contact" onClick={closeMenu}>Contact</a></li>
+            <li><a href="/#contact" onClick={closeMenu}>Contact</a></li>
           </ul>
 
           <div className="sidebar-actions">
@@ -127,6 +129,11 @@ export default function Header({ openAI }) {
                 <button className="signup-btn">Sign Up</button>
               </a>
             </div>
+          </div>
+
+          <div className="sidebar-footer">
+            <span>Powered by</span>
+            <strong style={{ color: "var(--primary-gold)" }}> FlossyAI</strong>
           </div>
         </nav>
       </aside>

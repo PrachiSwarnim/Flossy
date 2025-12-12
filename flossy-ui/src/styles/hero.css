@@ -1,74 +1,70 @@
 .hero {
-  min-height: 90vh;
-  /* Taller hero */
+  min-height: 85vh;
+  /* Large, immersive hero */
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  padding: 4rem 10%;
-  background: radial-gradient(circle at 70% 30%, #fffbf2, #fffaf3 40%, #ffefcf 100%);
+  /* Centered layout like Beehive intro often has */
+  text-align: center;
+  padding: 0 10%;
+  background: var(--bg-dark);
+  /* Fallback */
+  /* If we had an image, we'd use:
+  background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url('/assets/images/hero_bg.jpg') center/cover; 
+  For now, sleek dark. */
   position: relative;
   overflow: hidden;
 }
 
 .hero-text {
-  flex: 1;
-  max-width: 600px;
+  max-width: 800px;
   animation: fadeInUp 1s ease-out;
+  z-index: 2;
 }
 
 .hero-text h1 {
-  font-size: 4.5rem;
+  font-size: 4rem;
+  /* Big */
   font-family: var(--font-heading);
-  background: var(--primary-gold-gradient);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 1.5rem;
+  color: var(--text-light);
+  /* White */
+  margin-bottom: 1rem;
   line-height: 1.1;
+  letter-spacing: -1px;
+}
+
+.hero-text h1 span {
+  color: var(--primary-gold);
+  /* Highlight in gold */
 }
 
 .hero-text p {
-  font-size: 1.2rem;
-  margin-bottom: 2rem;
-  color: var(--text-grey);
+  font-size: 1.3rem;
+  margin-bottom: 2.5rem;
+  color: var(--text-muted);
+  font-weight: 300;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.btn {
-  /* Using global btn style, ensuring override if needed specific to hero */
-  font-size: 1.1rem;
-  padding: 1rem 2.5rem;
-}
-
-.hero-image {
-  flex: 1;
+/* Update default button to match gold box style globally or override here? 
+   Global .btn is updated in next step or previous. 
+   Let's ensure hero buttons align. */
+.hero-actions {
   display: flex;
-  justify-content: flex-end;
-  position: relative;
+  gap: 1rem;
+  justify-content: center;
 }
 
-.hero-image img {
-  width: 100%;
-  max-width: 500px;
-  border-radius: 40px;
-  /* softer radius */
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.1);
-  animation: float 6s ease-in-out infinite;
+/* Hide the old split image layout for now since we are going for centered text focus */
+.hero-image {
+  display: none;
 }
 
-@media (max-width: 968px) {
-  .hero {
-    flex-direction: column-reverse;
-    text-align: center;
-    padding-top: 8rem;
-    min-height: auto;
-  }
-
-  .hero-image {
-    justify-content: center;
-    margin-bottom: 3rem;
-  }
-
+@media (max-width: 768px) {
   .hero-text h1 {
-    font-size: 3rem;
+    font-size: 2.5rem;
   }
 }

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useUser, useSession } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
+import Header from "../components/RoleHeader";
 
 export default function PostLogin() {
   const { user, isLoaded } = useUser();
@@ -64,8 +65,11 @@ export default function PostLogin() {
   }, [isLoaded, session, user, navigate]);
 
   return (
-    <div style={{ padding: "5rem", textAlign: 'center' }}>
-      <h2>Setting up your account…</h2>
+    <div style={{ padding: "0", textAlign: 'center', background: "var(--bg-dark)", minHeight: "100vh", color: "var(--primary-gold)" }}>
+      <Header />
+      <div style={{ marginTop: "5rem" }}>
+        <h2>Setting up your account…</h2>
+      </div>
     </div>
   );
 }

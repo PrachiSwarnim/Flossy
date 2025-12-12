@@ -41,9 +41,21 @@ export default function ContactSection() {
             <p>Artemis Hospital Road, Koyal Vihar</p>
             <p>Gurugram – 122003, Haryana, India</p>
             <p className="time"><i className="far fa-clock"></i> 11:00 AM – 8:00 PM (Mon–Sun)</p>
-            <a href="#" className="map-link">View on Google Maps &rarr;</a>
           </div>
         </div>
+      </div>
+
+      {/* Google Map */}
+      <div className="map-container">
+        <iframe
+          title="Google Map Location"
+          src="https://maps.google.com/maps?q=573,+Smile+Artists+Dental+Studio,+Artemis+Hospital+Road,+Koyal+Vihar,+Gurugram&t=&z=15&ie=UTF8&iwloc=&output=embed"
+          width="100%"
+          height="450"
+          style={{ border: 0 }}
+          allowFullScreen=""
+          loading="lazy"
+        ></iframe>
       </div>
     </section>
   );

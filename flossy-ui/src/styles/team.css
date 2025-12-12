@@ -1,18 +1,13 @@
 .team-section {
   padding: 4rem 8% 2rem;
-  background: #fff;
+  background: var(--bg-dark);
   text-align: center;
   position: relative;
 }
 
+/* Removed the white gradient overlay */
 .team-section::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100px;
-  background: linear-gradient(180deg, var(--bg-cream), #fff);
+  display: none;
 }
 
 .team-section h2 {
@@ -20,15 +15,13 @@
   font-size: 3rem;
   color: var(--primary-gold);
   margin-bottom: 1rem;
-  position: relative;
 }
 
 .team-intro {
   max-width: 700px;
   margin: 0 auto 4rem auto;
-  color: var(--text-grey);
-  font-size: 1.15rem;
-  position: relative;
+  color: var(--text-muted);
+  font-size: 1.2rem;
 }
 
 .team-grid {
@@ -39,79 +32,65 @@
 }
 
 .member {
-  background: #fff;
-  border-radius: 24px;
-  box-shadow: var(--shadow-soft);
+  background: var(--bg-card);
+  /* Dark card background */
+  border-radius: 4px;
+  /* Boxy like Beehive */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  /* Deep shadow */
   width: 320px;
-  padding: 2rem;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  padding: 2.5rem 2rem;
+  transition: all 0.4s ease;
   cursor: pointer;
-  border: 1px solid rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(212, 175, 55, 0.1);
   position: relative;
   overflow: hidden;
 }
 
-.member::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 4px;
-  background: var(--primary-gold-gradient);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.4s ease;
-}
-
 .member:hover {
-  transform: translateY(-15px);
-  box-shadow: var(--shadow-hover);
+  transform: translateY(-10px);
+  border-color: var(--primary-gold);
 }
 
 .member img {
-  width: 160px;
-  height: 160px;
+  width: 150px;
+  height: 150px;
   object-fit: cover;
   border-radius: 50%;
   margin-bottom: 1.5rem;
-  border: 4px solid #fff;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  border: 2px solid var(--primary-gold);
   transition: transform 0.4s ease;
 }
 
 .member:hover img {
-  transform: scale(1.1);
-  border-color: var(--primary-gold);
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
 }
 
 .member h3 {
   font-family: var(--font-heading);
-  color: var(--text-dark);
+  color: var(--text-light);
+  /* White name */
   font-size: 1.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.8rem;
 }
 
 .member p {
-  font-size: 1rem;
-  color: var(--text-grey);
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: normal;
-  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  font-weight: 300;
   line-height: 1.6;
-  font-family: "Playfair Display", serif;
+  font-family: "Inter", sans-serif;
+  margin-bottom: 1.5rem;
 }
 
 .member i {
   font-size: 1.4rem;
-  color: #cbd5e0;
-  /* subtle grey initially */
+  color: var(--primary-gold);
   transition: 0.3s ease;
-  margin-top: 1rem;
 }
 
 .member:hover i {
-  color: #0077b5;
-  transform: scale(1.2);
+  color: var(--gold-hover);
+  transform: scale(1.1);
 }

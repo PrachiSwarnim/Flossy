@@ -16,8 +16,9 @@ export default function Services() {
 
 
   return (
-    <div className="services-page">
-      <ServicesHeader />
+
+    <div className="services-page" style={{ background: "var(--bg-dark)", minHeight: "100vh" }}>
+      <Header />
       <ServicesHero />
       <ServicesGrid services={services} />
       <Footer />

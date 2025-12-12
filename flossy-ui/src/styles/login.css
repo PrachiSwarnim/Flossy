@@ -1,25 +1,28 @@
 .login-page {
   /* min-height handled by parent wrapper */
-  width: 100vw;
+  width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(160deg, #fffaf3 0%, #fff4d2 100%);
+  background: transparent;
+  /* Let parent background show */
   margin: 0;
   padding: 0;
 }
 
 
 /* Center card */
+/* Center card */
 .login-card {
   width: 100%;
   max-width: 420px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
+  background: transparent;
+  /* Handled by Clerk or inline styles */
   margin-top: 2rem;
-  padding: 2rem 2.2rem;
-  border-radius: 22px;
-  box-shadow: 0 10px 40px rgba(252, 163, 17, 0.25);
+  padding: 0;
+  /* Let Clerk handle padding */
+  border-radius: 0;
+  box-shadow: none;
   text-align: center;
 }
 
@@ -27,14 +30,15 @@
 .login-card h1 {
   font-size: 2rem;
   font-weight: 700;
-  background: linear-gradient(90deg, #ffb703, #fca311);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--primary-gold);
   font-family: "Playfair Display", serif;
+  margin-bottom: 0.5rem;
 }
 
 .login-card p {
-  color: #333;
+  color: #cccccc;
+  /* Lighter text for better reading */
+  /* Muted text */
   margin-bottom: 1.5rem;
   font-family: "Playfair Display", serif;
 }
@@ -71,4 +75,31 @@
   width: 100% !important;
   max-width: 420px !important;
   font-family: "Playfair Display", serif;
+}
+
+/* CLERK CONTAINER FIX (Matched to Signup) */
+.cl-card {
+  background: #1f1f1f !important;
+  border: 1px solid #333 !important;
+  border-radius: 18px !important;
+  padding: 20px !important;
+}
+
+
+.cl-internal-phfxlr {
+  color: #f4f4f4 !important;
+}
+
+/* Force Input Styling */
+.cl-formFieldInput {
+  border: 1px solid #d4af37 !important;
+  background-color: #2a2a2a !important;
+  color: #ffffff !important;
+}
+
+/* Force Button Styling */
+.cl-formButtonPrimary {
+  background: linear-gradient(135deg, #d4af37, #f0c455) !important;
+  color: #1a1a1a !important;
+  border: none !important;
 }

@@ -122,7 +122,7 @@ async def safe_ai_generate(prompt, temperature, model, client):
             print(f"[Gemini Retry] Attempt {attempt} failed: {err_msg}")
 
             # Only retry for transient service errors
-            if "503" not in err_msg and "UNAVAILABLE" not in err_msg:
+            if "503" not in err_msg and "UNAVAILABLE" not in err_msg and "429" not in err_msg and "RESOURCE_EXHAUSTED" not in err_msg:
                 raise
 
             if attempt == max_attempts:
@@ -130,14 +130,14 @@ async def safe_ai_generate(prompt, temperature, model, client):
                 # keep same schema shape but minimal
                 fallback = {
                     "intent": "smalltalk",
-                    "message": "FlossyAI is experiencing high load. Please try again shortly.",
+                    "message": "FlossyAI is currently overloaded with requests. Please try again in a few moments.",
                     "ready_for_booking": False,
                     "ready_for_cancellation": False,
                     "slot_confirmed": None
                 }
                 return json.dumps(fallback)
 
-            await asyncio.sleep(1.2)
+            await asyncio.sleep(2.0)
 
 def aggressive_autocorrect(text: str) -> str:
     if not text:
@@ -618,8 +618,29 @@ async def handle_user_utterance_text(query: str, user: str = "default",
     # Build strict JSON prompt (TEXT MODE)
     current_time_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
+    # Knowledge Base (injected)
+    knowledge_base = """
+    [PRICING]
+    - Routine Check-up: ₹500
+    - Scaling & Cleaning: starts at ₹1,500
+    - Dental Implants: starts at ₹25,000
+    - Root Canal: ₹4,000 - ₹8,000
+    - Braces/Invisalign: Starts at ₹35,000
+
+    [POST-OP CARE]
+    - General: Do not rinse vigorously for 24 hours. No straws (leads to dry socket).
+    - Swelling: Aply ice pack (10 mins on, 10 mins off).
+    - Pain: Take prescribed analgesics. If pain persists >2 days, contact us.
+    - Diet: Soft cold diet for 24 hours (ice cream, yogurt). Avoid spicy/hot food.
+
+    [SYMPTOMS]
+    - Toothache: Rinse with warm salt water. Floss gently. Avoid extreme heat/cold. Book ASAP.
+    - Bleeding Gums: Indicates gingivitis. Resume gentle brushing/flossing. Book cleaning.
+    - Knocked-out Tooth: Keep tooth in milk or saliva. Come directly to clinic within 1 hour.
+    """
+
     prompt = f"""
-You are FlossyAI, a strict JSON-only dental appointment assistant.
+You are FlossyAI, a warm, helpful, and professional Patient Dental Concierge.
 
 You MUST respond ONLY in valid JSON.
 NO markdown.
@@ -629,18 +650,40 @@ NO conversational text outside JSON.
 Your response MUST follow this schema exactly:
 {FlossyAIResponse.model_json_schema()}
 
-Rules:
-- Detect user intent (book_appointment, cancel_appointment, symptom, smalltalk, confirm_slot).
-- Extract date/time from natural text (e.g., "tomorrow morning" → tomorrow, 09:00 AM IST).
-- Use STATE to fill missing fields.
-- If phone/date/time is missing → ask for it in `message`.
-- Before ready_for_booking=true, ALWAYS require phone number.
-- Do NOT assume existing appointments.
-- Respond ONLY in JSON.
+OBJECTIVE:
+- Act as a smart front-desk assistant.
+- Answer questions using the [KNOWLEDGE BASE] below.
+- If the user asks for booking, guide them.
+
+[KNOWLEDGE BASE]
+{knowledge_base}
+
+RULES:
+1. **Intent Detection**:
+   - `book_appointment`: User wants to book.
+   - `cancel_appointment`: User wants to cancel.
+   - `symptom`: User mentions pain/issue.
+   - `smalltalk`: Greetings, pricing questions, general help.
+   - `confirm_slot`: User agreed to a time.
+
+2. **Answering Questions**:
+   - If user asks about Pricing/Post-op/Symptoms, USE THE KNOWLEDGE BASE.
+   - Put your helpful answer in the `message` field.
+   - Be concise but warm.
+   - Example Pricing: "Our implants start at ₹25,000. It depends on the case. Would you like a consultation?"
+
+3. **Booking Flow**:
+   - If user says "Book cleaning", intent=`book_appointment`.
+   - Before `ready_for_booking=true`, YOU MUST HAVE:
+     - `date`: Explicit or relative (tomorrow).
+     - `time`: Explicit or vague (morning).
+     - `phone`: User's contact number.
+   - If missing, ask for it in `message`.
+
+4. **Response Format**:
+   - Respond ONLY in JSON.
 
 ----
-
-{chosen_prompt}
 
 MODE: TEXT
 PATIENT_NAME: "{st.get('name', 'Patient')}"

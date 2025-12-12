@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import TourismHeader from "../components/TourismHeader";
+import Header from "../components/Header";
 import TourismHero from "../components/TourismHero";
 import TourismContent from "../components/TourismContent";
 import TourismGallery from "../components/TourismGallery";
@@ -12,8 +12,9 @@ export default function DentalTourism() {
   }, []);
 
   return (
-    <div className="tourism-page">
-      <TourismHeader />
+
+    <div className="tourism-page" style={{ background: "var(--bg-dark)", minHeight: "100vh" }}>
+      <Header />
       <TourismHero />
       <TourismContent />
       <TourismGallery />

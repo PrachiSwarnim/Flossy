@@ -5,36 +5,36 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(160deg, #fffaf3 0%, #fff4d2 100%);
+  background: transparent;
+  /* Let parent background show */
   padding: 30px;
 }
 
 /* CARD */
+/* CARD */
 .signup-card {
   width: 100%;
   max-width: 430px;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(20px);
-  padding: 2.7rem 2.4rem;
-  border-radius: 22px;
-  box-shadow: 0 10px 40px rgba(252, 163, 17, 0.25);
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
   text-align: center;
 }
 
 /* TITLE */
+/* TITLE */
 .signup-card h1 {
   font-size: 2rem;
   font-weight: 700;
-  background: linear-gradient(90deg, #ffb703, #fca311);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--primary-gold);
   margin-bottom: 8px;
   font-family: "Playfair Display", serif;
 }
 
 /* SUBTEXT */
 .signup-card p {
-  color: #444;
+  color: #a0a0a0;
   font-size: 0.95rem;
   margin-bottom: 1.4rem;
   font-family: "Playfair Display", serif;
@@ -77,8 +77,28 @@
 }
 
 /* CLERK CONTAINER FIX */
+/* CLERK CONTAINER FIX */
 .cl-card {
-  background: rgba(255, 255, 255, 0.92) !important;
+  background: #1f1f1f !important;
+  border: 1px solid #333 !important;
   border-radius: 18px !important;
   padding: 20px !important;
+}
+
+.cl-internal-phfxlr {
+  color: #f4f4f4 !important;
+}
+
+/* Force Input Styling */
+.cl-formFieldInput {
+  border: 1px solid #d4af37 !important;
+  background-color: #2a2a2a !important;
+  color: #ffffff !important;
+}
+
+/* Force Button Styling */
+.cl-formButtonPrimary {
+  background: linear-gradient(135deg, #d4af37, #f0c455) !important;
+  color: #1a1a1a !important;
+  border: none !important;
 }

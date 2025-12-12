@@ -3,12 +3,15 @@
 .services-hero {
   padding: 6rem 8% 3rem;
   text-align: center;
-  background: #fff8e6;
+  background: var(--bg-dark);
+  /* Dark BG */
 }
 
 .services-hero h2 {
   font-family: "Playfair Display", serif;
   font-size: 3.5rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
   color: #fca311;
 }
 

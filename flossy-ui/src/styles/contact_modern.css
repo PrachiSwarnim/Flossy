@@ -2,17 +2,17 @@
 .contact-modern {
   width: 100%;
   padding: 3rem 5% 4rem;
-  /* Reduced padding */
-  background: linear-gradient(180deg, #fef9f2 0%, #fff8ec 100%);
+  background: var(--bg-dark);
+  /* Dark BG */
   text-align: center;
 }
 
 /* TITLE */
 .contact-title {
   font-size: 3rem;
-  font-family: "Playfair Display", serif;
+  font-family: var(--font-heading);
   font-weight: 700;
-  color: #f2a000;
+  color: var(--primary-gold);
   margin-bottom: 4rem;
   letter-spacing: 0.5px;
 }
@@ -22,16 +22,16 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 2rem 3rem;
-  /* Compact vertical padding */
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+  background: var(--bg-card);
+  /* Dark Card Strip */
+  border-radius: 4px;
+  /* Boxy */
+  padding: 3rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
   max-width: 1200px;
   margin: 0 auto;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   flex-wrap: wrap;
-  /* responsive */
   gap: 2rem;
 }
 
@@ -40,23 +40,19 @@
   flex: 1;
   min-width: 250px;
   background: transparent;
-  /* No individual card bg */
   border: none;
-  border-radius: 0;
   padding: 0;
   box-shadow: none;
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
-  border-left: none;
-  /* Remove previous border */
+  gap: 1.2rem;
   transition: none;
 }
 
 /* Vertical Divider Logic */
 .contact-card-modern:not(:last-child) {
-  border-right: 1px solid #eee;
-  /* Divider between columns */
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  /* Subtle divider */
   padding-right: 2rem;
 }
 
@@ -67,43 +63,42 @@
 
 /* ICON BOX */
 .icon-box {
-  color: #fca311;
+  color: var(--primary-gold);
   font-size: 1.5rem;
-  /* Larger icon, no background circle */
   background: transparent;
-  width: auto;
-  height: auto;
-  border-radius: 0;
   margin-top: -2px;
-  /* Align with title */
 }
 
 .card-content {
   flex: 1;
+  text-align: left;
 }
 
 /* CARD HEADING */
 .contact-card-modern h2 {
-  font-family: "Playfair Display", serif;
+  font-family: var(--font-heading);
   font-size: 1.1rem;
-  color: #000;
+  color: var(--text-light);
+  /* White Headers */
   font-weight: 700;
-  margin: 0 0 0.3rem 0;
+  margin: 0 0 0.5rem 0;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 /* CARD TEXT */
 .contact-card-modern p {
   font-family: "Inter", sans-serif;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: #555;
-  margin-bottom: 0.1rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  /* Grey text */
+  margin-bottom: 0.2rem;
+  font-weight: 300;
 }
 
 .contact-card-modern p.time {
-  margin-top: 0.3rem;
+  margin-top: 0.5rem;
   font-size: 0.85rem;
   color: #888;
 }
@@ -111,29 +106,48 @@
 /* MAP LINK */
 .map-link {
   display: block;
-  /* New line */
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
+  margin-top: 0.8rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  color: #fca311;
+  color: var(--primary-gold);
   text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .map-link:hover {
   text-decoration: underline;
+  color: var(--gold-hover);
 }
 
 @media (max-width: 900px) {
   .contact-cards {
     flex-direction: column;
-    padding: 1.5rem;
+    padding: 2rem;
   }
 
   .contact-card-modern:not(:last-child) {
     border-right: none;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     padding-right: 0;
-    padding-bottom: 1.5rem;
+    padding-bottom: 2rem;
     margin-bottom: 1rem;
   }
+}
+
+/* MAP CONTAINER */
+.map-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 3rem auto 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.map-container iframe {
+  display: block;
+  /* Natural Dark Mode: Invert luminance but rotate hue back to normal colors (blue water, green parks) */
+  filter: invert(90%) hue-rotate(180deg) brightness(95%) contrast(90%);
 }

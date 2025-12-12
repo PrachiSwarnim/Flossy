@@ -1,7 +1,7 @@
 .services-page {
-    background: #fff8e6 !important;
-    width: 100%;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-  
+  background: var(--bg-dark) !important;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  color: var(--text-light);
+}

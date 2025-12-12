@@ -1,0 +1,38 @@
+/* AI WELCOME & CHIPS */
+.ai-welcome {
+    text-align: center;
+    margin-top: 1rem;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.ai-welcome b {
+    color: #fca311;
+}
+
+.ai-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+
+.ai-chips button {
+    background: var(--bg-card);
+    border: 1px solid #ffeeba;
+    color: #d98600;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.ai-chips button:hover {
+    background: #fca311;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}

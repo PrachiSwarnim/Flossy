@@ -1,95 +1,108 @@
+/* Beehive Dental Inspired Header */
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 5%;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
+  height: 90px;
+  padding: 0 4%;
+  /* More spacious padding */
+  background: #151515;
+  /* Dark Premium BG */
   position: sticky;
   top: 0;
   z-index: 1000;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  box-sizing: border-box;
 }
 
 .logo {
   display: flex;
   align-items: center;
   gap: 1rem;
-  /* Slightly more gap */
   font-family: "Playfair Display", serif;
   font-weight: 700;
-  font-size: 2.5rem;
-  /* Increased from 1.5rem to 2.5rem (User tried 4rem) */
-  color: #1a1a1a;
+  font-size: 1.8rem;
+  /* Refined size */
+  color: #fff;
+  /* White base text */
+  text-transform: uppercase;
+  letter-spacing: 2px;
 }
 
 .logo span {
-  background: linear-gradient(135deg, #fca311, #ffc857);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  /* Gold/Bronze accent */
+  color: #d4af37;
+  background: none;
+  -webkit-text-fill-color: #d4af37;
 }
 
 .logo img {
-  width: 60px;
-  /* Increased from 45px to 60px */
-  height: 60px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
+  border: 2px solid #d4af37;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 2rem;
+  /* Clean spacing */
 }
 
-/* Simple Text Link */
+/* Navigation Links (Desktop) */
 .header-simple-link {
   text-decoration: none;
   font-family: "Inter", sans-serif;
-  color: #fca311;
-  font-weight: 600;
-  font-size: 1rem;
-  margin-right: 0.5rem;
+  color: #e0e0e0;
+  font-weight: 500;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  /* Uppercase like Beehive */
+  letter-spacing: 1px;
   transition: color 0.3s ease;
 }
 
 .header-simple-link:hover {
-  text-decoration: underline;
-  color: #e0920f;
+  color: #d4af37;
 }
 
-/* Outlined Button (Restored "Earlier" Style) */
+/* Boxy Gold Button (Beehive Style) */
 .header-outline-btn {
   text-decoration: none;
-  font-family: "Playfair Display", serif;
-  color: #fca311;
-  font-weight: 600;
-  font-size: 1.1rem;
-  border: 1px solid #fca311;
-  padding: 0.5rem 1.2rem;
-  border-radius: 50px;
+  font-family: "Inter", sans-serif;
+  background: #e6be8a;
+  /* Nude/Gold color */
+  color: #1a1a1a;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border: none;
+  padding: 14px 24px;
+  /* Boxy padding */
+  border-radius: 2px;
+  /* Slight geometric radius, almost square */
   transition: all 0.3s ease;
 }
 
 .header-outline-btn:hover {
-  background: #fca311;
-  color: #fff;
+  background: #fff;
+  color: #1a1a1a;
 }
 
 /* HAMBURGER */
 .hamburger {
-  font-size: 1.8rem;
-  color: #fca311;
-  /* Updated to match new theme */
+  font-size: 1.5rem;
+  color: #d4af37;
   cursor: pointer;
   transition: transform 0.3s ease;
+  margin-left: 1rem;
 }
 
 .hamburger:hover {
   transform: scale(1.1);
-  color: #e0920f;
-  /* Slightly darker shade for hover */
+  color: #fff;
 }
 
 /* SIDEBAR OVERLAY */
@@ -99,8 +112,8 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(3px);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(5px);
   opacity: 0;
   visibility: hidden;
   transition: 0.3s ease;
@@ -112,51 +125,85 @@
   visibility: visible;
 }
 
-/* SIDEBAR DRAWER */
+/* SIDEBAR DRAWER - Clean & Dark to match */
 .sidebar {
   position: fixed;
   top: 0;
+  /* Wider for better text fit */
   right: -300px;
+  /* Adjusted hidden position */
+  /* Hidden state */
   width: 280px;
+  /* Reduced width */
   height: 100vh;
-  background: #fff;
-  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+  background: #1a1a1a;
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.5);
   z-index: 1002;
   transition: right 0.4s cubic-bezier(0.25, 1, 0.5, 1);
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
-  /* Reduced from 2rem */
+  padding: 1.5rem 1rem 8rem 1rem;
+  /* Tighter padding */
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-/* Hide scrollbar for Chrome, Safari and Opera */
-.sidebar::-webkit-scrollbar {
-  display: none;
+  text-align: center;
+  /* Center align everything */
+  align-items: center;
 }
 
 .sidebar.open {
   right: 0;
 }
 
+/* ... existing styles ... */
+
+.services-dropdown:hover .services-list-container {
+  max-height: 200vh;
+  padding-bottom: 2rem;
+}
+
+.dropdown-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  width: 100%;
+  align-items: center;
+}
+
+.dropdown-menu li a {
+  font-size: 0.95rem;
+  /* Slightly smaller */
+  color: #bbb;
+  font-family: "Inter", sans-serif;
+  line-height: 1.4;
+}
+
+.dropdown-menu li a:hover {
+  color: #fff;
+  padding-left: 5px;
+  /* Hover effect */
+  transition: 0.3s;
+}
+
 .sidebar-header {
   display: flex;
   justify-content: center;
+  /* Center the title */
   align-items: center;
   margin-bottom: 1rem;
-  /* Reduced from 2rem */
+  /* Reduced header spacing */
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #333;
+  width: 100%;
   position: relative;
-  padding-bottom: 0.8rem;
-  /* Reduced */
-  border-bottom: 1px solid rgba(252, 163, 17, 0.2);
 }
 
 .sidebar-header h3 {
   font-family: "Playfair Display", serif;
-  font-size: 2rem;
-  color: #fca311;
+  font-size: 1.5rem;
+  color: #e6be8a;
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -166,216 +213,191 @@
   background: none;
   border: none;
   font-size: 1.5rem;
-  color: #666;
+  color: #888;
   cursor: pointer;
-  transition: color 0.3s;
-
+  transition: 0.3s;
   position: absolute;
   right: 0;
-  top: 40%;
-  transform: translateY(-50%);
 }
 
 .close-btn:hover {
-  color: #fca311;
-  transform: translateY(-50%) rotate(90deg);
+  color: #fff;
 }
 
 /* NAV LINKS */
 /* NAV LINKS */
+/* NAV LINKS */
+/* NAV LINKS */
+.sidebar-nav {
+  width: 100%;
+}
+
 .sidebar-nav>ul {
   list-style: none;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
-  /* Reduced from 1rem */
-  /* Reduced from 1.5rem */
-  text-align: center;
-  /* Centered */
+  /* Tighter list gap */
+  width: 100%;
   align-items: center;
-  /* Centered */
+  /* Center Align */
+  padding-left: 0;
+  /* No left bias */
 }
 
-.sidebar-nav a,
-.services-dropdown>a {
+.sidebar-nav li {
+  width: 100%;
+  text-align: center;
+}
+
+.sidebar-nav a {
   text-decoration: none;
-  font-size: 1.2rem;
-  /* Slightly larger for main links */
-  color: #333;
-  font-weight: 600;
+  font-size: 1.15rem;
+  color: #e0e0e0;
+  font-family: "Playfair Display", serif;
   transition: all 0.3s ease;
-  display: inline-block;
-  /* For transform */
-  position: relative;
-  padding: 0.3rem 0.8rem;
-  /* Reduced from 0.5rem 1rem */
-  border-radius: 8px;
+  white-space: nowrap;
+  display: block;
+  /* Full width block */
+  width: 100%;
+  text-align: center;
+  /* Ensure text is centered in block */
 }
 
-.sidebar-nav a:hover,
-.services-dropdown>a:hover {
-  color: #fca311;
+.sidebar-nav a:hover {
+  color: #d4af37;
   transform: scale(1.05);
-  background: rgba(252, 163, 17, 0.08);
-  /* Light gold bg */
+  /* Zoom instead of shift */
+  padding-left: 0;
+  /* No shift */
 }
 
-/* Remove the specific padding-left hover since we are centered */
-/* ACTIONS */
+/* ACTIONS IN SIDEBAR */
 .sidebar-actions {
   margin-top: auto;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  /* Reduced from 1.5rem */
+  gap: 0.8rem;
   padding-top: 1rem;
-  /* Reduced from 2rem */
-  border-top: 1px solid #ccc;
-  /* Darker border for better visibility */
-  align-items: center;
-  /* Center buttons */
+  /* Reduced action padding */
+  border-top: 1px solid #333;
 }
 
 .auth-item {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
+  gap: 0.3rem;
   width: 100%;
 }
 
 .auth-text {
-  font-size: 0.9rem;
-  color: #666;
-  font-weight: 500;
+  font-size: 0.8rem;
+  color: #888;
 }
 
-/* SERVICES DROPDOWN */
-/* SERVICES DROPDOWN */
-/* SERVICES DROPDOWN */
-.services-dropdown {
+/* Shared Auth Button Style */
+.sidebar-actions button {
   width: 100%;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  /* Center the container */
+  padding: 10px;
+  /* Reduced padding */
+  border-radius: 4px;
+  /* Slightly softer */
+  font-size: 0.85rem;
+  /* Slightly smaller text */
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: none;
+  background: linear-gradient(135deg, #d4af37, #f0c455);
+  color: #1a1a1a;
+  box-shadow: 0 4px 10px rgba(212, 175, 55, 0.3);
 }
 
-/* SERVICES LIST CONTAINER */
+.sidebar-actions button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(212, 175, 55, 0.4);
+  background: linear-gradient(135deg, #fff, #f0f0f0);
+}
+
+.login-btn,
+.signup-btn {
+  /* Inherit from above, or ensure specific overrides are gone */
+  background: linear-gradient(135deg, #d4af37, #f0c455);
+  color: #1a1a1a;
+  border: none;
+}
+
+.login-btn:hover,
+.signup-btn:hover {
+  background: #fff;
+  color: #1a1a1a;
+}
+
+/* DROPDOWN & ARROWS */
+.services-dropdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
 .services-list-container {
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.5s ease-in-out;
-  display: flex;
-  flex-direction: column;
+  transition: max-height 0.4s ease;
   border-left: none;
-  /* Removed for centered look */
   margin-left: 0;
-  /* Centered */
+  padding-left: 0;
+  padding-top: 0.5rem;
+  /* Reduced padding */
+  width: 100%;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center;
 }
 
 .services-dropdown:hover .services-list-container {
-  max-height: 60vh;
-  margin-top: 0.2rem;
-  /* Thin padding */
+  max-height: 350px;
+  /* Increased to fit */
+  padding-bottom: 1rem;
 }
 
 .dropdown-menu {
   list-style: none;
-  padding-left: 0;
-  margin-top: 0;
-  overflow-y: auto;
-  max-height: 50vh;
-  scrollbar-width: none;
-  /* Firefox */
-  -ms-overflow-style: none;
-  /* IE/Edge */
-
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 0.4rem;
+  /* Tighter gap */
+  width: 100%;
   align-items: center;
-  /* Center items */
-  text-align: center;
-  /* Center text */
-}
-
-/* Hide scrollbar for Chrome, Safari and Opera */
-.dropdown-menu::-webkit-scrollbar {
-  display: none;
-}
-
-/* Hide scrollbar for Chrome, Safari and Opera */
-.dropdown-menu::-webkit-scrollbar {
-  display: none;
-}
-
-/* SCROLL ARROW */
-.scroll-arrow {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 5px;
-  cursor: pointer;
-  color: #fca311;
-  /* Updated */
-  font-size: 0.9rem;
-  transition: opacity 0.3s;
-}
-
-.scroll-arrow.down {
-  margin-top: 0;
-}
-
-.scroll-arrow.up {
-  margin-bottom: 0;
-  margin-top: 0;
-}
-
-.scroll-arrow:hover {
-  transform: translateY(2px);
+  max-height: 250px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  position: relative;
 }
 
 .dropdown-menu li a {
-  font-size: 0.95rem;
-  color: #555;
-  padding: 0.5rem 0.8rem;
-  line-height: 1.4;
-  transition: all 0.3s ease;
-  border-radius: 4px;
-  position: relative;
-  display: inline-block;
+  font-size: 0.85rem;
+  /* Smaller refined font */
+  color: #999;
+  /* Softer gray */
+  font-family: "Inter", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  line-height: 1.3;
+  transition: color 0.3s ease;
 }
 
 .dropdown-menu li a:hover {
-  color: #fca311;
-  /* Updated */
-  transform: scale(1.05);
-  background: rgba(252, 163, 17, 0.05);
-  /* Updated tint */
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  font-weight: 500;
-}
-
-.sidebar-actions .login-btn,
-.sidebar-actions .signup-btn {
-  width: 100%;
-  padding: 0.8rem;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: 0.3s;
-  background: transparent;
-  border: 2px solid #fca311;
-  color: #fca311;
-  box-shadow: none;
-}
-
-.sidebar-actions .login-btn:hover,
-.sidebar-actions .signup-btn:hover {
-  background: #fff8e1;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(252, 163, 17, 0.2);
+  color: #fff;
+  /* White on hover */
+  transform: none;
+  /* No zoom for sub-items */
+  padding-left: 0;
 }

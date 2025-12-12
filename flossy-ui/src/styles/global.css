@@ -1,18 +1,29 @@
-/* GLOBAL RESET */
 :root {
-  --primary-gold: #fca311;
-  /* Updated to match Our Services title */
-  --primary-gold-gradient: linear-gradient(135deg, #fca311 0%, #ffc857 100%);
-  /* Updated gradient */
+  /* BEEHIVE DENTAL THEME PALETTE */
+  --bg-dark: #151515;
+  /* Deep Charcoal/Black */
+  --bg-darker: #111111;
+  /* Slightly darker for footers/bars */
+  --bg-card: #1f1f1f;
+  /* Sidebar/Card BG */
+
+  --primary-gold: #d4af37;
+  /* Metallic Gold */
+  --gold-accent: #e6be8a;
+  /* Nude/Beige Gold (Buttons) */
+  --gold-hover: #f3d4a0;
+
+  --text-light: #f4f4f4;
+  /* Off-white text */
+  --text-muted: #a0a0a0;
+  /* Grey text */
   --text-dark: #1a1a1a;
-  --text-grey: #4a4a4a;
-  --bg-cream: #fffaf3;
-  --bg-gradient: linear-gradient(180deg, #fffaf3 0%, #ffffff 100%);
+  /* Text on gold backgrounds */
+
   --font-heading: "Playfair Display", serif;
   --font-body: "Inter", sans-serif;
-  /* Switched to Inter for cleaner look */
-  --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.05);
-  --shadow-hover: 0 20px 60px rgba(212, 175, 55, 0.15);
+
+  --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -25,21 +36,15 @@
 html,
 body {
   font-family: var(--font-body);
-  background: var(--bg-gradient);
-  color: var(--text-dark);
-  color: var(--text-dark);
+  background: var(--bg-dark);
+  color: var(--text-light);
   overflow-x: hidden;
   line-height: 1.6;
-  padding-bottom: 80px;
-  height: 100%;
   margin: 0;
   scrollbar-width: none;
-  /* Firefox */
-  -ms-overflow-style: none;
-  /* IE/Edge */
 }
 
-/* Hide Scrollbar Global */
+/* Hide Scrollbar */
 ::-webkit-scrollbar {
   display: none;
 }
@@ -47,8 +52,10 @@ body {
 /* DEFAULT TEXT BEHAVIOR */
 p {
   font-size: 1.05rem;
-  color: var(--text-grey);
+  color: var(--text-muted);
   line-height: 1.7;
+  font-weight: 300;
+  /* Lighter weight for elegance */
 }
 
 /* HEADINGS */
@@ -117,7 +124,8 @@ footer.footer {
   align-items: center;
   flex-direction: column;
 
-  background: rgba(255, 250, 230, 0.85);
+  background: rgba(21, 21, 21, 0.95);
+  /* Dark background */
   backdrop-filter: blur(8px);
 
   z-index: 5000;
@@ -180,21 +188,17 @@ footer.footer {
 .homepage-section {
   position: relative;
   width: 100%;
-  margin-bottom: 2rem !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 1rem !important;
+  /* Tighten up */
+  background-color: var(--bg-dark);
 }
 
 /* WIDE CENTERED SEPARATOR */
+/* WIDE CENTERED SEPARATOR - DISABLED (Using golden-divider instead) */
 .homepage-section::after {
-  content: "";
-  display: block;
-  width: 85%;
-  /* Wide but not full edge-to-edge */
-  max-width: 1200px;
-  height: 1px;
-  background: rgba(252, 163, 17, 0.3);
-  /* Subtle gold line */
-  margin: 2rem auto 0 auto;
-  /* Centered with spacing */
+  content: none;
+  display: none;
 }
 
 /* Hide separators for last element */
@@ -203,13 +207,15 @@ footer.footer {
   margin-bottom: 0 !important;
   display: block;
   /* Ensure section is displayed */
-  background: transparent;
+  background: var(--bg-dark);
   /* Hide line */
+  background-color: var(--bg-dark);
 }
 
 /* Target the ::after specifically to hide it on the last one */
 .homepage-section:last-of-type::after {
   display: none;
+  background-color: var(--bg-dark);
 }
 
 /* COMPACT SECTION OVERRIDES - Force tight layout */
@@ -217,9 +223,46 @@ footer.footer {
 .homepage-section>div {
   padding-top: 1rem !important;
   padding-bottom: 1rem !important;
+  background: var(--bg-dark);
+}
+
+/* Fix Hero Gap: Remove padding for carousel */
+.homepage-section>.carousel {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 /* Remove default margins causing gaps */
+/* Remove default margins causing gaps */
 .homepage-section p:last-child {
   margin-bottom: 0 !important;
+}
+
+/* NUCLEAR OPTION FOR DARK MODE */
+.force-dark-bg {
+  background-color: var(--bg-dark) !important;
+  background: var(--bg-dark) !important;
+}
+
+/* FIX FOR SECTION DIVIDER - Ensure it's not cream */
+
+/* FIX FOR SECTION DIVIDER - Elegant Golden Line */
+.section-divider {
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--primary-gold), transparent);
+  margin: 0.5rem auto;
+  /* Minimizing vertical gap */
+  border: none;
+  opacity: 0.6;
+}
+
+/* Also ensure golden-divider matches just in case */
+.golden-divider {
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--primary-gold), transparent);
+  margin: 0.5rem auto;
+  border: none;
+  opacity: 0.6;
 }

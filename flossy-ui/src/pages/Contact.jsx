@@ -8,6 +8,7 @@ export default function Contact() {
   const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
+    document.title = "Contact Us | Smile Artists Dental Studio";
     // Artificial delay to show loader smoothly
     const timer = setTimeout(() => setPageLoading(false), 900);
     return () => clearTimeout(timer);
@@ -24,9 +25,12 @@ export default function Contact() {
       )}
 
       {/* Page Content */}
-      <ContactHeader />
-      <ContactSection />
-      <Footer />
+      {/* Page Content */}
+      <div style={{ background: "var(--bg-dark)", minHeight: "100vh" }}>
+        <ContactHeader />
+        <ContactSection />
+        <Footer />
+      </div>
     </>
   );
 }

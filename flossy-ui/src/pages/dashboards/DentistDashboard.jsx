@@ -6,6 +6,7 @@ import { useVoiceAgent } from "../../hooks/useVoiceAgent";
 import Header from "./DashboardHeader";
 import Footer from "../../components/Footer";
 import "../../styles/dentist_dashboard.css";
+import "../../styles/dashboard_extras.css";
 
 export default function DentistDashboard() {
   const { user, isLoaded } = useUser();
@@ -30,6 +31,7 @@ export default function DentistDashboard() {
   const [aiOpen, setAiOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
 
   // VOICE AGENT
   const { isListening, start, stop, messages: agentMessages } = useVoiceAgent();
@@ -111,6 +113,68 @@ export default function DentistDashboard() {
   }
 
 
+  // === Prescription State ===
+  const [prescPatient, setPrescPatient] = useState("");
+  const [prescDetails, setPrescDetails] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [patientsList, setPatientsList] = useState([]);
+
+  // Load Real Patients from DB
+  useEffect(() => {
+    if (!isLoaded || !session) return;
+
+    async function fetchPatients() {
+      try {
+        const token = await session.getToken({ template: "default" });
+        const res = await fetch(`${API}/api/patients`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setPatientsList(data);
+        }
+      } catch (err) {
+        console.error("Failed to load patients", err);
+      }
+    }
+
+    fetchPatients();
+  }, [isLoaded, session]);
+
+  // === Handle Prescription Upload ===
+  function handlePrescriptionUpload() {
+    if (!prescPatient || !prescDetails) {
+      alert("Please select a patient and enter prescription details.");
+      return;
+    }
+
+    setIsUploading(true);
+
+    // Simulate network delay
+    setTimeout(() => {
+      const newPrescription = {
+        id: Date.now(),
+        patient: prescPatient, // This is the name string
+        doctor: fullName,
+        date: new Date().toISOString(),
+        details: prescDetails,
+        fileName: "prescription_" + Date.now() + ".pdf" // Mock file
+      };
+
+      // Save to Simulated DB (LocalStorage)
+      const existing = JSON.parse(localStorage.getItem("flossy_prescriptions") || "[]");
+      const updated = [newPrescription, ...existing];
+      localStorage.setItem("flossy_prescriptions", JSON.stringify(updated));
+
+      // Reset Form
+      setPrescPatient("");
+      setPrescDetails("");
+      setIsUploading(false);
+      alert(`Prescription uploaded successfully for ${prescPatient}!`);
+    }, 1500);
+  }
+
   // === AI Chat ===
   async function sendMessage() {
     if (!input.trim()) return;
@@ -118,6 +182,7 @@ export default function DentistDashboard() {
     const text = input;
     setInput("");
     setMessages((prev) => [...prev, { from: "user", text }]);
+    setTyping(true);
 
     const token = await session.getToken();
     const res = await fetch(`${API}/api/doctor_ai/query`, {
@@ -131,6 +196,7 @@ export default function DentistDashboard() {
 
     const data = await res.json();
     setMessages((prev) => [...prev, { from: "ai", text: data.answer }]);
+    setTyping(false);
   }
 
   // 🔄 STILL LOADING → show loader only
@@ -219,6 +285,53 @@ export default function DentistDashboard() {
               <span>2 new appointment requests pending approval.</span>
             </div>
           </div>
+
+          {/* PRESCRIPTION CARD */}
+          <div className="card animate-fade-up" style={{ animationDelay: "0.5s", gridColumn: "span 2" }}>
+            <div className="card-header">
+              <h3>Prescribe Medicine</h3>
+              <i className="fas fa-file-prescription card-icon"></i>
+            </div>
+            <div className="prescription-form">
+              <div className="form-group">
+                <label>Select Patient</label>
+                <select
+                  value={prescPatient}
+                  onChange={(e) => setPrescPatient(e.target.value)}
+                  className="dashboard-select"
+                >
+                  <option value="">-- Choose Patient --</option>
+                  {patientsList.length > 0 ? (
+                    patientsList.map(p => (
+                      <option key={p.id} value={p.name}>{capitalizeFullName(p.name)}</option>
+                    ))
+                  ) : (
+                    <option disabled>Loading patients...</option>
+                  )}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Prescription Details / Notes</label>
+                <textarea
+                  placeholder="e.g. Amoxicillin 500mg, twice daily..."
+                  value={prescDetails}
+                  onChange={(e) => setPrescDetails(e.target.value)}
+                  className="dashboard-textarea"
+                  rows="3"
+                ></textarea>
+              </div>
+
+              <button
+                className="upload-btn"
+                onClick={handlePrescriptionUpload}
+                disabled={isUploading}
+              >
+                {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-upload"></i>}
+                {isUploading ? " Uploading..." : " Upload Prescription"}
+              </button>
+            </div>
+          </div>
         </div>
       </main>
 
@@ -238,12 +351,14 @@ export default function DentistDashboard() {
               <b>{m.from === "user" ? "You" : "FlossyAI"}:</b> {m.text}
             </div>
           ))}
+          {typing && <div className="typing">FlossyAI is typing<span className="dot-one">.</span><span className="dot-two">.</span><span className="dot-three">.</span></div>}
         </div>
 
         <div className="ai-input-area">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
             placeholder="Ask FlossyAI..."
           />
           <button

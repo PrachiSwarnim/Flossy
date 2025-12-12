@@ -96,21 +96,17 @@ export default function Carousel() {
         >
           {slides.map((src, i) => (
             <div className="slide" key={i}>
+              <div
+                className="slide-backdrop"
+                style={{ backgroundImage: `url("${src}")` }}
+              ></div>
               <img src={src} alt={`slide-${i}`} />
             </div>
           ))}
         </div>
       </div>
 
-      <div className="carousel-buttons">
-        {images.map((_, i) => (
-          <div
-            key={i}
-            className={`dot ${index % images.length === i ? "active" : ""}`}
-            onClick={() => setIndex(i)}
-          />
-        ))}
-      </div>
+
     </div>
   );
 }

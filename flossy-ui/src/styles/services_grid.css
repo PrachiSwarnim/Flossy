@@ -1,7 +1,8 @@
 .services-carousel-container {
   position: relative;
   padding: 2rem 5%;
-  background: #fff8e6;
+  background: var(--bg-dark);
+  /* Dark BG */
   display: flex;
   align-items: center;
 }
@@ -10,15 +11,12 @@
   display: flex;
   gap: 2rem;
   overflow-x: auto;
-  scroll-behavior: smooth;
   padding: 1rem 0;
-  /* Space for shadow */
   scrollbar-width: none;
-  /* Firefox */
   -ms-overflow-style: none;
-  /* IE/Edge */
   scroll-snap-type: x mandatory;
-  /* Enable snapping */
+  background: transparent !important;
+  /* Prevent leaks from services.css */
 }
 
 /* Hide scrollbar for Chrome/Safari */
@@ -28,24 +26,22 @@
 
 .service-card {
   min-width: 300px;
-  /* Fixed width for carousel items */
   max-width: 320px;
   flex-shrink: 0;
   scroll-snap-align: center;
-  /* Snap cards to center */
 }
 
 .carousel-btn {
-  background: rgba(252, 163, 17, 0.8);
-  color: white;
-  border: none;
+  background: rgba(212, 175, 55, 0.2);
+  color: var(--primary-gold);
+  border: 1px solid var(--primary-gold);
   width: 40px;
   height: 40px;
   border-radius: 50%;
   font-size: 1.2rem;
   cursor: pointer;
   z-index: 10;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -53,9 +49,10 @@
 }
 
 .carousel-btn:hover {
-  background: #fca311;
+  background: var(--primary-gold);
+  color: #1a1a1a;
   transform: scale(1.1);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
 }
 
 .carousel-btn.left {
