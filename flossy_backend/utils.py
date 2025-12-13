@@ -11,21 +11,39 @@ import os
 client = Client()  # local client for short helper calls if you want; prefer llm_client in server
 
 from google.genai import Client
+from llm_client import groq_client
 
-def ai_generate(prompt, temperature=0.0, model="gemini-2.5-flash", client_override=None):
+# Models mapping
+GROQ_MODEL = "llama-3.3-70b-versatile" # Current supported model
+
+
+def ai_generate(prompt, temperature=0.7, model="gemini-2.5-flash", client_override=None):
+    # 1. Try Groq First (if available)
+    if groq_client:
+        try:
+            chat_completion = groq_client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": "You are a helpful dental assistant named Flossy."},
+                    {"role": "user", "content": prompt}
+                ],
+                model=GROQ_MODEL,
+                temperature=temperature,
+            )
+            return chat_completion.choices[0].message.content.strip()
+        except Exception as e:
+             print(f"⚠️ Groq Error: {e}. Falling back to Gemini...")
+
+    # 2. Fallback to Gemini
     c = client_override or client
-
-    # Older Gemini SDKs accept only this minimal signature
-    res = c.models.generate_content(
-        model=model,
-        contents=prompt
-    )
-
-    # return text safely
     try:
+        res = c.models.generate_content(
+            model=model,
+            contents=prompt
+        )
         return res.text.strip()
-    except:
-        return str(res)
+    except Exception as e:
+        print(f"❌ Both AI Providers Failed: {e}")
+        return "I apologize, but I am currently having trouble connecting to my brain. Please try again later."
     
 def cos_sim(a, b):
     a = np.array(a, dtype=float)

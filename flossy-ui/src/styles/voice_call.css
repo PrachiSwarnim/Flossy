@@ -1,0 +1,247 @@
+/* VOICE CALL OVERLAY */
+.voice-call-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(20px);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.4s ease;
+}
+
+.voice-call-container {
+    width: 100%;
+    max-width: 400px;
+    height: 100%;
+    max-height: 800px;
+    background: linear-gradient(180deg, #1a1a1a 0%, #000 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3rem 2rem;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+    position: relative;
+    overflow: hidden;
+}
+
+/* HEADER */
+.call-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 2;
+}
+
+.secure-badge {
+    color: #4caf50;
+    font-size: 0.8rem;
+    background: rgba(76, 175, 80, 0.1);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.call-timer {
+    color: #fff;
+    font-family: monospace;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+}
+
+/* ORB VISUALIZER */
+.orb-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+}
+
+.orb {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.orb-core {
+    width: 80px;
+    height: 80px;
+    background: radial-gradient(circle, #f0b800 0%, #d4af37 100%);
+    border-radius: 50%;
+    box-shadow: 0 0 30px #f0b800;
+    z-index: 10;
+    transition: transform 0.3s ease;
+}
+
+/* Speaking State (Pulsing) */
+.orb.speaking .orb-core {
+    animation: corePulse 1.5s infinite ease-in-out;
+}
+
+.orb.speaking .orb-ring {
+    border: 1px solid rgba(240, 184, 0, 0.5);
+    animation: ringPulse 2s infinite ease-out;
+}
+
+.orb-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 100%;
+    height: 100%;
+}
+
+.orb.speaking .r1 {
+    animation-delay: 0s;
+}
+
+.orb.speaking .r2 {
+    animation-delay: 0.5s;
+}
+
+.orb.speaking .r3 {
+    animation-delay: 1s;
+}
+
+/* Listening State (Breathing) */
+.orb.listening .orb-core {
+    transform: scale(0.9);
+    background: radial-gradient(circle, #00d2ff 0%, #007aff 100%);
+    box-shadow: 0 0 30px #007aff;
+    animation: breathing 3s infinite ease-in-out;
+}
+
+/* STATUS */
+.call-status {
+    text-align: center;
+    color: #fff;
+    z-index: 2;
+}
+
+.call-status h3 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 300;
+}
+
+.call-status p {
+    color: #888;
+    margin-top: 0.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* CONTROLS */
+.call-controls {
+    display: flex;
+    gap: 2rem;
+    z-index: 2;
+}
+
+.control-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    font-size: 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.control-btn:active {
+    transform: scale(0.95);
+}
+
+.mute-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.hangup-btn {
+    background: #ff4d4d;
+    color: #fff;
+    box-shadow: 0 5px 20px rgba(255, 77, 77, 0.4);
+}
+
+/* Keyframes */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes corePulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 30px #f0b800;
+    }
+
+    50% {
+        transform: scale(1.15);
+        box-shadow: 0 0 50px #f0b800;
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 30px #f0b800;
+    }
+}
+
+@keyframes ringPulse {
+    0% {
+        width: 80px;
+        height: 80px;
+        opacity: 1;
+        border-color: rgba(240, 184, 0, 0.8);
+    }
+
+    100% {
+        width: 300px;
+        height: 300px;
+        opacity: 0;
+        border-color: rgba(240, 184, 0, 0);
+    }
+}
+
+@keyframes breathing {
+    0% {
+        transform: scale(0.9);
+        box-shadow: 0 0 20px #007aff;
+    }
+
+    50% {
+        transform: scale(1);
+        box-shadow: 0 0 40px #007aff;
+    }
+
+    100% {
+        transform: scale(0.9);
+        box-shadow: 0 0 20px #007aff;
+    }
+}

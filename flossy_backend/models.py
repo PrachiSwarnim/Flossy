@@ -22,9 +22,10 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     role = Column(String(50), nullable=True) # "dentist" or "patient"
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-
+    
     # Relationships
     patients = relationship("Patient", back_populates="user", cascade="all, delete-orphan")
+    appointments = relationship("Appointment", back_populates="doctor")
 
     def __repr__(self):
         return f"<User(email={self.email}, role={self.role})>"
@@ -54,16 +55,24 @@ class Appointment(Base):
     __tablename__ = "appointments"
 
     id = Column(Integer, primary_key=True, index=True)
+
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
     datetime = Column(DateTime(timezone=True), nullable=False)
     status = Column(String(50), default="scheduled")
-    doctor_name = Column(String(120), nullable=False, default="Dr. Ava Sharma") # NEW COLUMN
-    reason = Column(String(255), nullable=True)
-    patient = relationship("Patient", back_populates="appointments")
 
+    doctor_name = Column(String(120), nullable=True)  # UI only
+    reason = Column(String(255), nullable=True)
+
+    reminder_level = Column(Integer, default=0)
+    follow_up_reason = Column(Text, nullable=True)
+
+    patient = relationship("Patient", back_populates="appointments")
+    doctor = relationship("User", back_populates="appointments")
 
     def __repr__(self):
-        return f"<Appointment(patient_id={self.patient_id}, status={self.status}, datetime={self.datetime}, reason={self.reason})>"
+        return f"<Appointment(id={self.id}, patient_id={self.patient_id}, doctor_id={self.doctor_id}, status={self.status})>"
 
 
 # 💬 Interaction logs (e.g., SMS, chatbot, or call logs)
@@ -80,16 +89,6 @@ class Interaction(Base):
 
     def __repr__(self):
         return f"<Interaction(channel={self.channel}, message_length={len(self.message)})>"
-
-class Doctor(Base):
-    __tablename__ = "doctors"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(120), nullable=False)
-    specialization = Column(String(120), nullable=True, default="General Dentistry")
-
-    def __repr__(self):
-        return f"<Doctor(name={self.name})>"
 
 class SymptomCluster(Base):
     __tablename__ = "symptom_clusters"

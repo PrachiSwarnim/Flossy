@@ -32,7 +32,7 @@ from models import Patient, Appointment, Interaction, User, LLMInteraction
 # RL + LLM helpers
 from rl_core import bandit, ACTIONS, PROMPT_VARIANTS, MODELS
 from utils import ai_generate, embed_with_client, cos_sim
-from llm_client import genai_client
+from llm_client import genai_client, groq_client
 
 # symptom KB
 from symptom_kb import get_symptom_kb
@@ -102,6 +102,29 @@ NUMBER_WORDS = {
     "one":"1","two":"2","three":"3","four":"4","five":"5","six":"6","seven":"7",
     "eight":"8","nine":"9","ten":"10","eleven":"11","twelve":"12"
 }
+
+# -------------------------
+# KNOWLEDGE BASE
+# -------------------------
+KNOWLEDGE_BASE = """
+    [PRICING]
+    - Routine Check-up: ₹500
+    - Scaling & Cleaning: starts at ₹1,500
+    - Dental Implants: starts at ₹25,000
+    - Root Canal: ₹4,000 - ₹8,000
+    - Braces/Invisalign: Starts at ₹35,000
+
+    [POST-OP CARE]
+    - General: Do not rinse vigorously for 24 hours. No straws (leads to dry socket).
+    - Swelling: Aply ice pack (10 mins on, 10 mins off).
+    - Pain: Take prescribed analgesics. If pain persists >2 days, contact us.
+    - Diet: Soft cold diet for 24 hours (ice cream, yogurt). Avoid spicy/hot food.
+
+    [SYMPTOMS]
+    - Toothache: Rinse with warm salt water. Floss gently. Avoid extreme heat/cold. Book ASAP.
+    - Bleeding Gums: Indicates gingivitis. Resume gentle brushing/flossing. Book cleaning.
+    - Knocked-out Tooth: Keep tooth in milk or saliva. Come directly to clinic within 1 hour.
+"""
 
 # -------------------------
 # RETRY WRAPPER FOR GENAI (Prevents 503 Model Overload Crashes)
@@ -205,27 +228,50 @@ def normalize_vague_time(date_str: str, time_str: str, raw_text: Optional[str] =
     return time_str or ""
 
 # -------------------------
-# STT
+# STT (Groq Whisper)
 # -------------------------
-async def google_stt_stream(chunks: list) -> str:
-    streaming_config = speech.StreamingRecognitionConfig(
-        config=speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-            sample_rate_hertz=SAMPLE_RATE,
-            language_code=LANGUAGE,
-            enable_automatic_punctuation=True
-        ),
-        interim_results=False
-    )
-    def request_gen():
-        for ch in chunks:
-            yield speech.StreamingRecognizeRequest(audio_content=ch)
-    responses = speech_client.streaming_recognize(config=streaming_config, requests=request_gen())
-    for response in responses:
-        for result in response.results:
-            if result.is_final:
-                return result.alternatives[0].transcript
-    return ""
+async def groq_stt(audio_chunks: list) -> str:
+    """Uses Groq Whisper for fast, free speech-to-text."""
+    if not groq_client:
+        print("❌ Groq client is None! Check GROQ_API_KEY in .env")
+        return ""
+    
+    # 1. Combine audio chunks into a single byte stream
+    full_audio = b"".join(audio_chunks)
+    
+    if len(full_audio) < 100:
+        return "" # Too short
+
+    tmp_path = os.path.join(tempfile.gettempdir(), f"voice_{uuid.uuid4()}.webm")
+
+    try:
+        # 2. Write to temp file manually (safer on Windows)
+        with open(tmp_path, "wb") as f:
+            f.write(full_audio)
+        
+        # 3. Call Groq
+        with open(tmp_path, "rb") as audio_file:
+            transcription = groq_client.audio.transcriptions.create(
+                file=(tmp_path, audio_file.read()),
+                model="whisper-large-v3",
+                response_format="text",
+                language="en"
+            )
+        
+        text = str(transcription).strip()
+        print(f"🗣️ STT: {text}")
+        return text
+
+    except Exception as e:
+        print(f"❌ Groq STT Error: {e}")
+        return ""
+    finally:
+        # Cleanup
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except:
+                pass
 
 # -------------------------
 # TTS
@@ -454,8 +500,9 @@ AUTOCORRECTED_MESSAGE: "{corrected_text}"
     prompt = chosen_prompt_template + voice_extension
 
     # ----- STRICT JSON ENFORCED *VOICE* PROMPT -----
+    # ----- RICH VOICE PROMPT (Parity with Text Agent) -----
     prompt = f"""
-You are FlossyAI, a strict JSON-only dental appointment assistant.
+You are FlossyAI, a warm, helpful, and professional Patient Dental Concierge.
 
 You MUST respond ONLY in valid JSON.
 NO markdown.
@@ -465,24 +512,41 @@ NO conversational text outside JSON.
 Your output MUST match this schema exactly:
 {FlossyAIResponse.model_json_schema()}
 
-RULES:
-- Detect the patient’s intent from speech.
-- Allowed intents: book_appointment, cancel_appointment, symptom, smalltalk, confirm_slot
-- Extract entities: name, date, time, phone, symptom_message.
-- Interpret vague phrases:
-      "tomorrow morning" → date = tomorrow (IST)
-                           time = "09:00 AM"
-- Never assume existing appointments.
-- Never confirm bookings unless the user's JSON intent includes ready_for_booking=true.
-- Use STATE to fill missing fields (if user already gave them earlier).
-- If required fields are missing → ask via `message`.
-- Respond ONLY with valid JSON according to the schema above.
-- Before ready_for_booking=true, ALWAYS request the patient's phone number via message.
+OBJECTIVE:
+- Act as a smart front-desk assistant.
+- Answer questions using the [KNOWLEDGE BASE] below.
+- If the user asks for booking, guide them.
 
+[KNOWLEDGE BASE]
+{KNOWLEDGE_BASE}
+
+RULES:
+1. **Intent Detection**:
+   - `book_appointment`: User wants to book.
+   - `cancel_appointment`: User wants to cancel.
+   - `symptom`: User mentions pain/issue.
+   - `smalltalk`: Greetings, pricing questions, general help.
+   - `confirm_slot`: User agreed to a time.
+
+2. **Answering Questions**:
+   - If user asks about Pricing/Post-op/Symptoms, USE THE KNOWLEDGE BASE.
+   - Put your helpful answer in the `message` field.
+   - Be concise but warm.
+   - Example Pricing: "Our implants start at ₹25,000. It depends on the case. Would you like a consultation?"
+
+3. **Booking Flow**:
+   - If user says "Book cleaning", intent=`book_appointment`.
+   - Before `ready_for_booking=true`, YOU MUST HAVE:
+     - `date`: Explicit or relative (tomorrow).
+     - `time`: Explicit or vague (morning).
+     - `phone`: User's contact number.
+   - If missing, ask for it in `message`.
+   - Always clarify AM/PM if vague.
+
+4. **Response Format**:
+   - Respond ONLY in JSON.
 
 ----
-
-{chosen_prompt_template}
 
 MODE: VOICE
 PATIENT_NAME: "{user_name}"
@@ -810,8 +874,14 @@ async def agent_ws_endpoint(ws: WebSocket):
             if data.get("type") == "audio_chunk":
                 buffer.append(base64.b64decode(data["data"]))
             elif data.get("type") == "audio_done":
-                transcript = await google_stt_stream(buffer)
+                # transcript = await google_stt_stream(buffer) # Billing Error
+                transcript = await groq_stt(buffer)
                 buffer = []
+                
+                if not transcript or not transcript.strip():
+                     await send_bot(ws, "I didn't catch that. Could you please say it again?")
+                     continue
+
                 await ws.send_text(json.dumps({"type":"transcript","final":True,"text":transcript}))
                 # create task so websocket loop isn't blocked by long processing
                 asyncio.create_task(handle_user_utterance(ws, transcript))

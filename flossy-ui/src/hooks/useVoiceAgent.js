@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 
-export function useVoiceAgent(url = "ws://localhost:8000/ws/agent") {
+export function useVoiceAgent(url = "ws://localhost:8000/agent/ws/agent") {
     const [isListening, setIsListening] = useState(false);
+    const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
     const [messages, setMessages] = useState([]);
 
     // Refs to keep connection state
@@ -124,10 +125,15 @@ export function useVoiceAgent(url = "ws://localhost:8000/ws/agent") {
         source.connect(audioContext.current.destination);
         source.onended = () => {
             isPlaying.current = false;
+            // logic to check if queue is empty to set state false
+            if (audioQueue.current.length === 0) {
+                setIsAgentSpeaking(false);
+            }
             playNext();
         };
         source.start(0);
+        setIsAgentSpeaking(true);
     }
 
-    return { isListening, start, stop, messages, connect };
+    return { isListening, isAgentSpeaking, start, stop, messages, connect };
 }

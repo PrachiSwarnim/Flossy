@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useUser, useSession } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { PropagateLoader } from "react-spinners";
-import { useVoiceAgent } from "../../hooks/useVoiceAgent";
+// import { useVoiceAgent } from "../../hooks/useVoiceAgent"; // Legacy voice agent removed
 import Header from "./DashboardHeader";
 import Footer from "../../components/Footer";
 import AppointmentRequestForm from "../../components/AppointmentRequestForm";
@@ -10,6 +10,8 @@ import "../../styles/patient_dashboard.css";
 import "../../styles/dashboard_extras_patient.css";
 import "../../styles/dashboard_modal.css";
 import "../../styles/ai_features.css";
+import AppointmentCard from "../../components/AppointmentCard";
+import LiveKitVoiceModal from "../../components/LiveKitVoiceModal"; // Use new LiveKit modal
 
 export default function PatientDashboard() {
   const { user, isLoaded } = useUser();
@@ -19,12 +21,17 @@ export default function PatientDashboard() {
   const [pageLoading, setPageLoading] = useState(true);
   const [today, setToday] = useState([]);
   const [upcoming, setUpcoming] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [followUps, setFollowUps] = useState([]);
+
 
   const [messages, setMessages] = useState([]);
   const [aiOpen, setAiOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [isCallOpen, setIsCallOpen] = useState(false);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  const [isVoiceActive, setIsVoiceActive] = useState(false); // LiveKit Modal State
   const [myPrescriptions, setMyPrescriptions] = useState([]);
 
   // LOAD PRESCRIPTIONS (Simulated Backend)
@@ -56,28 +63,12 @@ export default function PatientDashboard() {
   }, [user]);
 
   // VOICE AGENT
-  const { isListening, start, stop, messages: agentMessages } = useVoiceAgent();
+  // Legacy Hook Removed
+  // const { isListening, start, stop, messages: agentMessages } = useVoiceAgent();
 
   // Sync voice messages to main chat
-  useEffect(() => {
-    // This is a simple merge strategy. In a real app, we might want to unify the source of truth.
-    // For now, we just ensure that if the agent sends a message, it appears.
-    // We only take the *latest* if it's new. 
-    // Actually, let's just combine them in the render or simpler: 
-    // We'll rely on the user to use one mode or the other mostly, but...
-    // Let's just append new agent messages to the local state (deduplication might be needed).
-
-    // BETTER STRATEGY: 
-    // If agentMessages changes, we look at the last one.
-    const lastMsg = agentMessages[agentMessages.length - 1];
-    if (lastMsg) {
-      setMessages(prev => {
-        // avoid duplicates if possible (simple check)
-        if (prev.length > 0 && prev[prev.length - 1].text === lastMsg.text) return prev;
-        return [...prev, lastMsg];
-      });
-    }
-  }, [agentMessages]);
+  // Sync voice messages logic removed (LiveKit handles its own state)
+  // We can add a listener for LiveKit events later if needed to sync text log.
 
   const fullName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "";
 
@@ -141,6 +132,8 @@ export default function PatientDashboard() {
 
     setToday(purgePastAppointments(data.today || []));
     setUpcoming(purgePastAppointments(data.upcoming || []));
+    setHistory(data.history || []);
+    setFollowUps(data.follow_ups || []);
   }
 
   // AI CHAT HANDLER
@@ -218,7 +211,7 @@ export default function PatientDashboard() {
               upcoming.map((a) => (
                 <div key={a.id} className="appt-item">
                   <b>{formatApptTime(a.time)}</b>
-                  <div className="appt-doctor">Dr. {a.doctor_name}</div>
+                  <div className="appt-doctor">{a.doctor_name}</div>
                   <div className="appt-reason">{a.reason}</div>
                   <div className="appt-status status-upcoming">Confirmed</div>
                 </div>
@@ -226,12 +219,44 @@ export default function PatientDashboard() {
             ) : (
               <div className="empty-state">
                 <p>No upcoming appointments.</p>
-                <button className="p-btn" onClick={() => setIsBookingOpen(true)}>
+                {/* Voice Assistant Modal */}
+                <LiveKitVoiceModal
+                  isOpen={isVoiceActive}
+                  onClose={() => setIsVoiceActive(false)}
+                  userName={user?.firstName || "Patient"}
+                />    <button className="p-btn" onClick={() => setIsBookingOpen(true)}>
                   Book Now <i className="fas fa-arrow-right"></i>
                 </button>
               </div>
             )}
           </div>
+
+          {/* FOLLOW UP REQUIRED CARD */}
+          {followUps.length > 0 && (
+            <div className="patient-card animate-fade-up" style={{ animationDelay: "0.15s", border: "1px solid #f0b800" }}>
+              <div className="card-header">
+                <h3 style={{ color: "#f0b800" }}>Follow Up Required</h3>
+                <i className="fas fa-exclamation-circle card-icon" style={{ color: "#f0b800" }}></i>
+              </div>
+              {followUps.map(a => (
+                <div key={a.id} className="appt-item" style={{ borderLeft: "3px solid #f0b800", background: "rgba(240, 184, 0, 0.05)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <b>{new Date(a.time).toLocaleDateString()}</b>
+                    <span style={{ fontSize: "0.8rem", color: "#f0b800", fontWeight: "bold" }}>ACTION NEEDED</span>
+                  </div>
+                  <div className="appt-doctor">{a.doctor_name}</div>
+                  <div className="appt-reason" style={{ marginTop: "5px" }}>
+                    <i className="fas fa-info-circle"></i> Reason: <span style={{ color: "#fff" }}>{a.follow_up_reason}</span>
+                  </div>
+                  <div style={{ marginTop: "10px" }}>
+                    <button className="p-btn small" onClick={() => setIsBookingOpen(true)} style={{ width: "100%" }}>
+                      Book Follow Up
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* MEDICAL HISTORY CARD */}
           <div className="patient-card animate-fade-up" style={{ animationDelay: "0.2s" }}>
@@ -239,8 +264,20 @@ export default function PatientDashboard() {
               <h3>Health History</h3>
               <i className="fas fa-file-medical-alt card-icon"></i>
             </div>
-            <p className="placeholder-text">View your past treatments and records.</p>
-            <button className="p-btn secondary">View History</button>
+            {history.length > 0 ? (
+              <div className="history-list" style={{ maxHeight: "250px", overflowY: "auto", paddingRight: "5px" }}>
+                {history.map((a) => (
+                  <div key={a.id} className="appt-item history-item" style={{ opacity: 0.7, borderLeft: "3px solid #666" }}>
+                    <b>{new Date(a.time).toLocaleDateString()}</b>
+                    <div className="appt-doctor" style={{ fontSize: "0.9rem" }}>{a.doctor_name}</div>
+                    <div className="appt-reason" style={{ fontSize: "0.85rem" }}>{a.reason}</div>
+                    <span className="history-status" style={{ fontSize: "0.75rem", color: "#aaa", textTransform: "uppercase" }}>{a.status}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="placeholder-text">No past medical history found.</p>
+            )}
           </div>
 
           {/* AI INSIGHTS CARD */}
@@ -363,11 +400,11 @@ export default function PatientDashboard() {
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           />
           <button
-            onClick={isListening ? stop : start}
-            title={isListening ? "Stop Speaking" : "Start Voice Agent"}
-            style={{ background: isListening ? "#ff4d4d" : "#ffcb05" }}
+            onClick={() => setIsVoiceActive(true)}
+            title="Start Voice Agent"
+            style={{ background: "#ffcb05" }}
           >
-            {isListening ? "🛑" : "🎤"}
+            🎤
           </button>
           <button onClick={sendMessage}>Send</button>
         </div>

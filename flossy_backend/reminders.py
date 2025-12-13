@@ -1,111 +1,111 @@
-from fastapi import FastAPI, WebSocket, Request, HTTPException, Depends
-from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
-from routers.sms import send_notification  # your Firebase or SMS sender
-from agent_server import handle_user_utterance_text, handle_user_utterance_voice
-from utils.auth import verify_token  # Clerk JWT verifier
-import json
+import asyncio
+from datetime import datetime, timedelta, timezone
+from sqlalchemy.orm import Session
+from models import Appointment, Interaction, Patient
+from database import SessionLocal
 
-app = FastAPI(title="FlossyAI – Smart Dental Assistant")
+# THRESHOLDS (Hours before appointment)
+# We map levels to hours remaining
+# Level 1: < 24 hours
+# Level 2: < 12 hours
+# Level 3: < 6 hours
+# Level 4: < 1 hour
+# Level 5: < 30 mins (0.5 hours)
 
-# CORS setup
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # change to specific domain in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+THRESHOLDS = [
+    (1, 24.0),
+    (2, 12.0),
+    (3, 6.0),
+    (4, 1.0),
+    (5, 0.5)
+]
 
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    with open("templates/index.html", "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+def send_simulated_notification(db: Session, appt: Appointment, level: int):
+    """
+    Simulates sending an SMS/Email.
+    In real life, this would use Twilio/SendGrid.
+    Here, we log to 'Interaction' table so it appears in history.
+    """
+    patient = appt.patient
+    if not patient:
+        return
 
-# ------------------------- CHAT ROUTE -------------------------
-@app.post("/chat")
-async def chat_route(payload: dict):
-    """Handles text-based AI chat requests"""
-    user_msg = payload.get("message", "")
-    if not user_msg:
-        raise HTTPException(status_code=400, detail="Message is empty")
+    time_str = appt.datetime.strftime("%I:%M %p")
+    msg = ""
+    
+    if level == 1:
+        msg = f"Reminder: You have an appointment tomorrow at {time_str} with {appt.doctor_name}."
+    elif level == 2:
+        msg = f"Reminder: Your appointment is in about 12 hours ({time_str})."
+    elif level == 3:
+        msg = f"Reminder: See you in 6 hours for your dental checkup!"
+    elif level == 4:
+        msg = f"Urgent: Your appointment is in 1 hour ({time_str}). Please leave soon."
+    elif level == 5:
+        msg = f"Hurry! Your appointment starts in 30 minutes."
 
-    response_text = await handle_user_utterance_text(user_msg)
-    return {"reply": response_text}
+    print(f"📢 [NOTIFICATION] To: {patient.name} ({patient.phone}) | Msg: {msg}")
 
-# ---------------------- WEBSOCKET VOICE ROUTE ----------------------
-@app.websocket("/ws/agent")
-async def agent_websocket(ws: WebSocket):
-    """Handles live audio + text streaming with the voice agent"""
-    await ws.accept()
+    # Log to DB
+    log = Interaction(
+        patient_id=patient.id,
+        channel="sms_reminder",
+        message=msg,
+        created_at=datetime.now(timezone.utc)
+    )
+    db.add(log)
+    db.commit()
+
+def check_reminders_sync():
+    """
+    Synchronous worker to check all appointments.
+    """
+    db = SessionLocal()
     try:
-        while True:
-            data = await ws.receive_text()
-            message = json.loads(data)
+        now = datetime.now(timezone.utc)
+        
+        # Get all future scheduled appointments
+        appts = db.query(Appointment).filter(
+            Appointment.status == "scheduled",
+            Appointment.datetime > now
+        ).all()
 
-            if message["type"] == "audio":
-                await handle_user_utterance_voice(ws, message["content"])
-            elif message["type"] == "text":
-                reply = await handle_user_utterance_text(message["content"])
-                await ws.send_json({"type": "bot_text", "text": reply})
+        for appt in appts:
+            # Calculate time remaining in hours
+            diff = appt.datetime - now
+            hours_remaining = diff.total_seconds() / 3600.0
+            
+            # Determine highest eligible level
+            eligible_level = 0
+            for lvl, threshold in THRESHOLDS:
+                # If we are within the threshold (e.g. 23 hours < 24 hours)
+                if hours_remaining <= threshold:
+                    eligible_level = lvl
+            
+            # If we reached a new level that hasn't been sent yet
+            # e.g. current level 0, eligible 1 -> Send 1
+            # e.g. current level 1, eligible 2 -> Send 2
+            # We strictly move up one by one or jump if missed (but usually sequential)
+            if eligible_level > appt.reminder_level:
+                # Send the notification for the *specific* level we just crossed
+                # or strictly the highest one? 
+                # Let's just update to the eligible level and send that specific message.
+                
+                send_simulated_notification(db, appt, eligible_level)
+                
+                appt.reminder_level = eligible_level
+                db.commit()
 
     except Exception as e:
-        print("WebSocket error:", e)
-        await ws.close()
+        print(f"Error in check_reminders: {e}")
+    finally:
+        db.close()
 
-# ---------------------- NOTIFICATION ROUTE ----------------------
-@app.post("/send")
-async def send_notification_route(payload: dict):
-    """Send Firebase notification to device"""
-    try:
-        token = payload["token"]
-        title = payload["title"]
-        text = payload["text"]
-        result = send_notification({"token": token, "title": title, "text": text})
-        return {"status": "success", "result": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to send notification: {e}")
-
-# ---------------------- DENTIST DASHBOARD ----------------------
-@app.get("/dentist", response_class=HTMLResponse)
-async def dentist_dashboard(request: Request):
-    token = request.query_params.get("token")
-    if not token:
-        raise HTTPException(status_code=401, detail="Missing token")
-    try:
-        session_info = verify_token(token)
-        user_id = session_info.get("sub", "Unknown")
-        email = session_info.get("email", "Not available")
-
-        html = f"""
-        <html><body style='font-family:Poppins;text-align:center;'>
-        <h1>Welcome, Dentist!</h1>
-        <p>Authenticated User ID: {user_id}</p>
-        <p>Email: {email}</p>
-        </body></html>
-        """
-        return HTMLResponse(content=html)
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
-
-# ---------------------- PATIENT DASHBOARD ----------------------
-@app.get("/patient", response_class=HTMLResponse)
-async def patient_dashboard(request: Request):
-    token = request.query_params.get("token")
-    if not token:
-        raise HTTPException(status_code=401, detail="Missing token")
-    try:
-        session_info = verify_token(token)
-        user_id = session_info.get("sub", "Unknown")
-        email = session_info.get("email", "Not available")
-
-        html = f"""
-        <html><body style='font-family:Poppins;text-align:center;'>
-        <h1>Welcome, Patient!</h1>
-        <p>Authenticated User ID: {user_id}</p>
-        <p>Email: {email}</p>
-        </body></html>
-        """
-        return HTMLResponse(content=html)
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+async def reminder_daemon():
+    """
+    Background task to run every minute.
+    """
+    print("⏰ Reminder Daemon Started")
+    while True:
+        await asyncio.to_thread(check_reminders_sync)
+        await asyncio.sleep(60) # Run every 60 seconds

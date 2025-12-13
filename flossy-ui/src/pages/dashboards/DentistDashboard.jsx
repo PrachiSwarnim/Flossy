@@ -33,8 +33,16 @@ export default function DentistDashboard() {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
 
-  // VOICE AGENT
-  const { isListening, start, stop, messages: agentMessages } = useVoiceAgent();
+  // Follow Up State
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [selectedApptId, setSelectedApptId] = useState(null);
+  const [followUpReason, setFollowUpReason] = useState("");
+
+  // VOICE AGENT (Legacy Disabled)
+  const isListening = false;
+  const start = () => alert("Voice Agent migrated to Patient Dashboard.");
+  const stop = () => { };
+  const agentMessages = [];
 
   // Sync voice messages to main chat
   useEffect(() => {
@@ -100,6 +108,30 @@ export default function DentistDashboard() {
 
     // Refresh appointment list
     loadAppointments();
+  }
+
+  async function markFollowUp() {
+    if (!followUpReason) return alert("Please enter a reason for follow-up.");
+
+    const token = await session.getToken({ template: "default" });
+    await fetch(`${API}/api/appointments/mark_completed/${selectedApptId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ follow_up_reason: followUpReason })
+    });
+
+    setFollowUpOpen(false);
+    setFollowUpReason("");
+    setSelectedApptId(null);
+    loadAppointments();
+  }
+
+  function openFollowUpModal(id) {
+    setSelectedApptId(id);
+    setFollowUpOpen(true);
   }
 
 
@@ -239,15 +271,29 @@ export default function DentistDashboard() {
                   <div className="appt-patient">{capitalizeFullName(a.patient_name)}</div>
                   <div className="appt-reason">{a.reason}</div>
 
-                  {/* 🔥 Mark Completed button */}
-                  {a.status !== "completed" && (
-                    <button className="done-btn" onClick={() => markCompleted(a.id)}>
-                      Mark Completed
-                    </button>
+                  {/* 🔥 Buttons */}
+                  {a.status !== "completed" && a.status !== "follow_up" && (
+                    <div className="action-buttons" style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                      <button className="done-btn" onClick={() => markCompleted(a.id)}>
+                        Mark Completed
+                      </button>
+                      <button className="follow-up-btn"
+                        style={{ background: "#f0b800", color: "#000", border: "none", padding: "5px 10px", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}
+                        onClick={() => openFollowUpModal(a.id)}>
+                        Follow Up
+                      </button>
+                    </div>
                   )}
 
                   {a.status === "completed" && (
                     <span className="completed-tag">Completed <i className="fas fa-check-circle"></i></span>
+                  )}
+
+                  {a.status === "follow_up" && (
+                    <div className="follow-up-tag" style={{ color: "#f0b800", marginTop: "5px" }}>
+                      <i className="fas fa-clock"></i> Follow Up Required
+                      <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>Note: {a.follow_up_reason}</div>
+                    </div>
                   )}
                 </div>
               ))
@@ -255,6 +301,33 @@ export default function DentistDashboard() {
               <p className="empty-state">No appointments remaining today.</p>
             )}
           </div>
+
+          {/* UPCOMING APPOINTMENTS (New Section) */}
+          <div className="card animate-fade-up" style={{ animationDelay: "0.15s" }}>
+            <div className="card-header">
+              <h3>Upcoming Appointments</h3>
+              <i className="fas fa-calendar-alt card-icon"></i>
+            </div>
+            {upcoming.length ? (
+              upcoming.map((a) => (
+                <div className="appt-item" key={a.id} style={{ opacity: 0.8 }}>
+                  <b>
+                    {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true
+                    })}
+                  </b>
+                  <div className="appt-patient">{capitalizeFullName(a.patient_name)}</div>
+                  <div className="appt-reason">{a.reason}</div>
+                  <div className="appt-status status-upcoming">Scheduled</div>
+                </div>
+              ))
+            ) : (
+              <p className="empty-state">No upcoming appointments.</p>
+            )}
+          </div>
+
 
           <div className="card animate-fade-up" style={{ animationDelay: "0.2s" }}>
             <div className="card-header">
@@ -333,7 +406,7 @@ export default function DentistDashboard() {
             </div>
           </div>
         </div>
-      </main>
+      </main >
 
       <div id="open-ai-panel" onClick={() => setAiOpen(true)}>
         FlossyAI
@@ -373,6 +446,33 @@ export default function DentistDashboard() {
       </div>
 
       <Footer />
+
+      {/* FOLLOW UP MODAL */}
+      {
+        followUpOpen && (
+          <div className="modal-overlay" style={{
+            position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+            background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 10000
+          }}>
+            <div className="modal-content" style={{
+              background: "#1a1a1a", padding: "2rem", borderRadius: "15px", width: "90%", maxWidth: "500px", border: "1px solid #333"
+            }}>
+              <h3 style={{ color: "#fff", marginBottom: "1rem" }}>Mark for Follow Up</h3>
+              <p style={{ color: "#888", marginBottom: "1rem" }}>Why does this patient need to return?</p>
+              <textarea
+                value={followUpReason}
+                onChange={e => setFollowUpReason(e.target.value)}
+                placeholder="e.g. Needs gum checking in 2 weeks..."
+                style={{ width: "100%", height: "100px", background: "#333", border: "none", color: "#fff", padding: "10px", borderRadius: "5px", marginBottom: "1rem" }}
+              ></textarea>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button onClick={() => setFollowUpOpen(false)} style={{ padding: "10px 20px", background: "transparent", border: "1px solid #555", color: "#fff", borderRadius: "5px", cursor: "pointer" }}>Cancel</button>
+                <button onClick={markFollowUp} style={{ padding: "10px 20px", background: "#f0b800", border: "none", color: "#000", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}>Confirm Follow Up</button>
+              </div>
+            </div>
+          </div>
+        )
+      }
     </>
   );
 }

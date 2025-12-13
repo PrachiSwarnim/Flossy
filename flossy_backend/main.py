@@ -8,7 +8,7 @@ import numpy as np
 from datetime import datetime, timezone, timedelta
 from typing import Callable, Optional, Generator
 
-from fastapi import FastAPI, Request, HTTPException, Depends, status
+from fastapi import FastAPI, Request, HTTPException, Depends, status, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -49,12 +49,15 @@ app = FastAPI(title="FlossyAI API", description="AI Dental Assistant API-only ba
 FRONTEND_ORIGINS = os.getenv("FRONTEND_ORIGINS", "*")
 if FRONTEND_ORIGINS == "*":
     allow_origins = ["*"]
+    # Explicitly add local dev ports to be safe with WebSockets + Auth
+    allow_origins.extend(["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"])
 else:
     allow_origins = [o.strip() for o in FRONTEND_ORIGINS.split(",")]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allow_origins,
+    # allow_origins=allow_origins, 
+    allow_origin_regex=".*", # Regex to allow ANY origin (fixes 403)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -210,15 +213,20 @@ EXEMPT_PATHS = {
     "/api/public",
     "/agent",
     "/static",
+    "/api/token",
 }
 
 class ClerkAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable):
         path = request.url.path
+        print(f"🕵️ DEBUG MIDDLEWARE: Path={path} Method={request.method}")
 
         # Allow exempt paths
         if any(path.startswith(p) for p in EXEMPT_PATHS):
+            print(f"✅ Path {path} is EXEMPT.")
             return await call_next(request)
+        
+        print(f"🔒 Path {path} requires AUTH.")
 
         # Allow OPTIONS preflight
         if request.method == "OPTIONS":
@@ -462,42 +470,71 @@ def dentist_upcoming(request: Request,
     if not user or user.role != "dentist":
         return {"today": [], "upcoming": []}
 
-    # ✅ Clerk uses firstName + lastName (camelCase)
-    doctor_first = user_payload.get("first_name", "")
-    doctor_last = user_payload.get("last_name", "")
-    dentist_name = f"Dr. {doctor_first} {doctor_last}".strip()
+    # ✅ Use normalized name from EMAIL to match stored Appointments
+    email_prefix = email.split("@")[0]
+    clean = email_prefix.replace(".", " ")
+    proper = " ".join([p.capitalize() for p in clean.split()])
+    dentist_name = f"Dr. {proper}"
+
+    # DEBUG LOGGING
+    try:
+        with open("backend_debug.log", "a") as f:
+            f.write(f"--- DENTIST UPCOMING DEBUG ---\n")
+            f.write(f"Email: {email}\n")
+            f.write(f"Generated Name: '{dentist_name}'\n")
+            f.write(f"Today Start (UTC): {today_start}\n")
+            f.write(f"Today End (UTC): {today_end}\n")
+    except Exception as e:
+        print(f"Log error: {e}")
+
+    # SIMPLIFIED LOGIC: Fetch all relevant appointments and filter in Python
+    # This avoids complex SQL date filtering issues.
 
     now = datetime.now(timezone.utc)
     today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
     today_end = today_start + timedelta(days=1)
+    
+    # "Scheduled" lookback window (48h)
+    lookback_cutoff = today_start - timedelta(hours=48)
 
-    today_appts = (
+    # Fetch ALL candidates (anything future OR recent past)
+    all_candidates = (
         db.query(Appointment)
         .options(joinedload(Appointment.patient))
         .filter(
             Appointment.doctor_name.ilike(dentist_name),
-            Appointment.datetime >= today_start,
-            Appointment.datetime < today_end,
+            Appointment.datetime >= lookback_cutoff
         )
         .order_by(Appointment.datetime.asc())
         .all()
     )
 
-    upcoming_appts = (
-        db.query(Appointment)
-        .options(joinedload(Appointment.patient))
-        .filter(
-            Appointment.doctor_name.ilike(dentist_name),
-            Appointment.datetime >= today_end,
-        )
-        .order_by(Appointment.datetime.asc())
-        .all()
-    )
+    today_appts = []
+    upcoming_appts = []
+
+    for a in all_candidates:
+        # TODAY:
+        # 1. Strictly today (Start <= T < End)
+        # 2. OR Past Pending (Lookback <= T < Start) AND status='scheduled'
+        is_today_strict = today_start <= a.datetime < today_end
+        is_past_pending = lookback_cutoff <= a.datetime < today_start and a.status == "scheduled"
+        
+        if is_today_strict or is_past_pending:
+            today_appts.append(a)
+        
+        # UPCOMING:
+        # Strictly future (T >= End)
+        elif a.datetime >= today_end:
+            upcoming_appts.append(a)
 
     def fmt(a):
         return {
             "id": a.id,
+            "time": a.datetime.isoformat(),
+            "patient_name": a.patient.name if a.patient else "Unknown",
             "reason": a.reason,
+            "status": a.status,
+            "follow_up_reason": a.follow_up_reason
         }
 
     return {
@@ -548,6 +585,7 @@ def patient_upcoming(request: Request,
 
     today_appts = (
         db.query(Appointment)
+        .options(joinedload(Appointment.doctor))
         .filter(Appointment.patient_id == patient.id,
                 Appointment.datetime >= today_start,
                 Appointment.datetime < today_end)
@@ -557,24 +595,42 @@ def patient_upcoming(request: Request,
 
     upcoming_appts = (
         db.query(Appointment)
+        .options(joinedload(Appointment.doctor))
         .filter(Appointment.patient_id == patient.id,
                 Appointment.datetime >= today_end)
         .order_by(Appointment.datetime.asc())
         .all()
     )
 
+    history_appts = (
+        db.query(Appointment)
+        .options(joinedload(Appointment.doctor))
+        .filter(Appointment.patient_id == patient.id,
+                Appointment.datetime < today_start)
+        .order_by(Appointment.datetime.desc())
+        .all()
+    )
+
     def fmt(a):
+        # Resolve doctor name: 1. doctor_name str (legacy/UI) 2. a.doctor user (relation) 3. default
+        d_name = a.doctor_name
+        if not d_name and a.doctor:
+             # If linked to a User, try to generate name or use email
+             d_name = "Dr. " + (a.doctor.email.split("@")[0].title() if a.doctor.email else "Dentist")
+        
         return {
             "id": a.id,
             "time": a.datetime.isoformat(),
-            "doctor_name": a.doctor_name,
+            "doctor_name": d_name or "Dr. Available",
             "reason": a.reason,
             "status": a.status,
+            "follow_up_reason": a.follow_up_reason, 
         }
 
     return {
         "today": [fmt(a) for a in today_appts],
         "upcoming": [fmt(a) for a in upcoming_appts],
+        "history": [fmt(a) for a in history_appts]
     }
 
 @app.post("/api/auth/check_email")
@@ -587,11 +643,18 @@ def check_email(payload: dict, db: Session = Depends(get_db)):
     return {"exists": exists}
 
 @app.post("/api/appointments/mark_completed/{appt_id}")
-def mark_completed(appt_id: int, db: Session = Depends(get_db), user = Depends(require_role("dentist"))):
+def mark_completed(appt_id: int, payload: dict = Body(default={}), db: Session = Depends(get_db), user = Depends(require_role("dentist"))):
     appt = db.query(Appointment).filter(Appointment.id == appt_id).first()
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
-    appt.status = "completed"
+    
+    follow_up = payload.get("follow_up_reason")
+    if follow_up:
+        appt.status = "follow_up"
+        appt.follow_up_reason = follow_up
+    else:
+        appt.status = "completed"
+    
     db.commit()
     return {"success": True}
 
@@ -887,6 +950,48 @@ async def ai_response(request: Request, user=Depends(require_role("patient"))):
 
     return {"answer": reply}
 
+# -------------------------
+# LIVEKIT TOKEN ENDPOINT
+# -------------------------
+from livekit import api # ensure livekit-sdk is installed
+
+@app.get("/api/token")
+async def get_livekit_token(request: Request):
+    """
+    Generates a LiveKit access token for the frontend.
+    """
+    # 1. Get User Info (Identity)
+    # Ideally from Clerk auth, but for now we can use a random ID or query param
+    # In production: user = request.state.user
+    identity = request.query_params.get("identity", f"user_{uuid.uuid4().hex[:6]}")
+    name = request.query_params.get("name", "Patient")
+    
+    lk_api_key = os.getenv("LIVEKIT_API_KEY")
+    lk_api_secret = os.getenv("LIVEKIT_API_SECRET")
+
+    if not lk_api_key or not lk_api_secret:
+        raise HTTPException(status_code=500, detail="LiveKit credentials not configured.")
+
+    # 2. Grant Permissions
+    grant = api.VideoGrants(
+        room_join=True,
+        room="flossy-room", # Single room for demo, or dynamic based on user
+        can_publish=True,
+        can_subscribe=True,
+        can_publish_data=True,
+    )
+
+    # Create token instance
+    token = api.AccessToken(lk_api_key, lk_api_secret) \
+        .with_identity(identity) \
+        .with_name(name) \
+        .with_grants(grant)
+
+    # JWT string
+    jwt_token = token.to_jwt()
+    
+    return {"accessToken": jwt_token, "url": os.getenv("LIVEKIT_URL")}
+
 # ------------------------------------------------------------------
 # Monitoring endpoints
 # ------------------------------------------------------------------
@@ -911,12 +1016,36 @@ def email_exists(email: str, db: Session = Depends(get_db)):
     return {"exists": user is not None}
 
 # ------------------------------------------------------------------
+# Voice Agent Mount (Lazy Load)
+# ------------------------------------------------------------------
+try:
+    import agent_server
+    app.add_websocket_route("/ws/agent", agent_server.agent_ws_endpoint)
+    print("✅ Voice Agent mounted at /ws/agent")
+    
+    # Also link the text handler if available
+    if hasattr(agent_server, "handle_user_utterance_text"):
+        _handle_user_utterance_text = agent_server.handle_user_utterance_text
+except Exception as e:
+    print(f"⚠️ Voice Agent NOT mounted: {e}")
+
+# ------------------------------------------------------------------
 # Startup event: lightweight init only
 # ------------------------------------------------------------------
 @app.on_event("startup")
-def on_startup():
+async def on_startup():
     # Only run the lightweight DB init at startup. Heavy imports are lazy.
     init_db()
+    
+    # Start Reminder Daemon
+    try:
+        from reminders import reminder_daemon
+        import asyncio
+        asyncio.create_task(reminder_daemon())
+        print("✅ Reminder Daemon scheduled.")
+    except Exception as e:
+        print(f"⚠️ Could not start Reminder Daemon: {e}")
+
     print("✅ FlossyAI API server started | Clerk JWT ready (lazy heavy loads).")
 
 # ------------------------------------------------------------------
@@ -927,3 +1056,42 @@ def root():
     return {"service": "FlossyAI API", "status": "running"}
 
 # End of file
+
+# ------------------------------------------------------------------
+# Auto-Cleanup: Mark missed appointments
+# ------------------------------------------------------------------
+def mark_missed_appointments():
+    """
+    Checks for appointments that are still 'scheduled' but are older than 48 hours.
+    Marks them as 'not attended'.
+    """
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(hours=48)
+        
+        # Find candidates
+        missed = db.query(Appointment).filter(
+            Appointment.status == "scheduled",
+            Appointment.datetime < cutoff
+        ).all()
+        
+        if missed:
+            print(f"🧹 Auto-Cleanup: Found {len(missed)} missed appointments. Marking as 'not attended'.")
+            for appt in missed:
+                appt.status = "not attended"
+            db.commit()
+        else:
+            print("✅ Auto-Cleanup: No missed appointments found.")
+            
+    except Exception as e:
+        print(f"❌ Auto-Cleanup Error: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 FlossyAI Backend Starting...")
+    mark_missed_appointments()
+
