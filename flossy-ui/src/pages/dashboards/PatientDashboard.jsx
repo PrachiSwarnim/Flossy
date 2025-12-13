@@ -11,7 +11,9 @@ import "../../styles/dashboard_extras_patient.css";
 import "../../styles/dashboard_modal.css";
 import "../../styles/ai_features.css";
 import AppointmentCard from "../../components/AppointmentCard";
-import LiveKitVoiceModal from "../../components/LiveKitVoiceModal"; // Use new LiveKit modal
+
+import LiveKitVoiceInline from "../../components/LiveKitVoiceInline";
+
 
 export default function PatientDashboard() {
   const { user, isLoaded } = useUser();
@@ -40,10 +42,11 @@ export default function PatientDashboard() {
     const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
 
     // Poll for new prescriptions (Simulating real-time)
+    // Poll for new prescriptions (Simulating real-time)
     const interval = setInterval(() => {
       try {
         const allPresc = JSON.parse(localStorage.getItem("flossy_prescriptions") || "[]");
-        console.log("Checking prescriptions:", allPresc.length, "for user:", fullName);
+        // console.log("Checking prescriptions:", allPresc.length, "for user:", fullName);
 
         const mine = allPresc.filter(p => {
           if (!p.patient) return false; // Skip invalid entries
@@ -52,12 +55,12 @@ export default function PatientDashboard() {
           return pName.includes(fName) || fName.includes(pName);
         });
 
-        console.log("Found matches:", mine.length);
+        // console.log("Found matches:", mine.length);
         setMyPrescriptions(mine);
       } catch (err) {
         console.error("Error loading prescriptions:", err);
       }
-    }, 2000); // Check every 2s
+    }, 10000); // Check every 10s
 
     return () => clearInterval(interval);
   }, [user]);
@@ -106,15 +109,17 @@ export default function PatientDashboard() {
     return list.filter((appt) => new Date(appt.time) > now);
   }
 
-  // Auto-purge past appointments every 30 seconds
+  // 3️⃣ AUTO-POLL APPOINTMENTS (Real-time updates for Voice Agent)
   useEffect(() => {
+    if (!isLoaded || !session || user?.publicMetadata?.role !== "patient") return;
+
     const interval = setInterval(() => {
-      setToday((prev) => purgePastAppointments(prev));
-      setUpcoming((prev) => purgePastAppointments(prev));
-    }, 30000);
+      // console.log("Polling appointments...");
+      loadAppointments();
+    }, 10000); // Poll every 10 seconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isLoaded, session, user]);
 
   // LOAD APPOINTMENTS
   async function loadAppointments() {
@@ -220,11 +225,7 @@ export default function PatientDashboard() {
               <div className="empty-state">
                 <p>No upcoming appointments.</p>
                 {/* Voice Assistant Modal */}
-                <LiveKitVoiceModal
-                  isOpen={isVoiceActive}
-                  onClose={() => setIsVoiceActive(false)}
-                  userName={user?.firstName || "Patient"}
-                />    <button className="p-btn" onClick={() => setIsBookingOpen(true)}>
+                <button className="p-btn" onClick={() => setIsBookingOpen(true)}>
                   Book Now <i className="fas fa-arrow-right"></i>
                 </button>
               </div>
@@ -322,7 +323,7 @@ export default function PatientDashboard() {
             )}
           </div>
         </div>
-      </main>
+      </main >
 
       {/* BOOKING MODAL */}
       {
@@ -352,9 +353,26 @@ export default function PatientDashboard() {
         )
       }
 
-      {/* FLOATING TRIGGER */}
-      <div id="open-ai-panel" onClick={() => setAiOpen(true)}>
-        FlossyAI
+      {/* FLOATING TRIGGER GROUP */}
+      <div className="floating-group" style={{ position: "fixed", bottom: "30px", right: "30px", display: "flex", flexDirection: "row", gap: "15px", alignItems: "center", zIndex: 1000 }}>
+
+        {/* VOICE CALL BUTTON */}
+        <button
+          onClick={() => setIsVoiceActive(true)}
+          className="floating-action-btn btn-voice"
+          title="Call Flossy"
+        >
+          <span>Call Flossy</span> <span className="mic-icon-anim" style={{ fontSize: "1.4rem" }}>🎤</span>
+        </button>
+
+        {/* CHAT TRIGGER */}
+        <div
+          id="open-ai-panel"
+          onClick={() => setAiOpen(true)}
+          className="floating-action-btn modern-btn"
+        >
+          FlossyAI
+        </div>
       </div>
 
       {/* AI SIDE PANEL */}
@@ -364,6 +382,7 @@ export default function PatientDashboard() {
           <button className="close" onClick={() => setAiOpen(false)}>×</button>
         </div>
 
+        {/* AI CONTENT area - Always visible now */}
         <div className="ai-content">
           {messages.length === 0 && (
             <div className="ai-welcome">
@@ -399,14 +418,26 @@ export default function PatientDashboard() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           />
-          <button
-            onClick={() => setIsVoiceActive(true)}
-            title="Start Voice Agent"
-            style={{ background: "#ffcb05" }}
-          >
-            🎤
-          </button>
+
           <button onClick={sendMessage}>Send</button>
+        </div>
+      </aside>
+
+      {/* VOICE SIDE PANEL */}
+      <aside className={`ai-panel ${isVoiceActive ? "open" : ""}`} style={{ right: isVoiceActive ? "0" : "-450px", zIndex: 5001, borderLeft: "1px solid #f0b800" }}>
+        <div className="ai-header" style={{ borderBottom: "1px solid #333" }}>
+          <span><i className="fas fa-headset" style={{ marginRight: "10px", color: "#f0b800" }}></i> Voice Assistant</span>
+          <button className="close" onClick={() => setIsVoiceActive(false)}>×</button>
+        </div>
+
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#111" }}>
+          <LiveKitVoiceInline
+            isActive={isVoiceActive}
+            onLeave={() => setIsVoiceActive(false)}
+            userName={user.firstName}
+            userEmail={user.primaryEmailAddress?.emailAddress}
+            onAppointmentBooked={loadAppointments}
+          />
         </div>
       </aside>
 
@@ -414,6 +445,8 @@ export default function PatientDashboard() {
     </>
   );
 }
+
+// ... helper ...
 
 // Formatting Helper
 function formatApptTime(t) {

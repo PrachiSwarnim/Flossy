@@ -956,16 +956,40 @@ async def ai_response(request: Request, user=Depends(require_role("patient"))):
 from livekit import api # ensure livekit-sdk is installed
 
 @app.get("/api/token")
-async def get_livekit_token(request: Request):
+async def get_livekit_token(request: Request, db: Session = Depends(get_db)):
     """
     Generates a LiveKit access token for the frontend.
+    Ensures User/Patient record exists for DB booking.
     """
     # 1. Get User Info (Identity)
-    # Ideally from Clerk auth, but for now we can use a random ID or query param
-    # In production: user = request.state.user
+    # Identity is typically random for livekit, but we rely on email in metadata for DB lookup
     identity = request.query_params.get("identity", f"user_{uuid.uuid4().hex[:6]}")
     name = request.query_params.get("name", "Patient")
+    email = request.query_params.get("email", "")
     
+    # Ensure Patient Record Exists
+    if email:
+        try:
+            # Check User
+            user = db.query(User).filter(User.email.ilike(email)).first()
+            if not user:
+                # Create stub user if from clerk but not synced yet
+                user = User(email=email, role="patient")
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+            
+            # Check Patient
+            patient = db.query(Patient).filter(Patient.user_id == user.id).first()
+            if not patient:
+                # Create stub patient
+                # Random phone if missing
+                patient = Patient(name=name, phone=f"555-{uuid.uuid4().hex[:4]}", user_id=user.id)
+                db.add(patient)
+                db.commit()
+        except Exception as e:
+            print(f"Error ensuring patient record: {e}")
+
     lk_api_key = os.getenv("LIVEKIT_API_KEY")
     lk_api_secret = os.getenv("LIVEKIT_API_SECRET")
 
@@ -975,7 +999,7 @@ async def get_livekit_token(request: Request):
     # 2. Grant Permissions
     grant = api.VideoGrants(
         room_join=True,
-        room="flossy-room", # Single room for demo, or dynamic based on user
+        room=f"flossy-room-{uuid.uuid4().hex[:6]}", 
         can_publish=True,
         can_subscribe=True,
         can_publish_data=True,
@@ -985,6 +1009,7 @@ async def get_livekit_token(request: Request):
     token = api.AccessToken(lk_api_key, lk_api_secret) \
         .with_identity(identity) \
         .with_name(name) \
+        .with_metadata(json.dumps({"email": email})) \
         .with_grants(grant)
 
     # JWT string

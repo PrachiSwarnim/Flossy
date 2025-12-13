@@ -1,27 +1,28 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
     LiveKitRoom,
     RoomAudioRenderer,
     BarVisualizer,
     useVoiceAssistant,
+    useConnectionState,
 } from "@livekit/components-react";
+import { ConnectionState } from "livekit-client";
 import "@livekit/components-styles";
-import "../styles/voice_call.css"; // Reuse existing styles or add new ones
+import "../styles/voice_call.css";
 
-const SERVER_URL = "wss://flossy-pmhj3sdw.livekit.cloud"; // From your .env
+const SERVER_URL = "wss://flossy-pmhj3sdw.livekit.cloud";
 
-export default function LiveKitVoiceModal({ isOpen, onClose, userName }) {
+export default function LiveKitVoiceModal({ isOpen, onClose, userName, userEmail }) {
     const [token, setToken] = useState("");
 
     useEffect(() => {
         if (isOpen) {
-            // Fetch Token from Backend
-            fetch(`http://localhost:8000/api/token?name=${encodeURIComponent(userName)}`)
+            fetch(`http://localhost:8000/api/token?name=${encodeURIComponent(userName)}&email=${encodeURIComponent(userEmail)}`)
                 .then((res) => res.json())
                 .then((data) => setToken(data.accessToken))
                 .catch((err) => console.error("Failed to get LiveKit token", err));
         } else {
-            setToken(""); // Disconnect on close
+            setToken("");
         }
     }, [isOpen, userName]);
 
@@ -30,7 +31,6 @@ export default function LiveKitVoiceModal({ isOpen, onClose, userName }) {
     return (
         <div className="voice-call-overlay">
             <div className="voice-call-container" style={{ width: "400px", height: "500px" }}>
-                {/* Header */}
                 <div className="call-header">
                     <span className="secure-badge"><i className="fas fa-shield-alt"></i> Secure AI</span>
                     <button className="close-x-btn" onClick={onClose} style={{ marginLeft: "auto", background: "none", border: "none", color: "white", fontSize: "1.2rem", cursor: "pointer" }}>
@@ -38,7 +38,6 @@ export default function LiveKitVoiceModal({ isOpen, onClose, userName }) {
                     </button>
                 </div>
 
-                {/* LiveKit Room */}
                 {token ? (
                     <LiveKitRoom
                         video={false}
@@ -62,13 +61,20 @@ export default function LiveKitVoiceModal({ isOpen, onClose, userName }) {
 
 function SimpleVoiceInterface() {
     const { state, audioTrack } = useVoiceAssistant();
+    const roomState = useConnectionState();
+    const audioCtxRef = useRef(null);
+    const oscRef = useRef(null);
+
+    // Ringing sound removed for performance stability
+    // The "Calling..." visual status is sufficient and avoids WebAudio conflicts.
+    useEffect(() => {
+        // Optional: We could play a simple HTML5 audio file here if needed in future
+    }, [roomState]);
 
     return (
         <div className="orb-container" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px" }}>
-            {/* Visualizer */}
             <div className="orb" style={{ boxShadow: state === "speaking" ? "0 0 30px #00d2ff" : "none" }}>
                 <div className="orb-core"></div>
-                {/* LiveKit Bar Visualizer can go here if track is available */}
                 {audioTrack && (
                     <div style={{ height: "50px", width: "200px", marginTop: "20px" }}>
                         <BarVisualizer state={state} trackRef={audioTrack} barCount={5} options={{ minHeight: 10, maxHeight: 40 }} />
@@ -76,10 +82,14 @@ function SimpleVoiceInterface() {
                 )}
             </div>
 
-            {/* Status Text */}
             <div className="call-status" style={{ textAlign: "center" }}>
                 <h3>FlossyAI</h3>
-                <p>{state === "listening" ? "Listening..." : state === "speaking" ? "Speaking..." : "Thinking..."}</p>
+                <p>
+                    {roomState === ConnectionState.Connecting ? "Calling..." :
+                        state === "listening" ? "Listening..." :
+                            state === "speaking" ? "Speaking..." :
+                                "Connected"}
+                </p>
             </div>
         </div>
     );
