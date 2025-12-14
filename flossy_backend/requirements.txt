@@ -16,3 +16,4 @@ livekit-plugins-openai
 livekit-plugins-elevenlabs
 livekit-plugins-deepgram
 livekit-plugins-silero
+livekit-plugins-google

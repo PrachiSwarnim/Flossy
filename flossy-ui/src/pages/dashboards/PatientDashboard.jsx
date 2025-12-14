@@ -13,6 +13,7 @@ import "../../styles/ai_features.css";
 import AppointmentCard from "../../components/AppointmentCard";
 
 import LiveKitVoiceInline from "../../components/LiveKitVoiceInline";
+import VoiceChat from "../../components/VoiceChat";
 
 
 export default function PatientDashboard() {
@@ -423,23 +424,13 @@ export default function PatientDashboard() {
         </div>
       </aside>
 
-      {/* VOICE SIDE PANEL */}
-      <aside className={`ai-panel ${isVoiceActive ? "open" : ""}`} style={{ right: isVoiceActive ? "0" : "-450px", zIndex: 5001, borderLeft: "1px solid #f0b800" }}>
-        <div className="ai-header" style={{ borderBottom: "1px solid #333" }}>
-          <span><i className="fas fa-headset" style={{ marginRight: "10px", color: "#f0b800" }}></i> Voice Assistant</span>
-          <button className="close" onClick={() => setIsVoiceActive(false)}>×</button>
-        </div>
-
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#111" }}>
-          <LiveKitVoiceInline
-            isActive={isVoiceActive}
-            onLeave={() => setIsVoiceActive(false)}
-            userName={user.firstName}
-            userEmail={user.primaryEmailAddress?.emailAddress}
-            onAppointmentBooked={loadAppointments}
-          />
-        </div>
-      </aside>
+      {/* VOICE CHAT MODAL */}
+      {isVoiceActive && (
+        <VoiceChat
+          onClose={() => setIsVoiceActive(false)}
+          onBookingSuccess={loadAppointments}
+        />
+      )}
 
       <Footer />
     </>

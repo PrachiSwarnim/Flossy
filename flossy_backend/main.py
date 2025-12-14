@@ -8,7 +8,7 @@ import numpy as np
 from datetime import datetime, timezone, timedelta
 from typing import Callable, Optional, Generator
 
-from fastapi import FastAPI, Request, HTTPException, Depends, status, Body
+from fastapi import FastAPI, Request, HTTPException, Depends, status, Body, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -21,7 +21,12 @@ from jwt import PyJWKClient
 # ----- local project imports (keep these lightweight) -----
 from database import SessionLocal, Base, engine
 from models import User, Patient, Appointment, Interaction, LLMInteraction
+from pydantic import BaseModel
 from utils import ai_generate, cos_sim, embed_with_client  # these are assumed lightweight wrappers
+import os
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+from murf import Murf, MurfRegion
 # Agent app and optional routers are mounted lazily below if available
 # Heavy RL/FAISS/GenAI clients are lazy-loaded (see loaders)
 
@@ -85,6 +90,12 @@ _faiss_chunks = None
 _agent_app = None
 _handle_user_utterance_text = None
 
+MURF_API_KEY = os.getenv("MURF_API_KEY")
+
+client = Murf(
+    api_key=MURF_API_KEY,
+    region=MurfRegion.GLOBAL 
+)
 # ------------------------------------------------------------------
 # Utility: DB dependency
 # ------------------------------------------------------------------
@@ -384,6 +395,42 @@ def post_login(request: Request, db: Session = Depends(get_db)):
 
     return {"user": {"id": user.id, "email": user.email, "role": user.role}}
 
+class AppointmentUpdate(BaseModel):
+    datetime: Optional[datetime] = None
+    status: Optional[str] = None
+    reason: Optional[str] = None
+
+# ... inside Appointments endpoints section ...
+
+@app.put("/api/appointments/{id}")
+def update_appointment(id: int, appointment_update: AppointmentUpdate, db: Session = Depends(get_db)):
+    # 1. Fetch the appointment
+    db_appointment = db.query(Appointment).filter(Appointment.id == id).first()
+    if not db_appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    # 2. Update fields if provided
+    if appointment_update.datetime:
+        db_appointment.datetime = appointment_update.datetime
+    if appointment_update.status:
+        db_appointment.status = appointment_update.status
+    
+    # 3. THIS IS THE FIX: Explicitly update the reason
+    if appointment_update.reason:
+        db_appointment.reason = appointment_update.reason 
+
+    # 4. Commit changes
+    db.commit()
+    db.refresh(db_appointment)
+    
+    return {"message": "Appointment updated successfully", "appointment": {
+        "id": db_appointment.id,
+        "reason": db_appointment.reason,
+        "status": db_appointment.status,
+        "time": db_appointment.datetime.isoformat()
+    }}
+
+
 # ------------------------------------------------------------------
 # Appointments endpoints
 # ------------------------------------------------------------------
@@ -542,6 +589,37 @@ def dentist_upcoming(request: Request,
         "upcoming": [fmt(a) for a in upcoming_appts],
     }
 
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+from services.tts import stream_text_to_speech # Import your new service
+
+# Define the request body format
+class TTSRequest(BaseModel):
+    text: str
+
+@app.post("/api/speak")
+async def speak(request: TTSRequest):
+    """
+    Frontend sends text -> Backend streams audio back.
+    """
+    if not request.text:
+        raise HTTPException(status_code=400, detail="Text is required")
+
+    # Return the stream immediately
+    return StreamingResponse(
+        stream_text_to_speech(request.text), 
+        media_type="audio/mp3"
+    )    
+@app.get("/api/speak-stream")
+async def speak_stream(text: str = Query(..., description="Text to speak")):
+    """
+    Browser-friendly streaming endpoint.
+    Usage: <audio src="/api/speak-stream?text=Hello">
+    """
+    return StreamingResponse(
+        stream_text_to_speech(text), 
+        media_type="audio/mp3")
 # ------------------------------------------------------------------
 # Get All Patients (For Prescription Dropdown)
 # ------------------------------------------------------------------
@@ -956,39 +1034,14 @@ async def ai_response(request: Request, user=Depends(require_role("patient"))):
 from livekit import api # ensure livekit-sdk is installed
 
 @app.get("/api/token")
-async def get_livekit_token(request: Request, db: Session = Depends(get_db)):
+async def get_livekit_token(request: Request):
     """
-    Generates a LiveKit access token for the frontend.
-    Ensures User/Patient record exists for DB booking.
+    Generates a LiveKit token with user EMAIL in metadata.
     """
-    # 1. Get User Info (Identity)
-    # Identity is typically random for livekit, but we rely on email in metadata for DB lookup
+    # 1. Get Params
     identity = request.query_params.get("identity", f"user_{uuid.uuid4().hex[:6]}")
-    name = request.query_params.get("name", "Patient")
-    email = request.query_params.get("email", "")
-    
-    # Ensure Patient Record Exists
-    if email:
-        try:
-            # Check User
-            user = db.query(User).filter(User.email.ilike(email)).first()
-            if not user:
-                # Create stub user if from clerk but not synced yet
-                user = User(email=email, role="patient")
-                db.add(user)
-                db.commit()
-                db.refresh(user)
-            
-            # Check Patient
-            patient = db.query(Patient).filter(Patient.user_id == user.id).first()
-            if not patient:
-                # Create stub patient
-                # Random phone if missing
-                patient = Patient(name=name, phone=f"555-{uuid.uuid4().hex[:4]}", user_id=user.id)
-                db.add(patient)
-                db.commit()
-        except Exception as e:
-            print(f"Error ensuring patient record: {e}")
+    name = request.query_params.get("name", "Guest")
+    email = request.query_params.get("email", "")  # <--- Capture Email
 
     lk_api_key = os.getenv("LIVEKIT_API_KEY")
     lk_api_secret = os.getenv("LIVEKIT_API_SECRET")
@@ -996,27 +1049,29 @@ async def get_livekit_token(request: Request, db: Session = Depends(get_db)):
     if not lk_api_key or not lk_api_secret:
         raise HTTPException(status_code=500, detail="LiveKit credentials not configured.")
 
-    # 2. Grant Permissions
+    # 2. Create VideoGrant
     grant = api.VideoGrants(
         room_join=True,
-        room=f"flossy-room-{uuid.uuid4().hex[:6]}", 
+        room="flossy-room",
         can_publish=True,
         can_subscribe=True,
         can_publish_data=True,
     )
 
-    # Create token instance
+    # 3. Build Metadata JSON (Crucial for Agent)
+    metadata_json = json.dumps({
+        "email": email,
+        "name": name
+    })
+
+    # 4. Create Token
     token = api.AccessToken(lk_api_key, lk_api_secret) \
         .with_identity(identity) \
         .with_name(name) \
-        .with_metadata(json.dumps({"email": email})) \
-        .with_grants(grant)
+        .with_grants(grant) \
+        .with_metadata(metadata_json)  # <--- Attach Metadata
 
-    # JWT string
-    jwt_token = token.to_jwt()
-    
-    return {"accessToken": jwt_token, "url": os.getenv("LIVEKIT_URL")}
-
+    return {"accessToken": token.to_jwt(), "url": os.getenv("LIVEKIT_URL")}    
 # ------------------------------------------------------------------
 # Monitoring endpoints
 # ------------------------------------------------------------------
@@ -1053,6 +1108,7 @@ try:
         _handle_user_utterance_text = agent_server.handle_user_utterance_text
 except Exception as e:
     print(f"⚠️ Voice Agent NOT mounted: {e}")
+
 
 # ------------------------------------------------------------------
 # Startup event: lightweight init only
@@ -1114,6 +1170,114 @@ def mark_missed_appointments():
         db.rollback()
     finally:
         db.close()
+
+# ------------------------------------------------------------------
+# WebSocket Voice Chat Endpoint
+# ------------------------------------------------------------------
+@app.websocket("/ws/voice-chat")
+async def voice_chat_websocket(websocket: WebSocket, token: str = Query(...)):
+    """WebSocket endpoint for real-time voice chat with AI assistant"""
+    await websocket.accept()
+    
+    try:
+        # Verify user from token
+        try:
+            payload = verify_token(token)
+            user_id = payload.get("sub")  # Clerk user ID
+            
+            if not user_id:
+                print("❌ No user ID in token")
+                await websocket.send_json({"type": "error", "message": "Invalid token - no user ID"})
+                await websocket.close()
+                return
+            
+            # Fetch user details from Clerk API
+            try:
+                clerk_headers = {"Authorization": f"Bearer {CLERK_SECRET_KEY}"}
+                clerk_response = requests.get(
+                    f"https://api.clerk.dev/v1/users/{user_id}",
+                    headers=clerk_headers
+                )
+                
+                if clerk_response.status_code != 200:
+                    print(f"❌ Clerk API error: {clerk_response.status_code}")
+                    await websocket.send_json({"type": "error", "message": "Failed to fetch user details"})
+                    await websocket.close()
+                    return
+                
+                user_data = clerk_response.json()
+                email = user_data.get("email_addresses", [{}])[0].get("email_address", "").lower().strip()
+                user_name = (
+                    user_data.get("first_name") or 
+                    user_data.get("username") or 
+                    email.split("@")[0] if email else "Guest"
+                )
+                
+            except Exception as clerk_err:
+                print(f"❌ Clerk API call failed: {clerk_err}")
+                await websocket.send_json({"type": "error", "message": "Failed to fetch user details"})
+                await websocket.close()
+                return
+            
+            print(f"✅ WebSocket auth successful: {email} ({user_name})")
+            
+            if not email:
+                print("❌ No email found for user")
+                await websocket.send_json({"type": "error", "message": "No email found"})
+                await websocket.close()
+                return
+                
+        except Exception as e:
+            print(f"❌ WebSocket auth failed: {e}")
+            await websocket.send_json({"type": "error", "message": f"Authentication failed: {str(e)}"})
+            await websocket.close()
+            return
+        
+        # Initialize voice agent service
+        from services.voice_agent_service import VoiceAgentService
+        agent = VoiceAgentService(email, user_name, websocket)
+        
+        # Send ready signal
+        await websocket.send_json({
+            "type": "ready",
+            "message": f"Hi {user_name}! I'm Flossy. How can I help you today?"
+        })
+        
+        # Listen for messages
+        while True:
+            data = await websocket.receive_json()
+            msg_type = data.get("type")
+            
+            if msg_type == "audio":
+                # Process audio data
+                audio_data = data.get("data")
+                if audio_data:
+                    await agent.process_audio(audio_data)
+            
+            elif msg_type == "transcript":
+                # Process text transcript (from browser STT or manual input)
+                text = data.get("text")
+                if text:
+                    await agent.process_transcript(text)
+            
+            elif msg_type == "ping":
+                await websocket.send_json({"type": "pong"})
+    
+    except WebSocketDisconnect:
+        print(f"🔌 WebSocket disconnected for {email if 'email' in locals() else 'unknown'}")
+    except Exception as e:
+        print(f"❌ WebSocket error: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except:
+            pass
+    finally:
+        try:
+            await websocket.close()
+        except:
+            pass
 
 @app.on_event("startup")
 async def startup_event():

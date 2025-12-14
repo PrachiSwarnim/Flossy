@@ -1,0 +1,5 @@
+# Additional requirements for standalone voice agent
+assemblyai[extras]
+elevenlabs==0.3.0b0
+openai
+pyaudio
