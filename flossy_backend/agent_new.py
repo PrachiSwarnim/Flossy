@@ -5,21 +5,15 @@ from datetime import datetime, timedelta
 import dateutil.parser
 from dotenv import load_dotenv
 
-from livekit.agents import (
-    AutoSubscribe,
-    JobContext,
-    WorkerOptions,
-    cli,
-    llm,
-)
-from livekit.agents.voice import VoiceAssistant
+from livekit import agents, rtc
+from livekit.agents import AgentServer, AgentSession, Agent, room_io, mcp
+from livekit.plugins import openai, noise_cancellation, tavus
 from livekit.agents.llm import FunctionContext, ai_callable
 
-from livekit.plugins import deepgram, openai, silero
 from database import SessionLocal
 from models import User, Patient, Appointment
 
-load_dotenv()
+load_dotenv(".env.local")
 
 # Knowledge Base
 KNOWLEDGE_BASE = """
@@ -39,19 +33,6 @@ KNOWLEDGE_BASE = """
 - Toothache: Rinse with salt water, book ASAP
 - Bleeding Gums: Book cleaning
 - Knocked-out Tooth: Keep in milk, come within 1 hour
-"""
-
-SYSTEM_PROMPT = f"""You are FlossyAI, a dental receptionist at Smile Artists Dental Studio.
-
-KNOWLEDGE BASE:
-{KNOWLEDGE_BASE}
-
-RULES:
-1. Be warm, professional, and concise
-2. Answer questions using the knowledge base
-3. For booking: collect date, time, phone, reason
-4. Once you have all details, call book_appointment tool
-5. After successful booking, say "All set! Your appointment is booked."
 """
 
 # Booking Tool
@@ -100,7 +81,7 @@ class AssistantFnc(FunctionContext):
                 db.add(appt)
                 db.commit()
                 
-                await self.room.local_participant.publish_data("APPOINTMENT_BOOKED")
+                await self.room.local_participant.publish_data(b"APPOINTMENT_BOOKED")
                 return "Success! Appointment confirmed."
                 
             finally:
@@ -110,9 +91,29 @@ class AssistantFnc(FunctionContext):
             print(f"Booking error: {e}")
             return "Sorry, booking failed. Please try again."
 
-# Main entrypoint
-async def entrypoint(ctx: JobContext):
-    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+class FlossyAssistant(Agent):
+    def __init__(self) -> None:
+        super().__init__(
+            instructions=f"""You are FlossyAI, a dental receptionist at Smile Artists Dental Studio.
+
+KNOWLEDGE BASE:
+{KNOWLEDGE_BASE}
+
+RULES:
+1. Be warm, professional, and concise
+2. Answer questions using the knowledge base
+3. For booking: collect date, time, phone, reason
+4. Once you have all details, call book_appointment tool
+5. After successful booking, say "All set! Your appointment is booked."
+""",
+        )
+
+server = AgentServer()
+
+@server.rtc_session()
+async def my_agent(ctx: agents.JobContext):
+    # Connect and get participant info
+    await ctx.connect(auto_subscribe=agents.AutoSubscribe.AUDIO_ONLY)
     print("📞 Connected to LiveKit")
     
     participant = await ctx.wait_for_participant()
@@ -122,28 +123,71 @@ async def entrypoint(ctx: JobContext):
     
     print(f"👤 User: {user_name} ({email})")
     
-    # Setup tools
+    # Setup function context if user is authenticated
     fnc_ctx = AssistantFnc(ctx.room, participant) if email else None
     
-    # Create assistant (simplified pattern like AssemblyAI example)
-    assistant = VoiceAssistant(
-        vad=silero.VAD.load(),
-        stt=deepgram.STT(),
-        llm=openai.LLM(model="gpt-4o-mini"),
-        tts=deepgram.TTS(),
-        chat_ctx=llm.ChatContext(messages=[
-            llm.ChatMessage(role="system", content=SYSTEM_PROMPT)
-        ]),
-        fnc_ctx=fnc_ctx
+    # Create session with OpenAI Realtime model and MCP servers
+    mcp_url = os.getenv("N8N_MCP_SERVER_URL") or os.getenv("N8N_MCP_URL")
+    mcp_servers = []
+    if mcp_url:
+        print(f"🔗 Connecting to MCP Server: {mcp_url}")
+        mcp_servers.append(mcp.MCPServerHTTP(url=mcp_url))
+
+    session = AgentSession(
+        llm=openai.realtime.RealtimeModel(
+            voice="coral",
+            instructions=f"""You are FlossyAI, a dental receptionist at Smile Artists Dental Studio.
+
+KNOWLEDGE BASE:
+{KNOWLEDGE_BASE}
+
+RULES:
+1. Be warm, professional, and concise
+2. Answer questions using the knowledge base
+3. For booking: collect date, time, phone, reason
+4. Once you have all details, call book_appointment tool
+5. After successful booking, say "All set! Your appointment is booked."
+6. You also have access to external tools via MCP (like Google Calendar). Use them if requested.
+"""
+        ),
+        fnc_ctx=fnc_ctx,
+        mcp_servers=mcp_servers,
     )
     
-    assistant.start(ctx.room, participant)
+    # Initialize Tavus Avatar if credentials are provided
+    replica_id = os.getenv("REPLICA_ID")
+    persona_id = os.getenv("PERSONA_ID")
+    tavus_api_key = os.getenv("TAVUS_API_KEY")
+
+    if replica_id and persona_id and tavus_api_key:
+        print(f"🎭 Starting Tavus Avatar: {replica_id}")
+        avatar = tavus.AvatarSession(
+            replica_id=replica_id,
+            persona_id=persona_id,
+            api_key=tavus_api_key,
+        )
+        await avatar.start(session, room=ctx.room)
+    else:
+        print("⚠️ Tavus credentials missing. Running voice-only.")
+
+    await session.start(
+        room=ctx.room,
+        agent=FlossyAssistant(),
+        room_options=room_io.RoomOptions(
+            audio_input=room_io.AudioInputOptions(
+                noise_cancellation=lambda params: noise_cancellation.BVCTelephony()
+                if params.participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP
+                else noise_cancellation.BVC(),
+            ),
+        ),
+    )
     
-    # Greeting
-    greeting = f"Hi {user_name}! I'm Flossy, your dental assistant. How can I help you today?"
-    await assistant.say(greeting, allow_interruptions=True)
+    # Generate greeting
+    await session.generate_reply(
+        instructions=f"Greet the user by name ({user_name}) and offer your assistance. Start by speaking in English."
+    )
     
     print("✅ Assistant started")
 
 if __name__ == "__main__":
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+    agents.cli.run_app(server)

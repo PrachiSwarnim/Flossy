@@ -1,5 +1,5 @@
-# Additional requirements for standalone voice agent
-assemblyai[extras]
-elevenlabs==0.3.0b0
-openai
-pyaudio
+# LiveKit Agents v1.2+ with OpenAI Realtime model
+livekit-agents[openai]~=1.2
+livekit-plugins-noise-cancellation~=0.2
+python-dotenv
+python-dateutil
