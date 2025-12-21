@@ -1,19 +1,21 @@
+clerk-backend-api
 fastapi
-uvicorn
-sqlalchemy
-python-dotenv
-requests
+firebase_admin
+livekit-agents[openai]~=1.2
+livekit-plugins-deepgram
+livekit-plugins-elevenlabs
+livekit-plugins-google
+livekit-plugins-noise-cancellation~=0.2
+livekit-plugins-silero
+# livekit-sdk  <-- DELETED THIS LINE (It was the cause of the error)
+livekit        # <-- Added the correct name (optional, as agents installs it automatically)
+psycopg2-binary
 pydantic
 PyJWT
-python-multipart
-firebase_admin
 python-dateutil
-psycopg2-binary
-clerk-backend-api
-livekit-agents
-livekit-sdk
-livekit-plugins-openai
-livekit-plugins-elevenlabs
-livekit-plugins-deepgram
-livekit-plugins-silero
-livekit-plugins-google
+python-dotenv
+python-multipart
+requests
+sqlalchemy
+uvicorn
+requests
