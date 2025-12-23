@@ -4,6 +4,7 @@ firebase_admin
 livekit-agents[openai]~=1.2
 livekit-plugins-deepgram
 livekit-plugins-elevenlabs
+elevenlabs
 livekit-plugins-google
 livekit-plugins-noise-cancellation~=0.2
 livekit-plugins-silero

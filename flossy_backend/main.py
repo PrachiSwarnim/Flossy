@@ -6,7 +6,7 @@ import jwt
 import requests
 import numpy as np
 from datetime import datetime, timezone, timedelta
-from typing import Callable, Optional, Generator
+from typing import Callable, Optional, Generator, List
 
 from fastapi import FastAPI, Request, HTTPException, Depends, status, Body, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -814,7 +814,6 @@ def get_next_appointment(request: Request, db: Session = Depends(get_db), user =
 # AI / RL Endpoints (use lazy loading inside)
 # ------------------------------------------------------------------
 @app.post("/api/doctor_ai/query")
-@app.post("/api/doctor_ai/query")
 async def doctor_ai(request: Request):
     # user = Depends(require_role("dentist")) # TODO: Fix DB role sync to enable strict check
     payload = await request.json()
@@ -1170,115 +1169,60 @@ def mark_missed_appointments():
         db.rollback()
     finally:
         db.close()
-
-# ------------------------------------------------------------------
-# WebSocket Voice Chat Endpoint
-# ------------------------------------------------------------------
-@app.websocket("/ws/voice-chat")
-async def voice_chat_websocket(websocket: WebSocket, token: str = Query(...)):
-    """WebSocket endpoint for real-time voice chat with AI assistant"""
+@app.websocket("/ws/agent")
+async def agent_ws_endpoint(websocket: WebSocket):
     await websocket.accept()
-    
-    try:
-        # Verify user from token
-        try:
-            payload = verify_token(token)
-            user_id = payload.get("sub")  # Clerk user ID
-            
-            if not user_id:
-                print("❌ No user ID in token")
-                await websocket.send_json({"type": "error", "message": "Invalid token - no user ID"})
-                await websocket.close()
-                return
-            
-            # Fetch user details from Clerk API
-            try:
-                clerk_headers = {"Authorization": f"Bearer {CLERK_SECRET_KEY}"}
-                clerk_response = requests.get(
-                    f"https://api.clerk.dev/v1/users/{user_id}",
-                    headers=clerk_headers
-                )
-                
-                if clerk_response.status_code != 200:
-                    print(f"❌ Clerk API error: {clerk_response.status_code}")
-                    await websocket.send_json({"type": "error", "message": "Failed to fetch user details"})
-                    await websocket.close()
-                    return
-                
-                user_data = clerk_response.json()
-                email = user_data.get("email_addresses", [{}])[0].get("email_address", "").lower().strip()
-                user_name = (
-                    user_data.get("first_name") or 
-                    user_data.get("username") or 
-                    email.split("@")[0] if email else "Guest"
-                )
-                
-            except Exception as clerk_err:
-                print(f"❌ Clerk API call failed: {clerk_err}")
-                await websocket.send_json({"type": "error", "message": "Failed to fetch user details"})
-                await websocket.close()
-                return
-            
-            print(f"✅ WebSocket auth successful: {email} ({user_name})")
-            
-            if not email:
-                print("❌ No email found for user")
-                await websocket.send_json({"type": "error", "message": "No email found"})
-                await websocket.close()
-                return
-                
-        except Exception as e:
-            print(f"❌ WebSocket auth failed: {e}")
-            await websocket.send_json({"type": "error", "message": f"Authentication failed: {str(e)}"})
-            await websocket.close()
-            return
-        
-        # Initialize voice agent service
-        from services.voice_agent_service import VoiceAgentService
-        agent = VoiceAgentService(email, user_name, websocket)
-        
-        # Send ready signal
-        await websocket.send_json({
-            "type": "ready",
-            "message": f"Hi {user_name}! I'm Flossy. How can I help you today?"
-        })
-        
-        # Listen for messages
-        while True:
-            data = await websocket.receive_json()
-            msg_type = data.get("type")
-            
-            if msg_type == "audio":
-                # Process audio data
-                audio_data = data.get("data")
-                if audio_data:
-                    await agent.process_audio(audio_data)
-            
-            elif msg_type == "transcript":
-                # Process text transcript (from browser STT or manual input)
-                text = data.get("text")
-                if text:
-                    await agent.process_transcript(text)
-            
-            elif msg_type == "ping":
-                await websocket.send_json({"type": "pong"})
-    
-    except WebSocketDisconnect:
-        print(f"🔌 WebSocket disconnected for {email if 'email' in locals() else 'unknown'}")
-    except Exception as e:
-        print(f"❌ WebSocket error: {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
-        try:
-            await websocket.send_json({"type": "error", "message": str(e)})
-        except:
-            pass
-    finally:
-        try:
-            await websocket.close()
-        except:
-            pass
+    print(f"INFO: {websocket.client.host} - 'WebSocket /ws/agent' [accepted]")
 
+    # 1. Send Initial Greeting
+    await websocket.send_json({
+        "type": "text", 
+        "content": "Hello! I'm Flossy. I'm listening..."
+    })
+
+    # 2. Try to initialize Voice Agent (optional)
+    agent = None
+    try:
+        from services.voice_agent_service import VoiceAgentService
+        # Mock values for Guest user
+        agent = VoiceAgentService(email="guest@example.com", user_name="Guest", websocket=websocket)
+    except ImportError:
+        print("⚠️ VoiceAgentService not found. Audio processing will be skipped.")
+
+    try:
+        while True:
+            # 3. Receive ANY message type (Text or Binary)
+            # 🔴 THIS IS THE FIX: receive() instead of receive_text()
+            message = await websocket.receive()
+
+            # --- CASE A: BINARY AUDIO (Microphone) ---
+            if "bytes" in message:
+                audio_data = message["bytes"]
+                # Only process if we have the agent service loaded
+                if agent and hasattr(agent, "process_audio"):
+                    await agent.process_audio(audio_data)
+                else:
+                    # Just keep the loop alive if no agent
+                    pass
+
+            # --- CASE B: TEXT JSON (Commands) ---
+            elif "text" in message:
+                try:
+                    data = json.loads(message["text"])
+                    if agent and hasattr(agent, "process_transcript"):
+                        await agent.process_transcript(data.get("text", ""))
+                except:
+                    pass
+
+    except WebSocketDisconnect:
+        print("INFO: Client disconnected")
+    except Exception as e:
+        print(f"❌ WebSocket Error: {e}")
+        try:
+            await websocket.close()
+        except:
+            pass
+            
 @app.on_event("startup")
 async def startup_event():
     print("🚀 FlossyAI Backend Starting...")

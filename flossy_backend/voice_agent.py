@@ -4,12 +4,15 @@ from datetime import datetime, timedelta
 from typing import Annotated
 from dotenv import load_dotenv
 import json
-from livekit.agents import AutoSubscribe, JobContext, WorkerOptions, cli, llm
+from livekit.agents import AutoSubscribe, JobContext, WorkerOptions, cli, llm, mcp
 from livekit.agents.pipeline import VoicePipelineAgent
-from livekit.plugins import deepgram, silero, elevenlabs, google
+from livekit.plugins import google, tavus, deepgram, silero, elevenlabs
 from database import SessionLocal
 from models import User, Appointment, Patient
 from sqlalchemy import and_
+import re
+import numpy as np
+import asyncio
 
 try:
     from rl_core import bandit, ACTIONS, PROMPT_VARIANTS, MODELS
@@ -146,7 +149,7 @@ class ReceptionistTools(llm.FunctionContext):
 
             if "RL_AVAILABLE" in globals() and RL_AVAILABLE and self.action_id is not None:
                 try:
-                    dummy_ctx = np.zeroes(bandit.d)
+                    dummy_ctx = np.zeros(bandit.d)
                     bandit.update(self.action_id, dummy_ctx, reward=1.0)
                     logger.info(f"RL reward sent for action {self.action_id}")
                 except Exception as e:
@@ -156,6 +159,27 @@ class ReceptionistTools(llm.FunctionContext):
         except Exception as e:
             logger.error(f"Booking error: {e}")
             return "System error while saving appointment."
+
+async def spawn_tavus_avatar(ctx, agent):
+    """Spawns the Tavus visual avatar into the LiveKit room."""
+    api_key = os.getenv("TAVUS_API_KEY")
+    replica_id = os.getenv("TAVUS_REPLICA_ID")
+    persona_id = os.getenv("TAVUS_PERSONA_ID")
+
+    if not api_key or not replica_id:
+        logger.warning("⚠️ Tavus credentials missing. Skipping avatar.")
+        return
+
+    try:
+        avatar = tavus.AvatarSession(
+            api_key=api_key,
+            replica_id=replica_id,
+            persona_id=persona_id,
+        )
+        await avatar.start(agent, room=ctx.room)
+        logger.info("✅ Tavus Avatar Session Started")
+    except Exception as e:
+        logger.error(f"❌ Failed to spawn Tavus avatar: {e}")
 
 def select_system_prompt(user_text: str = ""):
     if not RL_AVAILABLE:
@@ -236,27 +260,36 @@ You are Flossy, the intelligent frontdesk receptionist, for Smile Artists Dental
 {KNOWLEDGE_BASE}
 """
 
+# --- MAIN ENTRYPOINT (Voice Pipeline Agent) ---
 async def entrypoint(ctx: JobContext):
+    logger.info("Starting Voice Pipeline Agent (Proper)")
+
+    # 1. RL: Select Prompt
     user_context_str = ""
     if ctx.job.metadata:
         try:
             meta = json.loads(ctx.job.metadata)
             user_context_str = meta.get("name", "")
         except: pass
-    system_prompt, action_id = select_system_prompt(user_context_str)
+    current_prompt, action_id = select_system_prompt(user_context_str)
 
+    # 2. Init Tools & Context
     fnc_ctx = ReceptionistTools(action_id=action_id)
 
-    initial_ctx = llm.ChatContext().append(
-        role="system",
-        text=system_prompt
-    )
+    # 3. N8N MCP Integration
+    mcp_url = os.getenv("N8N_MCP_SERVER_URL") or os.getenv("N8N_MCP_URL")
+    mcp_servers = []
+    if mcp_url:
+        logger.info(f"🔗 Connecting to N8N MCP: {mcp_url}")
+        mcp_servers.append(mcp.MCPServerHTTP(url=mcp_url))
 
+    # 4. Connect to Room
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
-
+    
+    # 5. Define Agent components
     agent = VoicePipelineAgent(
-        vad=ctx.proc.userdata["vad"],
-        stt=deepgram.STT(api_key=os.getenv["DEEPGRAM_API_KEY"]),
+        vad=silero.VAD.load(),
+        stt=deepgram.STT(),
         llm=google.LLM(
             api_key=os.getenv("GOOGLE_API_KEY"),
             model="gemini-2.0-flash-exp"
@@ -264,24 +297,27 @@ async def entrypoint(ctx: JobContext):
         tts=elevenlabs.TTS(
             api_key=os.getenv("ELEVEN_API_KEY"),
             voice=elevenlabs.Voice(
-                id=os.getenv("ELEVENLABS_VOICE_ID"),
+                id=os.getenv("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL"),
                 name="Flossy",
                 category="premade"
             )
         ),
-        chat_ctx=initial_ctx,
-        fnc_ctx=fnc_ctx
+        fnc_ctx=fnc_ctx,
+        mcp_servers=mcp_servers,
+        chat_ctx=llm.ChatContext().append(role="system", text=current_prompt)
     )
 
+    # 6. Start Agent
     agent.start(ctx.room, participant=ctx.room.local_participant)
 
-    greeting = "Hello! Smile Artists Dental Studio. I am Flossy."
-    if user_context_str:
-        greeting=f"Hello {user_context_str}! Welcome to Smile Artists. I am Flossy."
-    await agent.say(greeting, allow_interruptions=True)
-
-def prewarm(proc: JobContext):
-    proc.userdata["vad"] = silero.VAD.load()
+    # 7. Tavus Avatar Integration
+    # Spawning avatar into the room
+    asyncio.create_task(spawn_tavus_avatar(ctx, agent))
+    
+    # Pre-greet
+    await agent.say("Hello! I'm Flossy, your dental assistant. How can I help you today?", allow_interruptions=True)
+    
+    logger.info("✅ Flossy is ready and listening.")
 
 if __name__=="__main__":
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint, prewarm_fnc=prewarm))
+    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))

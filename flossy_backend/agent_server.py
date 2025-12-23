@@ -1,889 +1,420 @@
-# agent_server.py
 import os
-import asyncio
 import json
 import base64
-import tempfile
-import re
-import difflib
-import uuid
+import asyncio
 import numpy as np
+import uuid
+import logging
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Literal, Dict, Tuple
-from zoneinfo import ZoneInfo
-
-from pydantic import BaseModel
-from dotenv import load_dotenv
+from datetime import datetime, timedelta
+from typing import Optional, List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from dotenv import load_dotenv
 
-import pyttsx3
-from dateutil import parser as dtparser
-
-# Google APIs
+# --- CLIENT IMPORTS ---
+from google.genai import Client, types  # Native Gemini SDK
 from google.cloud import speech
 from google.oauth2 import service_account
 
-# Local DB models & session
-from sqlalchemy.orm import Session
+# --- DATABASE IMPORTS ---
 from database import SessionLocal
-from models import Patient, Appointment, Interaction, User, LLMInteraction
+from models import Appointment, Patient, User
+from sqlalchemy import and_
 
-# RL + LLM helpers
-from rl_core import bandit, ACTIONS, PROMPT_VARIANTS, MODELS
-from utils import ai_generate, embed_with_client, cos_sim
-from llm_client import genai_client, groq_client
-
-# symptom KB
-from symptom_kb import get_symptom_kb
+# --- RL IMPORTS ---
+try:
+    from rl_core import bandit, ACTIONS, PROMPT_VARIANTS
+    from utils import embed_with_client
+    RL_AVAILABLE = True
+except ImportError:
+    logging.warning("⚠️ RL modules not found. Defaulting to static prompt.")
+    RL_AVAILABLE = False
 
 load_dotenv()
+app = FastAPI()
 
 # -------------------------
-# CONFIG
+# CONFIG & CLIENTS
 # -------------------------
 GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")
-if not GEMINI_API_KEY:
-    raise RuntimeError("Missing GOOGLE_API_KEY")
+gemini_client = Client(api_key=GEMINI_API_KEY)
 
-BUSINESS_START_HOUR = 9
-BUSINESS_END_HOUR = 17
-SLOT_DURATION_MINUTES = 30
-MAX_SLOTS_PER_APPOINTMENT = 2
-USER_TZ = ZoneInfo("Asia/Kolkata")
-
-# STT / TTS config
+# STT Config (Google Speech or Groq)
 cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
-render_secret_file = "/etc/secrets/flossy-476616-cf6c940eac95.json"
-if os.path.exists(render_secret_file):
-    cred_path = render_secret_file
-if not cred_path or not os.path.exists(cred_path):
-    raise RuntimeError(f"Missing GOOGLE_APPLICATION_CREDENTIALS file: {cred_path}")
+if os.path.exists(cred_path):
+    gcp_credentials = service_account.Credentials.from_service_account_file(cred_path)
+    speech_client = speech.SpeechClient(credentials=gcp_credentials)
+else:
+    speech_client = None
 
-gcp_credentials = service_account.Credentials.from_service_account_file(cred_path)
-speech_client = speech.SpeechClient(credentials=gcp_credentials)
-SAMPLE_RATE = 16000
-LANGUAGE = "en-US"
-
-app = FastAPI(title="FlossyAI Voice Agent")
-
-voice_states: Dict[int, dict] = {}
-text_states: Dict[str, dict] = {}
-
-# -------------------------
-# RESPONSE SCHEMA
-# -------------------------
-class FlossyAIResponse(BaseModel):
-    intent: Literal["book_appointment", "cancel_appointment", "symptom", "smalltalk", "confirm_slot"]
-    name: Optional[str] = None
-    date: Optional[str] = None
-    time: Optional[str] = None
-    phone: Optional[str] = None
-    symptom_message: Optional[str] = None
-    message: str
-    ready_for_booking: bool = False
-    ready_for_cancellation: bool = False
-    slot_confirmed: Optional[bool] = None
-
-# -------------------------
-# AUTOCORRECT
-# -------------------------
-AGGRESSIVE_DICT = sorted(set([
-    "appointment","book","booking","cancel","cancellation","reschedule",
-    "tooth","teeth","extraction","checkup","cleaning","root","canal",
-    "dr","doctor","phone","number","tomorrow","today","morning",
-    "afternoon","evening","noon","am","pm","urgent","pain","toothache",
-    "yes","no","please","thanks","thank","okay","ok",
-    "one","two","three","four","five","six","seven","eight","nine","ten",
-    "eleven","twelve","8am","9am","schedule","slot","clinic","smile","artists","flossy","doctor"
-] + [str(i) for i in range(0,60)]))
-
-NUMBER_WORDS = {
-    "one":"1","two":"2","three":"3","four":"4","five":"5","six":"6","seven":"7",
-    "eight":"8","nine":"9","ten":"10","eleven":"11","twelve":"12"
-}
-
-# -------------------------
-# KNOWLEDGE BASE
-# -------------------------
-KNOWLEDGE_BASE = """
-    [PRICING]
-    - Routine Check-up: ₹500
-    - Scaling & Cleaning: starts at ₹1,500
-    - Dental Implants: starts at ₹25,000
-    - Root Canal: ₹4,000 - ₹8,000
-    - Braces/Invisalign: Starts at ₹35,000
-
-    [POST-OP CARE]
-    - General: Do not rinse vigorously for 24 hours. No straws (leads to dry socket).
-    - Swelling: Aply ice pack (10 mins on, 10 mins off).
-    - Pain: Take prescribed analgesics. If pain persists >2 days, contact us.
-    - Diet: Soft cold diet for 24 hours (ice cream, yogurt). Avoid spicy/hot food.
-
-    [SYMPTOMS]
-    - Toothache: Rinse with warm salt water. Floss gently. Avoid extreme heat/cold. Book ASAP.
-    - Bleeding Gums: Indicates gingivitis. Resume gentle brushing/flossing. Book cleaning.
-    - Knocked-out Tooth: Keep tooth in milk or saliva. Come directly to clinic within 1 hour.
-"""
-
-# -------------------------
-# RETRY WRAPPER FOR GENAI (Prevents 503 Model Overload Crashes)
-# -------------------------
-async def safe_ai_generate(prompt, temperature, model, client):
-    """Retries Gemini calls to avoid 503 errors and returns a fallback gracefully."""
-    max_attempts = 3
-    for attempt in range(1, max_attempts + 1):
-        try:
-            return ai_generate(
-                prompt,
-                temperature=temperature,
-                model=model,
-                client_override=client,
-            )
-        except Exception as e:
-            err_msg = str(e)
-            print(f"[Gemini Retry] Attempt {attempt} failed: {err_msg}")
-
-            # Only retry for transient service errors
-            if "503" not in err_msg and "UNAVAILABLE" not in err_msg and "429" not in err_msg and "RESOURCE_EXHAUSTED" not in err_msg:
-                raise
-
-            if attempt == max_attempts:
-                # return a JSON-like fallback so json.loads won't crash upstream
-                # keep same schema shape but minimal
-                fallback = {
-                    "intent": "smalltalk",
-                    "message": "FlossyAI is currently overloaded with requests. Please try again in a few moments.",
-                    "ready_for_booking": False,
-                    "ready_for_cancellation": False,
-                    "slot_confirmed": None
-                }
-                return json.dumps(fallback)
-
-            await asyncio.sleep(2.0)
-
-def aggressive_autocorrect(text: str) -> str:
-    if not text:
-        return text
-    quick_map = {
-        r"\bsappointment\b":"appointment", r"\bmoring\b":"morning", r"\bteath\b":"teeth",
-        r"\bdotor\b":"doctor", r"\bbokk\b":"book", r"\bscedule\b":"schedule",
-        r"\bnumbr\b":"number"
-    }
-    s = text
-    for pat, repl in quick_map.items():
-        s = re.sub(pat, repl, s, flags=re.IGNORECASE)
-    tokens = re.findall(r"\w+|\S", s)
-    out = []
-    for tok in tokens:
-        if re.fullmatch(r"\W", tok):
-            out.append(tok); continue
-        low = tok.lower()
-        if low in NUMBER_WORDS:
-            out.append(NUMBER_WORDS[low]); continue
-        if re.fullmatch(r"\d{1,2}(?::\d{2})?(am|pm)?", low):
-            out.append(tok); continue
-        matches = difflib.get_close_matches(low, AGGRESSIVE_DICT, n=1, cutoff=0.6)
-        if matches:
-            corr = matches[0]
-            corr = corr.capitalize() if tok[0].isupper() else corr
-            out.append(corr)
-        else:
-            out.append(tok)
-    corrected = "".join(t if re.fullmatch(r"\w+", t) else t for t in out)
-    return re.sub(r"\s+", " ", corrected).strip()
-
-# -------------------------
-# NORMALIZATION HELPERS
-# -------------------------
-def normalize_relative_date(date_str: str) -> str:
-    if not date_str:
-        return date_str
-    s = date_str.strip().lower()
-    today = datetime.now(USER_TZ).date()
-    if "today" in s:
-        if any(token in s for token in ["morning","afternoon","evening","am","pm"]):
-            now_user = datetime.now(USER_TZ)
-            if "morning" in s and now_user.hour >= 12:
-                return (today + timedelta(days=1)).strftime("%Y-%m-%d")
-        return today.strftime("%Y-%m-%d")
-    if "tomorrow" in s:
-        return (today + timedelta(days=1)).strftime("%Y-%m-%d")
-    return date_str
-
-def normalize_vague_time(date_str: str, time_str: str, raw_text: Optional[str] = None) -> str:
-    if time_str and time_str.strip() and not re.fullmatch(r"(morning|afternoon|evening|noon)", time_str.strip().lower()):
-        return time_str
-    raw_low = (raw_text or "").lower()
-    t = time_str or date_str or raw_low
-    t_low = t.lower()
-    if "morning" in t_low or ("am" in t_low and not re.search(r"\d{1,2}", t_low)):
-        return "09:00 AM"
-    if "afternoon" in t_low or ("pm" in t_low and not re.search(r"\d{1,2}", t_low)):
-        return "02:00 PM"
-    if "evening" in t_low:
-        return "06:00 PM"
-    if "noon" in t_low:
-        return "12:00 PM"
-    return time_str or ""
+voice_states: dict = {}
 
 # -------------------------
 # STT (Groq Whisper)
 # -------------------------
 async def groq_stt(audio_chunks: list) -> str:
     """Uses Groq Whisper for fast, free speech-to-text."""
+    from llm_client import groq_client
+    import tempfile
+    
     if not groq_client:
-        print("❌ Groq client is None! Check GROQ_API_KEY in .env")
+        print("❌ Groq client is None!")
         return ""
     
-    # 1. Combine audio chunks into a single byte stream
     full_audio = b"".join(audio_chunks)
-    
     if len(full_audio) < 100:
-        return "" # Too short
+        return ""
 
+    # WebM files need a header (the first ~1kB of the stream) to be valid.
+    # We ensure we have a .webm extension so Groq knows how to parse it.
     tmp_path = os.path.join(tempfile.gettempdir(), f"voice_{uuid.uuid4()}.webm")
-
     try:
-        # 2. Write to temp file manually (safer on Windows)
         with open(tmp_path, "wb") as f:
             f.write(full_audio)
         
-        # 3. Call Groq
         with open(tmp_path, "rb") as audio_file:
             transcription = groq_client.audio.transcriptions.create(
-                file=(tmp_path, audio_file.read()),
+                file=("speech.webm", audio_file.read()),
                 model="whisper-large-v3",
                 response_format="text",
                 language="en"
             )
-        
-        text = str(transcription).strip()
-        print(f"🗣️ STT: {text}")
-        return text
-
+        return str(transcription).strip()
     except Exception as e:
         print(f"❌ Groq STT Error: {e}")
         return ""
     finally:
-        # Cleanup
         if os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except:
-                pass
+            try: os.remove(tmp_path)
+            except: pass
 
 # -------------------------
-# TTS
+# KNOWLEDGE BASE & SYSTEM PROMPT
 # -------------------------
-def tts_synthesize_wav(text: str) -> bytes:
-    engine = pyttsx3.init()
-    engine.setProperty("rate", 150)
-    for v in engine.getProperty("voices"):
-        if "female" in v.name.lower():
-            engine.setProperty("voice", v.id); break
-    fd, path = tempfile.mkstemp(suffix=".wav"); os.close(fd)
-    engine.save_to_file(text, path); engine.runAndWait()
-    with open(path, "rb") as f:
-        audio = f.read()
-    os.remove(path)
-    return audio
+KNOWLEDGE_BASE = """
+[PRICING]
+- Routine Check-Up: Rs. 500
+- Scaling and Cleaning: starts at Rs. 1500
+- Dental Implants: starts at Rs. 25000
+- Root Canal Treatment: Rs. 4000 - Rs. 8000
+- Braces/Invisalign: Starts at Rs. 35, 000
 
-async def stream_audio(ws: WebSocket, audio: bytes):
-    chunk_size = 32 * 1024
-    for i in range(0, len(audio), chunk_size):
-        data = base64.b64encode(audio[i:i+chunk_size]).decode()
-        await ws.send_text(json.dumps({"type":"audio_chunk","data":data}))
-        await asyncio.sleep(0.003)
-    await ws.send_text(json.dumps({"type":"audio_done"}))
+[SYMPTOMS]
+- Toothache: Rinse with warm salt water, avoid sugary and acidic foods.
+- Swollen gums: Gently brush and floss, use warm salt water rinse.
+- Bleeding gums: Gently brush and floss, use warm salt water rinse.
+- Bad breath: Brush and floss regularly, use mouthwash.
+- Tooth sensitivity: Avoid sugary and acidic foods, use fluoride toothpaste.
+- Jaw pain: Gently brush and floss, use warm salt water rinse.
 
-# -------------------------
-# SIMPLE GEMINI JSON PARSER (kept for non-RL paths)
-# -------------------------
-async def ask_gemini(prompt: str) -> Optional[dict]:
-    try:
-        resp = genai_client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config={
-                "response_mime_type":"application/json",
-                "response_schema": FlossyAIResponse.model_json_schema()
-            }
-        )
-        clean_text = resp.text.strip()
-        if clean_text.startswith("```json"):
-            clean_text = clean_text[7:].strip()
-        if clean_text.endswith("```"):
-            clean_text = clean_text[:-3].strip()
-        return json.loads(clean_text)
-    except Exception as e:
-        print("Gemini Parse Error:", e)
-        return None
+[PREVENTIVE CARE]
+- Brush teeth at least twice a day.
+- Floss daily.
+- Use mouthwash.
+- Visit dentist every 6 months.
+- Avoid sugary and acidic foods.
+- Use fluoride toothpaste.
 
-# -------------------------
-# SCHEDULING HELPERS
-# -------------------------
-def is_slot_available(db: Session, slot_time: datetime) -> bool:
-    slot_end = slot_time + timedelta(minutes=SLOT_DURATION_MINUTES)
-    appointments_count = db.query(Appointment).filter(
-        Appointment.status == "scheduled",
-        Appointment.datetime < slot_end,
-        (Appointment.datetime + timedelta(minutes=SLOT_DURATION_MINUTES)) > slot_time,
-    ).count()
-    return appointments_count < MAX_SLOTS_PER_APPOINTMENT
-
-def _ceil_to_slot(dt: datetime, slot_minutes: int = SLOT_DURATION_MINUTES) -> datetime:
-    if dt.minute % slot_minutes == 0:
-        return dt.replace(second=0, microsecond=0)
-    add = slot_minutes - (dt.minute % slot_minutes)
-    dt = dt + timedelta(minutes=add)
-    return dt.replace(second=0, microsecond=0)
-
-def find_next_available_slot(db: Session, preferred_dt_user_tz: datetime) -> datetime:
-    now_utc = datetime.now(timezone.utc)
-    now_user = now_utc.astimezone(USER_TZ)
-    preferred = preferred_dt_user_tz.replace(second=0, microsecond=0)
-    preferred = _ceil_to_slot(preferred, SLOT_DURATION_MINUTES)
-
-    if preferred <= now_user:
-        preferred = now_user + timedelta(minutes=SLOT_DURATION_MINUTES)
-        preferred = _ceil_to_slot(preferred, SLOT_DURATION_MINUTES)
-
-    for _ in range(1000):
-        if BUSINESS_START_HOUR <= preferred.hour < BUSINESS_END_HOUR:
-            candidate_utc = preferred.astimezone(timezone.utc)
-            if is_slot_available(db, candidate_utc):
-                return candidate_utc
-        preferred += timedelta(minutes=SLOT_DURATION_MINUTES)
-        if preferred.hour >= BUSINESS_END_HOUR:
-            preferred = (preferred + timedelta(days=1)).replace(hour=BUSINESS_START_HOUR, minute=0)
-    return (now_utc + timedelta(days=1)).astimezone(timezone.utc)
-
-def get_default_doctor(db: Session):
-    doctor = db.query(User).filter(User.role == "dentist").first()
-    if doctor:
-        name = doctor.email.split("@")[0].replace(".", " ").title()
-        name = "Dr. " + name
-        return name
-    return "Dr. Available Dentist"
-
-# -------------------------
-# BOT UTIL
-# -------------------------
-async def send_bot(ws: WebSocket, text: str):
-    await ws.send_text(json.dumps({"type":"bot_text","text":text}))
-    wav = await asyncio.get_running_loop().run_in_executor(None, tts_synthesize_wav, text)
-    await stream_audio(ws, wav)
-
-def check_doctor_conflict(db, doctor_name, dt_utc):
-    conflict = (
-        db.query(Appointment)
-        .filter(
-            Appointment.doctor_name.ilike(doctor_name),
-            Appointment.datetime == dt_utc,
-            Appointment.status == "scheduled"
-        )
-        .first()
-    )
-    return conflict is not None
-
-
-# -------------------------
-# BOOKING
-# -------------------------
-def execute_booking(db: Session, st: dict, db_user_id: Optional[int] = None) -> Tuple[Optional[datetime], Optional[datetime]]:
-    now_utc = datetime.now(timezone.utc)
-    preferred_dt_user_tz = None
-    try:
-        date_str = normalize_relative_date(st.get("date", "") or "")
-        time_str = normalize_vague_time(date_str, st.get("time", "") or "", st.get("raw_text"))
-        raw = f"{date_str} {time_str}".strip()
-        parsed = dtparser.parse(raw, fuzzy=False)
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=USER_TZ)
-        else:
-            parsed = parsed.astimezone(USER_TZ)
-        preferred_dt_user_tz = parsed
-    except Exception as exc:
-        preferred_dt_user_tz = (now_utc + timedelta(minutes=10)).astimezone(USER_TZ)
-        print("execute_booking parse fallback:", exc)
-
-    dt_final_utc = find_next_available_slot(db, preferred_dt_user_tz)
-
-    patient = None
-    if db_user_id:
-        patient = db.query(Patient).filter(Patient.user_id == db_user_id).first()
-    if not patient and st.get("phone"):
-        patient = db.query(Patient).filter(Patient.phone == st.get("phone")).first()
-    if not patient:
-        patient = Patient(
-            name=st.get("name") or "Unknown Patient",
-            phone=st.get("phone") or "Unknown",
-            user_id=db_user_id,
-            contact_datetime=datetime.now(timezone.utc)
-        )
-        db.add(patient); db.commit(); db.refresh(patient)
-
-    if patient and patient.user_id is None and db_user_id is not None:
-        patient.user_id = db_user_id
-        db.commit()
-
-    doctor_name = get_default_doctor(db)
-    if check_doctor_conflict(db, doctor_name, dt_final_utc):
-        return None, None
-
-    appt = Appointment(
-        patient_id=patient.id,
-        datetime=dt_final_utc,
-        status="scheduled",
-        doctor_name=doctor_name,
-        reason=st.get("symptom_message")
-    )
-
-    db.add(appt); db.commit()
-    return dt_final_utc, preferred_dt_user_tz
-
-# -------------------------
-# VOICE HANDLER (RL-enabled)
-# -------------------------
-async def handle_user_utterance(ws: WebSocket, text: str, db_user_id: Optional[int] = None, clerk_name: Optional[str] = None):
-    cid = id(ws)
-    db = SessionLocal()
-    st = voice_states.get(cid, {})
-
-    if clerk_name and "name" not in st:
-        st["name"] = clerk_name
-
-    user_name = st.get("name", "Patient")
-    greetings = ["hi","hello","hey","hola","namaste","bonjour"]
-
-    if "first" not in st:
-        st["first"] = False
-        voice_states[cid] = st
-        return await send_bot(ws, f"Hi {user_name}! Welcome to Smile Artists Dental Studio! How can I help you today?")
-
-    if text.strip().lower() in greetings:
-        return await send_bot(ws, f"Hello {user_name}! How can I assist you today?")
-
-    # AUTOCORRECT
-    corrected_text = aggressive_autocorrect(text)
-
-    # EMBEDDING FOR RL CONTEXT
-    query_emb = np.array(embed_with_client(genai_client, corrected_text), dtype=float)
-
-    # Resize to expected bandit dim
-    x_context = query_emb
-    if x_context.shape[0] != bandit.d:
-        if x_context.shape[0] > bandit.d:
-            x_context = x_context[: bandit.d]
-        else:
-            pad = np.zeros(bandit.d - x_context.shape[0], dtype=float)
-            x_context = np.concatenate([x_context, pad])
-
-    # RL action selection
-    chosen_action_id, _ = bandit.choose(x_context, eps=0.1)
-    prompt_idx, temp, ctx_size, model_idx = ACTIONS[chosen_action_id]
-    chosen_prompt_template = PROMPT_VARIANTS[prompt_idx]
-    chosen_model = MODELS[model_idx]
-
-    # Build prompt (voice-specific extension)
-    current_time_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    voice_extension = f"""
-VOICE_MODE: True
-PATIENT_NAME: {user_name}
-CURRENT_TIME: {current_time_utc}
-STATE: {st}
-ORIGINAL_MESSAGE: "{text}"
-AUTOCORRECTED_MESSAGE: "{corrected_text}"
+[DIAGNOSIS]
+- Toothache: Tooth decay, gum disease, tooth fracture.
+- Swollen gums: Gum disease, tooth decay, tooth infection.
+- Bleeding gums: Gum disease, tooth decay, tooth infection.
+- Bad breath: Tooth decay, gum disease, tooth infection.
+- Tooth sensitivity: Tooth decay, gum disease, tooth infection.
+- Jaw pain: Jaw fracture, tooth decay, gum disease.
 """
-    # base prompt (keeps chosen template and voice extension)
-    prompt = chosen_prompt_template + voice_extension
 
-    # ----- STRICT JSON ENFORCED *VOICE* PROMPT -----
-    # ----- RICH VOICE PROMPT (Parity with Text Agent) -----
-    prompt = f"""
-You are FlossyAI, a warm, helpful, and professional Patient Dental Concierge.
+SYSTEM_PROMPT_DEFAULT = f"""
+You are Flossy, the intelligent frontdesk receptionist for Smile Artists Dental Studio.
 
-You MUST respond ONLY in valid JSON.
-NO markdown.
-NO backticks.
-NO conversational text outside JSON.
+**Your Goal:**
+1. Greet the patient warmly.
+2. Answer questions about pricing or symptoms using your Knowledge Base.
+3. Help them book an appointment.
 
-Your output MUST match this schema exactly:
-{FlossyAIResponse.model_json_schema()}
+**Booking Rules:**
+- ALWAYS use the `check_availability` tool before confirming a time.
+- If the slot is free, use the `book_appointment` tool to save it.
+- Ask for the patient's name and phone number if you don't have it.
 
-OBJECTIVE:
-- Act as a smart front-desk assistant.
-- Answer questions using the [KNOWLEDGE BASE] below.
-- If the user asks for booking, guide them.
+**Tone:**
+- Professional, empathetic, and concise (1-2 sentences).
+- Do not make up appointment slots; check the real calendar.
 
 [KNOWLEDGE BASE]
 {KNOWLEDGE_BASE}
-
-RULES:
-1. **Intent Detection**:
-   - `book_appointment`: User wants to book.
-   - `cancel_appointment`: User wants to cancel.
-   - `symptom`: User mentions pain/issue.
-   - `smalltalk`: Greetings, pricing questions, general help.
-   - `confirm_slot`: User agreed to a time.
-
-2. **Answering Questions**:
-   - If user asks about Pricing/Post-op/Symptoms, USE THE KNOWLEDGE BASE.
-   - Put your helpful answer in the `message` field.
-   - Be concise but warm.
-   - Example Pricing: "Our implants start at ₹25,000. It depends on the case. Would you like a consultation?"
-
-3. **Booking Flow**:
-   - If user says "Book cleaning", intent=`book_appointment`.
-   - Before `ready_for_booking=true`, YOU MUST HAVE:
-     - `date`: Explicit or relative (tomorrow).
-     - `time`: Explicit or vague (morning).
-     - `phone`: User's contact number.
-   - If missing, ask for it in `message`.
-   - Always clarify AM/PM if vague.
-
-4. **Response Format**:
-   - Respond ONLY in JSON.
-
-----
-
-MODE: VOICE
-PATIENT_NAME: "{user_name}"
-CURRENT_TIME: "{current_time_utc}"
-STATE: {json.dumps(st)}
-ORIGINAL_TEXT: "{text}"
-AUTOCORRECTED_TEXT: "{corrected_text}"
 """
 
-    # Generate using RL-chosen model + temp (with retries)
-    raw = await safe_ai_generate(prompt, temperature=temp, model=chosen_model, client=genai_client)
-    try:
-        ai = json.loads(raw)
-    except Exception:
-        ai = None
-
-    if not ai:
-        return await send_bot(ws, "Sorry, I couldn't understand that. Could you repeat?")
-
-    # Update dialogue state
-    if ai.get("date") and "date" not in st:
-        st["date"] = normalize_relative_date(ai["date"])
-    if ai.get("time"):
-        st["time"] = ai["time"]
-    if ai.get("phone"):
-        st["phone"] = ai["phone"]
-    if ai.get("symptom_message"):
-        st["symptom_message"] = ai["symptom_message"]
-    st["raw_text"] = text
-    voice_states[cid] = st
-
-    # RL metrics (for nightly training)
-    answer_text = ai.get("message", "")
-    answer_vec = np.array(embed_with_client(genai_client, answer_text), dtype=float)
-    context_vec = np.array(embed_with_client(genai_client, prompt), dtype=float)
-
-    semantic_similarity = cos_sim(x_context[:answer_vec.shape[0]], answer_vec) if x_context.size and answer_vec.size else 0.0
-    groundedness = cos_sim(answer_vec, context_vec) if answer_vec.size and context_vec.size else 0.0
-
-    # Log interaction for nightly audit / RL update
-    request_id = str(uuid.uuid4())
-    interaction = LLMInteraction(
-        request_id=request_id,
-        doctor_id="VOICE_AGENT",
-        query=text,
-        response=answer_text,
-        context_used=prompt,
-        semantic_similarity=semantic_similarity,
-        groundedness=groundedness,
-        prompt_variant=prompt_idx,
-        action_id=chosen_action_id,
-        temp_used=temp,
-        model_used=chosen_model,
-        ctx_size_used=ctx_size,
-        timestamp=datetime.utcnow()
-    )
-    db.add(interaction)
-    db.commit()
-
-    # Booking / cancellation logic
-    if ai.get("ready_for_booking"):
-        dt_final_utc, preferred_dt_user_tz = execute_booking(db, st, db_user_id)
-        if not dt_final_utc:
-            return await send_bot(ws, "Sorry, couldn't find an available slot. Try another time.")
-        dt_local = dt_final_utc.astimezone(USER_TZ)
-        formatted_local = dt_local.strftime("%A, %B %d at %I:%M %p %Z")
-        voice_states[cid] = {}
-        doctor_name = get_default_doctor(db)
-        return await send_bot(ws, f"All set, {user_name}! Your appointment with {doctor_name} is booked for {formatted_local}. We've noted your reason as: {st.get('symptom_message','')}.")
-
-    if ai.get("ready_for_cancellation"):
-        phone = st.get("phone")
-        if not phone:
-            return await send_bot(ws, "Could you please tell me your phone number?")
-        p = db.query(Patient).filter(Patient.phone == phone).first()
-        if not p:
-            return await send_bot(ws, "I couldn't find any appointment under that number.")
-        appt = db.query(Appointment).filter(Appointment.patient_id == p.id, Appointment.status == "scheduled").first()
-        if not appt:
-            return await send_bot(ws, "There is no appointment to cancel.")
-        appt.status = "cancelled"
-        db.commit()
-        voice_states[cid] = {}
-        return await send_bot(ws, "Your appointment has been cancelled.")
-
-    # Default reply
-    return await send_bot(ws, answer_text)
-
 # -------------------------
-# TEXT HANDLER (RL-enabled)
+# DATABASE TOOLS
 # -------------------------
-# -------------------------
-# TEXT HANDLER (RL-enabled)
-# -------------------------
-async def handle_user_utterance_text(query: str, user: str = "default",
-                                     db_user_id: Optional[int] = None,
-                                     clerk_name: Optional[str] = None):
+class PhoneNormalizer:
+    @staticmethod
+    def normalize(text: str) -> str:
+        if not text: return ""
+        return "".join(filter(str.isdigit, text))
 
+def check_availability(date_str: str, time_str: str):
+    """Checks if a dentist appointment slot is available. Format: YYYY-MM-DD HH:MM"""
+    print(f"🔎 Checking: {date_str} {time_str}")
     db = SessionLocal()
-    st = text_states.get(user, {})
-
-    # Set patient name from Clerk
-    if clerk_name and "name" not in st:
-        st["name"] = clerk_name
-
-    # Greetings (first-turn)
-    greetings = ["hi", "hello", "hey", "hola", "namaste", "bonjour"]
-    if "first" not in st and query.strip().lower() in greetings:
-        st["first"] = False
-        name = st.get("name", clerk_name or "Patient")
-        text_states[user] = st
-        return f"Hi {name}! I am Flossy AI. How can I help you today?"
-
-    # Autocorrect
-    corrected_query = aggressive_autocorrect(query)
-
-    # RL embedding
-    query_emb = np.array(embed_with_client(genai_client, corrected_query), dtype=float)
-    x_context = query_emb
-    if x_context.shape[0] != bandit.d:
-        if x_context.shape[0] > bandit.d:
-            x_context = x_context[:bandit.d]
-        else:
-            pad = np.zeros(bandit.d - x_context.shape[0], dtype=float)
-            x_context = np.concatenate([x_context, pad])
-
-    # RL action selection
-    chosen_action_id, _ = bandit.choose(x_context, eps=0.1)
-    prompt_idx, temp, ctx_size, model_idx = ACTIONS[chosen_action_id]
-    chosen_prompt = PROMPT_VARIANTS[prompt_idx]
-    chosen_model = MODELS[model_idx]
-
-    # Build strict JSON prompt (TEXT MODE)
-    current_time_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-
-    # Knowledge Base (injected)
-    knowledge_base = """
-    [PRICING]
-    - Routine Check-up: ₹500
-    - Scaling & Cleaning: starts at ₹1,500
-    - Dental Implants: starts at ₹25,000
-    - Root Canal: ₹4,000 - ₹8,000
-    - Braces/Invisalign: Starts at ₹35,000
-
-    [POST-OP CARE]
-    - General: Do not rinse vigorously for 24 hours. No straws (leads to dry socket).
-    - Swelling: Aply ice pack (10 mins on, 10 mins off).
-    - Pain: Take prescribed analgesics. If pain persists >2 days, contact us.
-    - Diet: Soft cold diet for 24 hours (ice cream, yogurt). Avoid spicy/hot food.
-
-    [SYMPTOMS]
-    - Toothache: Rinse with warm salt water. Floss gently. Avoid extreme heat/cold. Book ASAP.
-    - Bleeding Gums: Indicates gingivitis. Resume gentle brushing/flossing. Book cleaning.
-    - Knocked-out Tooth: Keep tooth in milk or saliva. Come directly to clinic within 1 hour.
-    """
-
-    prompt = f"""
-You are FlossyAI, a warm, helpful, and professional Patient Dental Concierge.
-
-You MUST respond ONLY in valid JSON.
-NO markdown.
-NO backticks.
-NO conversational text outside JSON.
-
-Your response MUST follow this schema exactly:
-{FlossyAIResponse.model_json_schema()}
-
-OBJECTIVE:
-- Act as a smart front-desk assistant.
-- Answer questions using the [KNOWLEDGE BASE] below.
-- If the user asks for booking, guide them.
-
-[KNOWLEDGE BASE]
-{knowledge_base}
-
-RULES:
-1. **Intent Detection**:
-   - `book_appointment`: User wants to book.
-   - `cancel_appointment`: User wants to cancel.
-   - `symptom`: User mentions pain/issue.
-   - `smalltalk`: Greetings, pricing questions, general help.
-   - `confirm_slot`: User agreed to a time.
-
-2. **Answering Questions**:
-   - If user asks about Pricing/Post-op/Symptoms, USE THE KNOWLEDGE BASE.
-   - Put your helpful answer in the `message` field.
-   - Be concise but warm.
-   - Example Pricing: "Our implants start at ₹25,000. It depends on the case. Would you like a consultation?"
-
-3. **Booking Flow**:
-   - If user says "Book cleaning", intent=`book_appointment`.
-   - Before `ready_for_booking=true`, YOU MUST HAVE:
-     - `date`: Explicit or relative (tomorrow).
-     - `time`: Explicit or vague (morning).
-     - `phone`: User's contact number.
-   - If missing, ask for it in `message`.
-
-4. **Response Format**:
-   - Respond ONLY in JSON.
-
-----
-
-MODE: TEXT
-PATIENT_NAME: "{st.get('name', 'Patient')}"
-CURRENT_TIME: "{current_time_utc}"
-STATE: {json.dumps(st)}
-ORIGINAL_TEXT: "{query}"
-AUTOCORRECTED_TEXT: "{corrected_query}"
-"""
-
-    # Generate response
-    raw = await safe_ai_generate(prompt, temperature=temp,
-                                 model=chosen_model, client=genai_client)
     try:
-        ai = json.loads(raw)
-    except Exception:
-        ai = None
+        dt_req = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+        slot_end = dt_req + timedelta(minutes=30)
+        conflict = db.query(Appointment).filter(
+            and_(
+                Appointment.datetime >= dt_req,
+                Appointment.datetime < slot_end,
+                Appointment.status == "scheduled"
+            )
+        ).first()
+        return "That slot is booked." if conflict else "That slot is available."
+    except Exception as e:
+        return f"Error checking slot: {e}"
+    finally:
+        db.close()
 
-    if not ai:
-        return "Sorry, I couldn’t understand that."
-
-    # Update state
-    if ai.get("date") and "date" not in st:
-        st["date"] = normalize_relative_date(ai["date"])
-    if ai.get("time"):
-        st["time"] = ai["time"]
-    if ai.get("phone"):
-        st["phone"] = ai["phone"]
-    if ai.get("symptom_message"):
-        st["symptom_message"] = ai["symptom_message"]
-    st["raw_text"] = query
-    text_states[user] = st
-
-    # RL Metrics Logging
-    answer_text = ai.get("message", "")
-    answer_vec = np.array(embed_with_client(genai_client, answer_text), dtype=float)
-    ctx_vec = np.array(embed_with_client(genai_client, prompt), dtype=float)
-
-    semantic_similarity = cos_sim(x_context[:answer_vec.shape[0]], answer_vec) if answer_vec.size else 0.0
-    groundedness = cos_sim(answer_vec, ctx_vec) if answer_vec.size else 0.0
-
-    interaction = LLMInteraction(
-        request_id=str(uuid.uuid4()),
-        doctor_id="TEXT_AGENT",
-        query=query,
-        response=answer_text,
-        context_used=prompt,
-        semantic_similarity=semantic_similarity,
-        groundedness=groundedness,
-        prompt_variant=prompt_idx,
-        action_id=chosen_action_id,
-        temp_used=temp,
-        model_used=chosen_model,
-        ctx_size_used=ctx_size,
-        timestamp=datetime.utcnow()
-    )
-    db.add(interaction)
-    db.commit()
-
-    # Booking logic (unchanged)
-    if st.get("date") and st.get("time") and not st.get("phone") and not st.get("ready_for_booking"):
-        return ai.get("message", "What is your phone number?")
-
-    if ai.get("ready_for_booking") or st.get("ready_for_booking"):
-        dt_final_utc, _ = execute_booking(db, st, db_user_id)
-        if not dt_final_utc:
-            return "Sorry, couldn't book that slot."
-        dt_local = dt_final_utc.astimezone(USER_TZ)
-        formatted = dt_local.strftime("%A, %B %d at %I:%M %p %Z")
-        text_states[user] = {}
-        doctor_name = get_default_doctor(db)
-        return (
-            f"All set, {st.get('name','Patient')}! 🎉 Your appointment with {doctor_name} "
-            f"is booked for {formatted}. We've recorded your reason as: {st.get('symptom_message','')}."
+def book_appointment(name: str, phone: str, date_str: str, time_str: str, reason: str):
+    """Books a dentist appointment."""
+    clean_phone = PhoneNormalizer.normalize(phone)
+    print(f"📝 Booking: {name} on {date_str} at {time_str}")
+    db = SessionLocal()
+    try:
+        dt_req = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+        dentist = db.query(User).filter(User.role == "dentist").first()
+        doctor_name = "Dr. Available"
+        
+        patient = db.query(Patient).filter(Patient.phone == clean_phone).first()
+        if not patient:
+            patient = Patient(name=name, phone=clean_phone, contact_datetime=datetime.now())
+            db.add(patient); db.commit(); db.refresh(patient)
+            
+        appt = Appointment(
+            patient_id=patient.id, 
+            doctor_id=dentist.id if dentist else None,
+            datetime=dt_req, status="scheduled", doctor_name=doctor_name, reason=reason
         )
+        db.add(appt); db.commit()
+        return f"Booked for {dt_req.strftime('%A at %I:%M %p')}."
+    except Exception as e:
+        return f"Booking Error: {str(e)}"
+    finally:
+        db.close()
 
-    if ai.get("ready_for_cancellation"):
-        phone = st.get("phone")
-        if not phone:
-            return "Please provide your phone number."
-        p = db.query(Patient).filter(Patient.phone == phone).first()
-        if not p:
-            return "No appointments found for this phone number."
-        appt = db.query(Appointment).filter(Appointment.patient_id == p.id,
-                                            Appointment.status == "scheduled").first()
-        if not appt:
-            return "There is no appointment to cancel."
-        appt.status = "cancelled"
-        db.commit()
-        text_states[user] = {}
-        return "Your appointment has been cancelled 😊"
-
-    return answer_text
+# List of tools for Gemini
+my_tools = [check_availability, book_appointment]
 
 # -------------------------
-# Helper to handle and store symptoms
+# RL & PROMPT LOGIC
 # -------------------------
-async def handle_and_store_symptoms(db: Session, patient_id: int, message_text: str):
-    kb = get_symptom_kb(db)
-    result = await kb.process_text(message_text)
-    summary = ", ".join([r["display"] for r in result.get("extracted", [])])
-    interaction = Interaction(
-        patient_id=patient_id,
-        channel="text",
-        message=message_text,
-        created_at=datetime.utcnow()
+def select_prompt(user_text: str = ""):
+    if not RL_AVAILABLE: return SYSTEM_PROMPT_DEFAULT, None
+    try:
+        emb = np.resize(np.array(embed_with_client(gemini_client, user_text or ""), dtype=float), (bandit.d,))
+        cid, _ = bandit.choose(emb, eps=0.1)
+        base = PROMPT_VARIANTS[ACTIONS[cid][0]]
+        return f"{base}\n\n{KNOWLEDGE_BASE}", cid
+    except: return SYSTEM_PROMPT_DEFAULT, None
+
+def reward_rl(action_id):
+    if RL_AVAILABLE and action_id: bandit.update(action_id, np.zeros(bandit.d), reward=1.0)
+
+# -------------------------
+# HELPER: GOOGLE STT
+# -------------------------
+async def google_stt_stream(audio_chunks):
+    if not speech_client: return ""
+    content = b"".join(audio_chunks)
+    audio = speech.RecognitionAudio(content=content)
+    config = speech.RecognitionConfig(
+        encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+        sample_rate_hertz=48000, # Adjust to match your mic/frontend
+        language_code="en-US"
     )
-    db.add(interaction)
-    db.commit()
-    return result
+    try:
+        response = speech_client.recognize(config=config, audio=audio)
+        if response.results:
+            return response.results[0].alternatives[0].transcript
+    except Exception as e:
+        print(f"STT Error: {e}")
+    return ""
+
+async def send_bot(ws: WebSocket, text: str):
+    """Sends text to frontend and streams TTS audio via WebSocket."""
+    # 1. Update Status
+    await ws.send_json({"type": "status", "content": "Speaking..."})
+    
+    # 2. Send Text (Subtitles)
+    await ws.send_json({"type": "text", "content": text})
+    
+    # 3. Generate and Stream Audio
+    try:
+        from services.tts import stream_text_to_speech
+        print(f"🎙️ Streaming TTS for: {text[:30]}...")
+        for chunk in stream_text_to_speech(text):
+            if chunk:
+                await ws.send_bytes(chunk)
+    except Exception as e:
+        print(f"❌ TTS Streaming Error: {e}")
+    
+    # 4. Back to Listening
+    await ws.send_json({"type": "status", "content": "Listening..."})
+
+async def process_conversation_turn(text: str, st: dict, mode: str = "VOICE", ws: WebSocket = None):
+    """Handles one turn of conversation using Gemini with Tools, with Groq fallback."""
+    from llm_client import genai_client, groq_client
+    from utils import ai_generate
+
+    if ws:
+        await ws.send_json({"type": "status", "content": "Thinking..."})
+    
+    # 1. Select Prompt
+    system_prompt, action_id = select_prompt(text)
+    
+    # 2. Call Gemini
+    try:
+        chat = genai_client.chats.create(
+            model="gemini-2.0-flash-exp",
+            config=types.GenerateContentConfig(
+                tools=my_tools, 
+                system_instruction=system_prompt
+            )
+        )
+        response = chat.send_message(text)
+        ai_reply = response.text or "I'm checking..."
+        
+        if "booked" in ai_reply.lower() and action_id:
+            reward_rl(action_id)
+            
+        st["last_ai_reply"] = ai_reply
+        return ai_reply, st
+
+    except Exception as e:
+        err_msg = str(e)
+        if "RESOURCE_EXHAUSTED" in err_msg or "429" in err_msg:
+             print("⚠️ Gemini Rate Limit Hit. Falling back to Groq/Llama...")
+             fallback_prompt = f"{system_prompt}\n\nUSER MESSAGE: {text}\n\nREPLY CONCISELY:"
+             ai_reply = ai_generate(fallback_prompt)
+             return ai_reply, st
+        
+        print(f"❌ Gemini Error: {e}")
+        return "I'm sorry, I'm having trouble thinking right now.", st
 
 # -------------------------
-# WEBSOCKET ENDPOINT
+# WEBSOCKET ENDPOINT (The "Orb" Connector)
 # -------------------------
+# In flossy_backend/agent_server.py
+
 @app.websocket("/ws/agent")
 async def agent_ws_endpoint(ws: WebSocket):
     await ws.accept()
-    cid = id(ws)
+    cid = f"{ws.client.host}:{ws.client.port}"
+    print(f"INFO: {cid} - 'WebSocket /ws/agent' [accepted]")
+    
     voice_states[cid] = {}
-    await send_bot(ws, "Hello! I'm FlossyAI. How can I assist you today?")
-    buffer = []
+    
+    # 1. Send Initial Greeting and Connection Status
+    await ws.send_json({"type": "status", "content": "Connected"})
+    
+    greeting = "Hello! I'm Flossy, your dental assistant from Smile Artists Dental Studio. How can I help you today?"
+    await send_bot(ws, greeting)
+    
+    # Audio buffer and persistent webm header
+    audio_buffer = bytearray()
+    webm_header = None
+    
+    # COUNTER: We will try to process audio every ~10 chunks (approx 2-3 seconds)
+    chunk_count = 0
+    PROCESS_EVERY_N_CHUNKS = 10 
+
     try:
         while True:
-            data = json.loads(await ws.receive_text())
-            if data.get("type") == "audio_chunk":
-                buffer.append(base64.b64decode(data["data"]))
-            elif data.get("type") == "audio_done":
-                # transcript = await google_stt_stream(buffer) # Billing Error
-                transcript = await groq_stt(buffer)
-                buffer = []
-                
-                if not transcript or not transcript.strip():
-                     await send_bot(ws, "I didn't catch that. Could you please say it again?")
-                     continue
+            # 2. Receive Data
+            message = await ws.receive()
 
-                await ws.send_text(json.dumps({"type":"transcript","final":True,"text":transcript}))
-                # create task so websocket loop isn't blocked by long processing
-                asyncio.create_task(handle_user_utterance(ws, transcript))
+            # --- CASE A: BINARY AUDIO ---
+            if "bytes" in message:
+                chunk = message["bytes"]
+                audio_buffer.extend(chunk)
+                
+                # Capture the very first chunk's start as the WebM header 
+                # Wait until we have a substantial chunk to be sure it's the header
+                if webm_header is None and len(audio_buffer) >= 1000:
+                    webm_header = bytes(audio_buffer[:1000])
+                    print(f"💾 Captured WebM Header ({len(webm_header)} bytes)")
+                
+                chunk_count += 1
+                
+                # 3. CHECKPOINT: Process audio
+                if chunk_count >= PROCESS_EVERY_N_CHUNKS:
+                    if webm_header is None:
+                        # Safety fallback if we haven't hit 1000 bytes yet
+                        audio_buffer.clear()
+                        chunk_count = 0
+                        continue
+
+                    # Prepend ONLY the pure header to the accumulated buffer
+                    to_process = webm_header + bytes(audio_buffer)
+                    
+                    # Log size but skip if too small
+                    if len(audio_buffer) > 2000:
+                        print(f"👂 Processing {len(to_process)} bytes of speech...")
+                        transcript = await groq_stt([to_process])
+                        
+                        # 4. DID THE USER SPEAK?
+                        if transcript and transcript.strip() and len(transcript) > 2:
+                            # MODERATED Filter: Only block obvious non-speech noise
+                            lower_transcript = transcript.lower().strip().strip(".,?!")
+                            hallucinations = [
+                                "thanks for watching", "subtitle by", "like and subscribe", 
+                                "the end", "thanks for your time", "watching"
+                            ]
+                            
+                            is_hallucination = any(h in lower_transcript for h in hallucinations)
+                            
+                            # If it's very short and looks like garbage, filter it
+                            if len(lower_transcript) < 3 and lower_transcript not in ["hi", "no", "yes"]:
+                                is_hallucination = True
+
+                            if is_hallucination:
+                                print(f"🚫 Filtered Noise: {transcript}")
+                            else:
+                                print(f"🗣️ User Said: {transcript}")
+                                await ws.send_json({"type": "text", "content": f"You: {transcript}"})
+                                
+                                # Get AI Response
+                                response_text, new_state = await process_conversation_turn(
+                                    text=transcript, 
+                                    st=voice_states.get(cid, {}),
+                                    mode="VOICE",
+                                    ws=ws
+                                )
+                                voice_states[cid] = new_state
+                                
+                                # Speak Response
+                                print(f"🤖 Flossy Replying: {response_text}")
+                                await send_bot(ws, response_text)
+                    
+                    # Reset buffer. We KEEP the webm_header for the next window.
+                    audio_buffer.clear()
+                    chunk_count = 0
+
+            # --- CASE B: TEXT JSON ---
+            elif "text" in message:
+                try:
+                    data = json.loads(message["text"])
+                    if data.get("type") == "transcript":
+                         # Handle manual text input if needed
+                         pass
+                except: pass
+
     except WebSocketDisconnect:
+        print("INFO: Client disconnected")
         voice_states.pop(cid, None)
+    except Exception as e:
+        # Ignore the "receive after disconnect" error
+        if "disconnect" not in str(e).lower():
+            print(f"❌ Error: {e}")
+        try:
+            await ws.close()
+        except: pass
