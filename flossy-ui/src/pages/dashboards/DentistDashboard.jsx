@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import { useUser, useSession } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { PropagateLoader } from "react-spinners";
-import { useVoiceAgent } from "../../hooks/useVoiceAgent";
+import VoiceChat from "../../components/VoiceChat";
 import Header from "./DashboardHeader";
 import Footer from "../../components/Footer";
+import InvoiceForm from "../../components/InvoiceForm";
 import "../../styles/dentist_dashboard.css";
 import "../../styles/dashboard_extras.css";
+
+const API = "http://localhost:8000";
 
 export default function DentistDashboard() {
   const { user, isLoaded } = useUser();
@@ -18,8 +21,10 @@ export default function DentistDashboard() {
     if (!isLoaded) return;
 
     const role = user?.publicMetadata?.role;
+    const email = user?.primaryEmailAddress?.emailAddress;
 
-    if (role !== "dentist") {
+    // Allow Dentist OR Prachi specific bypass
+    if (role !== "dentist" && email !== "prachi.swarnim@gmail.com") {
       navigate("/not-authorized");
     }
   }, [isLoaded, user, navigate]);
@@ -38,10 +43,8 @@ export default function DentistDashboard() {
   const [selectedApptId, setSelectedApptId] = useState(null);
   const [followUpReason, setFollowUpReason] = useState("");
 
-  // VOICE AGENT (Legacy Disabled)
-  const isListening = false;
-  const start = () => alert("Voice Agent migrated to Patient Dashboard.");
-  const stop = () => { };
+  // VOICE AGENT (LiveKit Integrated)
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
   const agentMessages = [];
 
   // Sync voice messages to main chat
@@ -55,7 +58,12 @@ export default function DentistDashboard() {
     }
   }, [agentMessages]);
 
-  const API = "http://localhost:8000";
+  async function refreshAll() {
+    console.log("🔄 AI Action detected: Refreshing Dentist Dashboard...");
+    await loadAppointments();
+    await loadHistoryPrescriptions();
+  }
+
 
   // === Fetch Appointments ===
   async function loadAppointments() {
@@ -65,21 +73,17 @@ export default function DentistDashboard() {
     });
 
     const data = await res.json();
-
-    // Filter out appointments strictly before today (local time)
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    const validToday = (data.today || []).filter(a => new Date(a.time) >= startOfToday);
-    const validUpcoming = (data.upcoming || []).filter(a => new Date(a.time) >= startOfToday);
-
-    setToday(validToday);
-    setUpcoming(validUpcoming);
+    setToday(data.today || []);
+    setUpcoming(data.upcoming || []);
   }
 
   // === Artificial Delay + Load Data ===
   useEffect(() => {
-    if (!isLoaded || user?.publicMetadata?.role !== "dentist") return;
+    const email = user?.primaryEmailAddress?.emailAddress;
+    const role = user?.publicMetadata?.role;
+
+    if (!isLoaded) return;
+    if (role !== "dentist" && email !== "prachi.swarnim@gmail.com") return;
 
     setTimeout(() => {
       loadAppointments().finally(() => setPageLoading(false));
@@ -134,6 +138,40 @@ export default function DentistDashboard() {
     setFollowUpOpen(true);
   }
 
+  async function markNotVisited(id) {
+    if (!window.confirm("Mark this patient as 'Not Visited'?")) return;
+    const token = await session.getToken({ template: "default" });
+    await fetch(`${API}/api/appointments/mark_completed/${id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ status: "missed" })
+    });
+    loadAppointments();
+  }
+
+  async function updateFollowUpStatus(apptId, status) {
+    const token = await session.getToken({ template: "default" });
+    try {
+      const res = await fetch(`${API}/api/appointments/${apptId}/follow_up_status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        loadAppointments();
+      } else {
+        alert("Failed to update follow-up status.");
+      }
+    } catch (err) {
+      console.error("Error updating follow-up status:", err);
+    }
+  }
 
   function capitalizeFullName(name) {
     if (!name) return "";
@@ -148,8 +186,13 @@ export default function DentistDashboard() {
   // === Prescription State ===
   const [prescPatient, setPrescPatient] = useState("");
   const [prescDetails, setPrescDetails] = useState("");
+  const [prescDiagnosis, setPrescDiagnosis] = useState("");
+  const [prescTreatment, setPrescTreatment] = useState("");
+  const [prescRecommendations, setPrescRecommendations] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [patientsList, setPatientsList] = useState([]);
+  const [historyPrescriptions, setHistoryPrescriptions] = useState([]);
+  const [invoices, setInvoices] = useState([]);
 
   // Load Real Patients from DB
   useEffect(() => {
@@ -165,6 +208,9 @@ export default function DentistDashboard() {
         if (res.ok) {
           const data = await res.json();
           setPatientsList(data);
+        } else {
+          console.error("Patients Fetch Error:", res.status);
+          alert(`Failed to load patient list (Error ${res.status}). Please check console.`);
         }
       } catch (err) {
         console.error("Failed to load patients", err);
@@ -172,39 +218,189 @@ export default function DentistDashboard() {
     }
 
     fetchPatients();
+    loadHistoryPrescriptions();
+    fetchInvoices();
+    migrateLegacyPrescriptions();
   }, [isLoaded, session]);
 
-  // === Handle Prescription Upload ===
-  function handlePrescriptionUpload() {
-    if (!prescPatient || !prescDetails) {
-      alert("Please select a patient and enter prescription details.");
+  async function fetchInvoices() {
+    if (!session) return;
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/invoices/history`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setInvoices(data.invoices);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function downloadInvoice(id, invNum) {
+    if (!session) return;
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/invoices/${id}/pdf`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `invoice_${invNum}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function migrateLegacyPrescriptions() {
+    if (!session) return;
+    const legacy = localStorage.getItem("flossy_prescriptions");
+    if (!legacy) return;
+
+    try {
+      const prescList = JSON.parse(legacy);
+      if (!Array.isArray(prescList) || prescList.length === 0) {
+        localStorage.removeItem("flossy_prescriptions");
+        return;
+      }
+
+      console.log("🛠️ Migrating legacy prescriptions to backend...");
+      const token = await session.getToken({ template: "default" });
+
+      for (const p of prescList) {
+        // We only migrate if we have a patient name and details
+        if (!p.patient || !p.details) continue;
+
+        await fetch(`${API}/api/prescriptions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            patient_name: p.patient,
+            details: p.details
+          })
+        });
+      }
+
+      localStorage.removeItem("flossy_prescriptions");
+      console.log("✅ Migration complete.");
+      loadHistoryPrescriptions();
+    } catch (err) {
+      console.error("Migration failed", err);
+    }
+  }
+
+  async function loadHistoryPrescriptions() {
+    if (!session) return;
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/prescriptions/dentist`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryPrescriptions(data.prescriptions || []);
+      }
+    } catch (err) {
+      console.error("Failed to load prescription history", err);
+    }
+  }
+
+  async function downloadPrescription(id) {
+    if (!session) return;
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/prescriptions/${id}/pdf`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `prescription_${id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } else {
+        alert("Download failed.");
+      }
+    } catch (err) {
+      console.error("Download error:", err);
+    }
+  }
+
+  // === Prescription Handling ===
+  const handleBulletInput = (e, setter, currentVal) => {
+    const bullet = "• ";
+    // If it's the first character being typed, add a bullet
+    if (e.target.value.length === 1 && !currentVal) {
+      setter(bullet + e.target.value);
       return;
     }
 
+    // Handle Enter key for new bullets
+    if (e.nativeEvent.inputType === "insertLineBreak") {
+      setter(currentVal + "\n" + bullet);
+      return;
+    }
+
+    setter(e.target.value);
+  };
+
+  async function handlePrescriptionUpload() {
+    if (!prescPatient) return alert("Select a patient first.");
+    if (!prescDiagnosis && !prescTreatment && !prescRecommendations && !prescDetails)
+      return alert("Please fill at least one prescription section.");
+
     setIsUploading(true);
 
-    // Simulate network delay
-    setTimeout(() => {
-      const newPrescription = {
-        id: Date.now(),
-        patient: prescPatient, // This is the name string
-        doctor: fullName,
-        date: new Date().toISOString(),
-        details: prescDetails,
-        fileName: "prescription_" + Date.now() + ".pdf" // Mock file
-      };
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/prescriptions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          patient_name: prescPatient,
+          details: prescDetails,
+          diagnosis: prescDiagnosis,
+          treatment_plan: prescTreatment,
+          recommendations: prescRecommendations
+        })
+      });
 
-      // Save to Simulated DB (LocalStorage)
-      const existing = JSON.parse(localStorage.getItem("flossy_prescriptions") || "[]");
-      const updated = [newPrescription, ...existing];
-      localStorage.setItem("flossy_prescriptions", JSON.stringify(updated));
-
-      // Reset Form
-      setPrescPatient("");
-      setPrescDetails("");
+      if (res.ok) {
+        setPrescPatient("");
+        setPrescDetails("");
+        setPrescDiagnosis("");
+        setPrescTreatment("");
+        setPrescRecommendations("");
+        alert(`Prescription uploaded successfully for ${prescPatient}!`);
+        loadHistoryPrescriptions();
+      } else {
+        const err = await res.json();
+        alert("Upload failed: " + (err.detail || "Unknown error"));
+      }
+    } catch (err) {
+      console.error("Prescription upload error:", err);
+      alert("System error during upload.");
+    } finally {
       setIsUploading(false);
-      alert(`Prescription uploaded successfully for ${prescPatient}!`);
-    }, 1500);
+    }
   }
 
   // === AI Chat ===
@@ -250,7 +446,7 @@ export default function DentistDashboard() {
       <Header openAI={() => setAiOpen(true)} />
 
       <main className="dentist-main">
-        <h2 id="welcomeMessage">Welcome back, Dr. {fullName}!</h2>
+        <h2 id="Message">Welcome back, Dr. {fullName}!</h2>
 
         <div className="grid">
           <div className="card animate-fade-up" style={{ animationDelay: "0.1s" }}>
@@ -268,31 +464,81 @@ export default function DentistDashboard() {
                       hour12: true
                     })}
                   </b>
-                  <div className="appt-patient">{capitalizeFullName(a.patient_name)}</div>
+                  <div className="appt-patient">{capitalizeFullName(a.patient_name)}
+                    <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
+                      {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
+                    </span>
+                  </div>
                   <div className="appt-reason">{a.reason}</div>
 
                   {/* 🔥 Buttons */}
-                  {a.status !== "completed" && a.status !== "follow_up" && (
+                  {a.status === "scheduled" && (
                     <div className="action-buttons" style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                      <button className="done-btn" onClick={() => markCompleted(a.id)}>
-                        Mark Completed
+                      <button
+                        className="done-btn"
+                        onClick={() => markCompleted(a.id)}
+                        style={{ padding: "6px 12px", background: "#2ecc71", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1 }}
+                      >
+                        <i className="fas fa-check"></i> Completed
                       </button>
-                      <button className="follow-up-btn"
-                        style={{ background: "#f0b800", color: "#000", border: "none", padding: "5px 10px", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}
-                        onClick={() => openFollowUpModal(a.id)}>
-                        Follow Up
+                      <button
+                        className="follow-up-btn"
+                        style={{ padding: "6px 12px", background: "#f0b800", color: "#000", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1 }}
+                        onClick={() => openFollowUpModal(a.id)}
+                      >
+                        <i className="fas fa-clock"></i> Follow Up
+                      </button>
+                      <button
+                        className="missed-btn"
+                        style={{ padding: "6px 12px", background: "#e74c3c", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1 }}
+                        onClick={() => markNotVisited(a.id)}
+                      >
+                        <i className="fas fa-times"></i> Not Visited
                       </button>
                     </div>
                   )}
 
                   {a.status === "completed" && (
-                    <span className="completed-tag">Completed <i className="fas fa-check-circle"></i></span>
+                    <span className="completed-tag" style={{ color: "#2ecc71", display: "block", marginTop: "5px" }}>
+                      <i className="fas fa-check-circle"></i> Completed
+                    </span>
+                  )}
+
+                  {a.status === "missed" && (
+                    <span className="missed-tag" style={{ color: "#e74c3c", display: "block", marginTop: "5px" }}>
+                      <i className="fas fa-times-circle"></i> Not Visited
+                    </span>
                   )}
 
                   {a.status === "follow_up" && (
                     <div className="follow-up-tag" style={{ color: "#f0b800", marginTop: "5px" }}>
                       <i className="fas fa-clock"></i> Follow Up Required
                       <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>Note: {a.follow_up_reason}</div>
+
+                      {/* Follow-up Status Tracking */}
+                      <div className="follow-up-actions" style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
+                        {!a.follow_up_status ? (
+                          <>
+                            <button
+                              onClick={() => updateFollowUpStatus(a.id, "completed")}
+                              style={{ fontSize: "0.75rem", background: "#28a745", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
+                            >Mark Done</button>
+                            <button
+                              onClick={() => updateFollowUpStatus(a.id, "missed")}
+                              style={{ fontSize: "0.75rem", background: "#dc3545", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
+                            >Mark Missed</button>
+                          </>
+                        ) : (
+                          <span style={{
+                            fontSize: "0.75rem",
+                            fontWeight: "bold",
+                            color: a.follow_up_status === "completed" ? "#28a745" : "#dc3545",
+                            textTransform: "capitalize"
+                          }}>
+                            Follow-up {a.follow_up_status}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -318,7 +564,11 @@ export default function DentistDashboard() {
                       hour12: true
                     })}
                   </b>
-                  <div className="appt-patient">{capitalizeFullName(a.patient_name)}</div>
+                  <div className="appt-patient">{capitalizeFullName(a.patient_name)}
+                    <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
+                      {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
+                    </span>
+                  </div>
                   <div className="appt-reason">{a.reason}</div>
                   <div className="appt-status status-upcoming">Scheduled</div>
                 </div>
@@ -329,13 +579,6 @@ export default function DentistDashboard() {
           </div>
 
 
-          <div className="card animate-fade-up" style={{ animationDelay: "0.2s" }}>
-            <div className="card-header">
-              <h3>Recent Interactions</h3>
-              <i className="fas fa-history card-icon"></i>
-            </div>
-            <p className="placeholder-text">Checking patient history...</p>
-          </div>
 
           <div className="card animate-fade-up" style={{ animationDelay: "0.3s" }}>
             <div className="card-header">
@@ -362,7 +605,7 @@ export default function DentistDashboard() {
           {/* PRESCRIPTION CARD */}
           <div className="card animate-fade-up" style={{ animationDelay: "0.5s", gridColumn: "span 2" }}>
             <div className="card-header">
-              <h3>Prescribe Medicine</h3>
+              <h3>Prescriptions</h3>
               <i className="fas fa-file-prescription card-icon"></i>
             </div>
             <div className="prescription-form">
@@ -376,37 +619,174 @@ export default function DentistDashboard() {
                   <option value="">-- Choose Patient --</option>
                   {patientsList.length > 0 ? (
                     patientsList.map(p => (
-                      <option key={p.id} value={p.name}>{capitalizeFullName(p.name)}</option>
+                      <option key={p.id} value={p.name}>{p.name}</option>
                     ))
                   ) : (
-                    <option disabled>Loading patients...</option>
+                    <option disabled>{pageLoading ? "Loading patients..." : "No registered patients found."}</option>
                   )}
                 </select>
               </div>
 
-              <div className="form-group">
-                <label>Prescription Details / Notes</label>
-                <textarea
-                  placeholder="e.g. Amoxicillin 500mg, twice daily..."
-                  value={prescDetails}
-                  onChange={(e) => setPrescDetails(e.target.value)}
-                  className="dashboard-textarea"
-                  rows="3"
-                ></textarea>
+              <div className="structured-presc-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div className="form-group">
+                  <label>Diagnosis</label>
+                  <textarea
+                    placeholder="e.g. Chronic Gingivitis..."
+                    value={prescDiagnosis}
+                    onChange={(e) => handleBulletInput(e, setPrescDiagnosis, prescDiagnosis)}
+                    className="dashboard-textarea"
+                    rows="3"
+                  ></textarea>
+                </div>
+
+                <div className="form-group">
+                  <label>Treatment Plan</label>
+                  <textarea
+                    placeholder="e.g. Scaling and Root Planing..."
+                    value={prescTreatment}
+                    onChange={(e) => handleBulletInput(e, setPrescTreatment, prescTreatment)}
+                    className="dashboard-textarea"
+                    rows="3"
+                  ></textarea>
+                </div>
+
+                <div className="form-group" style={{ gridColumn: "span 2" }}>
+                  <label>Recommendations / Medications</label>
+                  <textarea
+                    placeholder="e.g. Warm salt water rinses, twice daily..."
+                    value={prescRecommendations}
+                    onChange={(e) => handleBulletInput(e, setPrescRecommendations, prescRecommendations)}
+                    className="dashboard-textarea"
+                    rows="3"
+                  ></textarea>
+                </div>
               </div>
 
               <button
                 className="upload-btn"
                 onClick={handlePrescriptionUpload}
                 disabled={isUploading}
+                style={{ marginTop: "1rem" }}
               >
                 {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-upload"></i>}
                 {isUploading ? " Uploading..." : " Upload Prescription"}
               </button>
             </div>
+
+            {/* PREVIOUS PRESCRIPTIONS LIST */}
+            {historyPrescriptions.length > 0 && (
+              <div className="recent-prescriptions" style={{ marginTop: "2rem", borderTop: "1px solid #333", paddingTop: "1rem" }}>
+                <h4 style={{ marginBottom: "1rem", color: "#f0b800" }}>Recent Prescriptions</h4>
+                <div className="presc-list" style={{ maxHeight: "300px", overflowY: "auto" }}>
+                  {historyPrescriptions.map(p => (
+                    <div key={p.id} className="presc-item-mini" style={{
+                      background: "#222", padding: "10px", borderRadius: "8px", marginBottom: "10px",
+                      display: "flex", justifyContent: "space-between", alignItems: "center"
+                    }}>
+                      <div>
+                        <b style={{ color: "#fff" }}>{capitalizeFullName(p.patient)}</b>
+                        <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(p.date).toLocaleDateString()}</div>
+                        <div style={{ fontSize: "0.85rem", color: "#ccc", marginTop: "4px" }}>
+                          {p.diagnosis ? `Dx: ${p.diagnosis.substring(0, 40)}...` :
+                            p.details ? p.details.substring(0, 40) + "..." : "No details"}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => downloadPrescription(p.id)}
+                        style={{ background: "transparent", border: "1px solid #f0b800", color: "#f0b800", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
+                      >
+                        <i className="fas fa-download"></i> PDF
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* ALL PATIENTS TABLE */}
+          <div className="card animate-fade-up" style={{ animationDelay: "0.55s", gridColumn: "span 2" }}>
+            <div className="card-header">
+              <h3>All Registered Patients</h3>
+              <i className="fas fa-users card-icon"></i>
+            </div>
+            <div className="elegant-scroll" style={{ padding: "1rem", overflowX: "auto", maxHeight: "300px", overflowY: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", color: "#fff", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #333" }}>
+                    <th style={{ padding: "12px", color: "#f0b800" }}>Name</th>
+                    <th style={{ padding: "12px", color: "#f0b800" }}>Phone</th>
+                    <th style={{ padding: "12px", color: "#f0b800" }}>Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {patientsList.length > 0 ? (
+                    patientsList.map(p => (
+                      <tr key={p.id} style={{ borderBottom: "1px solid #222" }}>
+                        <td style={{ padding: "12px" }}>{p.name}</td>
+                        <td style={{ padding: "12px", color: "#888" }}>{p.phone}</td>
+                        <td style={{ padding: "12px" }}>
+                          <span style={{
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            fontSize: "0.75rem",
+                            background: p.source === "website" ? "#3498db33" : p.source === "manual" ? "#e67e2233" : "#9b59b633",
+                            color: p.source === "website" ? "#3498db" : p.source === "manual" ? "#e67e22" : "#9b59b6",
+                            textTransform: "uppercase",
+                            fontWeight: "bold"
+                          }}>
+                            {p.source || "website"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="3" style={{ textAlign: "center", padding: "2rem", color: "#888" }}>No patients found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* INVOICE CARD */}
+          <div className="card animate-fade-up" style={{ animationDelay: "0.6s", gridColumn: "span 2" }}>
+            <div className="card-header">
+              <h3>Billing & Invoices</h3>
+              <i className="fas fa-file-invoice-dollar card-icon"></i>
+            </div>
+            <InvoiceForm patientsList={patientsList} onInvoiceCreated={fetchInvoices} />
+
+            {invoices.length > 0 && (
+              <div className="recent-prescriptions" style={{ marginTop: "2rem", borderTop: "1px solid #333", paddingTop: "1rem" }}>
+                <h4 style={{ marginBottom: "1rem", color: "#f0b800" }}>Recent Invoices</h4>
+                <div className="presc-list" style={{ maxHeight: "300px", overflowY: "auto" }}>
+                  {invoices.map(inv => (
+                    <div key={inv.id} className="presc-item-mini" style={{
+                      background: "#222", padding: "10px", borderRadius: "8px", marginBottom: "10px",
+                      display: "flex", justifyContent: "space-between", alignItems: "center"
+                    }}>
+                      <div>
+                        <b style={{ color: "#fff" }}>{inv.patient_name}</b>
+                        <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(inv.date).toLocaleDateString()}</div>
+                        <div style={{ fontSize: "0.85rem", color: "#2ecc71" }}>{inv.currency} {inv.total.toLocaleString()} ({inv.invoice_number})</div>
+                      </div>
+                      <button
+                        onClick={() => downloadInvoice(inv.id, inv.invoice_number)}
+                        style={{ background: "transparent", border: "1px solid #f0b800", color: "#f0b800", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
+                      >
+                        <i className="fas fa-download"></i> PDF
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
         </div>
-      </main >
+      </main>
 
       <div id="open-ai-panel" onClick={() => setAiOpen(true)}>
         FlossyAI
@@ -435,11 +815,11 @@ export default function DentistDashboard() {
             placeholder="Ask FlossyAI..."
           />
           <button
-            onClick={isListening ? stop : start}
-            title={isListening ? "Stop Speaking" : "Start Voice Agent"}
-            style={{ background: isListening ? "#ff4d4d" : "#ffcb05" }}
+            onClick={() => setIsVoiceActive(true)}
+            title="Start Clinical Voice Assistant"
+            style={{ background: "#ffcb05", borderRadius: "50%", width: "40px", height: "40px", border: "none" }}
           >
-            {isListening ? "🛑" : "🎤"}
+            🎤
           </button>
           <button onClick={sendMessage}>Send</button>
         </div>
@@ -471,6 +851,16 @@ export default function DentistDashboard() {
               </div>
             </div>
           </div>
+        )
+      }
+
+      {/* LIVEKIT VOICE MODAL */}
+      {
+        isVoiceActive && (
+          <VoiceChat
+            onClose={() => setIsVoiceActive(false)}
+            onAction={refreshAll}
+          />
         )
       }
     </>

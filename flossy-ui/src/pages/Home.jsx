@@ -18,7 +18,7 @@ import "../styles/global.css";
 import "../styles/hero.css";
 import "../styles/hero.css";
 import "../styles/about.css";
-import LiveKitVoiceModal from "../components/LiveKitVoiceModal"; // Updated to LiveKit
+import VoiceChat from "../components/VoiceChat";
 import { useState } from "react";
 
 export default function Home() {
@@ -167,7 +167,9 @@ export default function Home() {
             <Footer />
 
             {/* VOICE CALL MODAL & TRIGGER */}
-            <LiveKitVoiceModal isOpen={isCallOpen} onClose={() => setIsCallOpen(false)} userName="Visitor" />
+            {isCallOpen && (
+                <VoiceChat onClose={() => setIsCallOpen(false)} />
+            )}
             <button
                 style={{
                     position: "fixed",

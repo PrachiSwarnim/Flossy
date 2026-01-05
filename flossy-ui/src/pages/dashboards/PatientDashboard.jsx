@@ -12,7 +12,6 @@ import "../../styles/dashboard_modal.css";
 import "../../styles/ai_features.css";
 import AppointmentCard from "../../components/AppointmentCard";
 
-import LiveKitVoiceInline from "../../components/LiveKitVoiceInline";
 import VoiceChat from "../../components/VoiceChat";
 
 
@@ -37,34 +36,77 @@ export default function PatientDashboard() {
   const [isVoiceActive, setIsVoiceActive] = useState(false); // LiveKit Modal State
   const [myPrescriptions, setMyPrescriptions] = useState([]);
 
-  // LOAD PRESCRIPTIONS (Simulated Backend)
-  useEffect(() => {
-    if (!user) return;
-    const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+  // LOAD PRESCRIPTIONS
+  async function loadPrescriptions() {
+    if (!session || !user) return;
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/prescriptions/my`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-    // Poll for new prescriptions (Simulating real-time)
-    // Poll for new prescriptions (Simulating real-time)
-    const interval = setInterval(() => {
-      try {
-        const allPresc = JSON.parse(localStorage.getItem("flossy_prescriptions") || "[]");
-        // console.log("Checking prescriptions:", allPresc.length, "for user:", fullName);
-
-        const mine = allPresc.filter(p => {
-          if (!p.patient) return false; // Skip invalid entries
-          const pName = p.patient.toLowerCase();
-          const fName = fullName.toLowerCase();
-          return pName.includes(fName) || fName.includes(pName);
-        });
-
-        // console.log("Found matches:", mine.length);
-        setMyPrescriptions(mine);
-      } catch (err) {
-        console.error("Error loading prescriptions:", err);
+      let backendPresc = [];
+      if (res.ok) {
+        const data = await res.json();
+        backendPresc = data.prescriptions || [];
       }
-    }, 10000); // Check every 10s
 
-    return () => clearInterval(interval);
-  }, [user]);
+      // 🌉 BRIDGE: Load legacy localStorage prescriptions so they don't "disappear"
+      const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim().toLowerCase();
+      const legacyRaw = localStorage.getItem("flossy_prescriptions");
+      let legacyPresc = [];
+
+      if (legacyRaw) {
+        try {
+          const allLegacy = JSON.parse(legacyRaw);
+          legacyPresc = allLegacy.filter(p => {
+            const pName = (p.patient || "").toLowerCase();
+            return pName.includes(fullName) || fullName.includes(pName);
+          }).map(p => ({
+            ...p,
+            isLegacy: true,
+            doctor: p.doctor || "Dentist",
+            details: p.details,
+            date: p.date
+          }));
+        } catch (e) { console.error("Legacy parse error", e); }
+      }
+
+      // Combine (preferring backend if there are duplicates, though legacy is local)
+      setMyPrescriptions([...backendPresc, ...legacyPresc]);
+
+    } catch (err) {
+      console.error("Failed to load prescriptions", err);
+    }
+  }
+
+  async function downloadPrescription(id, isLegacy = false) {
+    if (isLegacy) {
+      alert("Legacy prescriptions cannot be downloaded as PDFs yet. Please ask your doctor to re-upload this in the new system.");
+      return;
+    }
+    if (!session) return;
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/prescriptions/${id}/pdf`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `prescription_${id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } else {
+        alert("Download failed.");
+      }
+    } catch (err) {
+      console.error("Download error:", err);
+    }
+  }
 
   // VOICE AGENT
   // Legacy Hook Removed
@@ -84,6 +126,12 @@ export default function PatientDashboard() {
 
   const API = "http://localhost:8000";
 
+  async function refreshAll() {
+    console.log("🔄 AI Action detected: Refreshing Patient Dashboard...");
+    await loadAppointments();
+    await loadPrescriptions();
+  }
+
   // 1️⃣ ROLE CHECK
   useEffect(() => {
     if (!isLoaded) return;
@@ -98,7 +146,10 @@ export default function PatientDashboard() {
     if (user?.publicMetadata?.role !== "patient") return;
 
     const timer = setTimeout(() => {
-      loadAppointments().finally(() => setPageLoading(false));
+      Promise.all([
+        loadAppointments(),
+        loadPrescriptions()
+      ]).finally(() => setPageLoading(false));
     }, 900);
 
     return () => clearTimeout(timer);
@@ -117,6 +168,7 @@ export default function PatientDashboard() {
     const interval = setInterval(() => {
       // console.log("Polling appointments...");
       loadAppointments();
+      loadPrescriptions();
     }, 10000); // Poll every 10 seconds
 
     return () => clearInterval(interval);
@@ -313,8 +365,8 @@ export default function PatientDashboard() {
                       <span className="presc-date">{new Date(p.date).toLocaleDateString()}</span>
                       <p className="presc-details">{p.details}</p>
                     </div>
-                    <button className="download-btn">
-                      <i className="fas fa-download"></i> Download
+                    <button className="download-btn" onClick={() => downloadPrescription(p.id, p.isLegacy)}>
+                      <i className="fas fa-download"></i> {p.isLegacy ? "Legacy" : "Download"}
                     </button>
                   </div>
                 ))}
@@ -428,7 +480,7 @@ export default function PatientDashboard() {
       {isVoiceActive && (
         <VoiceChat
           onClose={() => setIsVoiceActive(false)}
-          onBookingSuccess={loadAppointments}
+          onAction={refreshAll}
         />
       )}
 

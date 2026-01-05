@@ -274,7 +274,7 @@ async def process_conversation_turn(text: str, st: dict, mode: str = "VOICE", ws
     # 2. Call Gemini
     try:
         chat = genai_client.chats.create(
-            model="gemini-2.0-flash-exp",
+            model="gemini-2.0-flash-001",
             config=types.GenerateContentConfig(
                 tools=my_tools, 
                 system_instruction=system_prompt

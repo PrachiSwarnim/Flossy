@@ -54,8 +54,12 @@ export default function RoleSelection() {
       // ✔ Store locally (useful for rendering dashboards instantly)
       sessionStorage.setItem("flossy_role", role);
 
+      // ⭐ IMPORTANT: Force Clerk to refresh metadata
+      if (user) await user.reload();
+
       // ✔ Redirect to the correct dashboard
-      navigate(role === "patient" ? "/patient" : "/dentist");
+      const route = role === "patient" ? "/patient" : (role === "dentist" ? "/dentist" : "/receptionist");
+      navigate(route);
     } catch (err) {
       console.error("Role selection error:", err);
       alert("Could not set role. Try again.");
@@ -87,6 +91,11 @@ export default function RoleSelection() {
           <div className="role-card" onClick={() => pickRole("dentist")}>
             <h3>Dentist / Staff</h3>
             <p>Manage appointments, reports, and accept patient requests.</p>
+          </div>
+
+          <div className="role-card" onClick={() => pickRole("receptionist")}>
+            <h3>Receptionist</h3>
+            <p>Check in patients, manage arrivals, and update patient data.</p>
           </div>
         </section>
 

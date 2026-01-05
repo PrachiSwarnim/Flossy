@@ -266,3 +266,12 @@ footer.footer {
   border: none;
   opacity: 0.6;
 }
+
+.ai-panel {
+  z-index: 1000;
+}
+
+#voice-root {
+  position: relative;
+  z-index: 99999;
+}

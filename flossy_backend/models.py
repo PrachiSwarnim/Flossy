@@ -38,8 +38,11 @@ class Patient(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(120), nullable=False)
     phone = Column(String(20), unique=True, nullable=False)
+    age = Column(Integer, nullable=True)
     contact_datetime = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    source = Column(String(50), default="website") # "website", "manual", "voice"
+    is_archived = Column(Integer, default=0) # 0 = False, 1 = True (SQLite friendly)
 
     # Relationships
     user = relationship("User", back_populates="patients")
@@ -67,6 +70,7 @@ class Appointment(Base):
 
     reminder_level = Column(Integer, default=0)
     follow_up_reason = Column(Text, nullable=True)
+    follow_up_status = Column(String(50), nullable=True) # "completed", "missed", "rescheduled"
 
     patient = relationship("Patient", back_populates="appointments")
     doctor = relationship("User", back_populates="appointments")
@@ -131,13 +135,85 @@ class LLMInteraction(Base):
     accuracy_score = Column(Float, nullable=True)
     timestamp = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc))
 
+class Prescription(Base):
+    __tablename__ = "prescriptions"
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    details = Column(Text, nullable=True) # Legacy / Catch-all
+    diagnosis = Column(Text, nullable=True)
+    treatment_plan = Column(Text, nullable=True)
+    recommendations = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    patient = relationship("Patient")
+    doctor = relationship("User")
+
+# 📄 Invoicing and Billing System
+class Invoice(Base):
+    __tablename__ = "invoices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    invoice_number = Column(String(50), unique=True, index=True)
+    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True) # The dentist who provided service
+    
+    date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    currency = Column(String(10), default="INR")
+    discount = Column(Float, default=0.0)
+    total_amount = Column(Float, default=0.0) # Calculated as sum(items) - discount
+    status = Column(String(50), default="unpaid") # "unpaid", "partially_paid", "paid"
+
+    # Relationships
+    patient = relationship("Patient")
+    doctor = relationship("User")
+    items = relationship("InvoiceItem", back_populates="invoice", cascade="all, delete-orphan")
+    payment_records = relationship("PaymentRecord", back_populates="invoice", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<Invoice(id={self.id}, number={self.invoice_number}, patient_id={self.patient_id})>"
+
+class InvoiceItem(Base):
+    __tablename__ = "invoice_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False)
+    
+    treatment_name = Column(String(200), nullable=False)
+    treatment_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    cost = Column(Float, nullable=False)
+
+    invoice = relationship("Invoice", back_populates="items")
+
+class PaymentRecord(Base):
+    __tablename__ = "payment_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False)
+    
+    receipt_number = Column(String(50), unique=True, index=True)
+    paid_on = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    payment_method = Column(String(50), nullable=False) # "UPI", "Cash", "Card", etc.
+    amount = Column(Float, nullable=False)
+
+    invoice = relationship("Invoice", back_populates="payment_records")
+
+class TreatmentCatalog(Base):
+    __tablename__ = "treatment_catalog"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), unique=True, nullable=False)
+    default_cost = Column(Float, nullable=False)
+    category = Column(String(100), nullable=True)
+
 def final_score(row: LLMInteraction):
-    e = row.explicit_reward or 0
-    i = row.implicit_reward or 0
-    a = (row.audit_score / 5) if row.audit_score else 0
+    e = getattr(row, "explicit_reward", 0) or 0
+    i = getattr(row, "implicit_reward", 0) or 0
+    a = (getattr(row, "audit_score", 0) / 5) if getattr(row, "audit_score", 0) else 0
 
     return 0.5*e + 0.3*i + 0.2*a
-    
+
 if __name__=="__main__":
     Base.metadata.create_all(bind=engine)
     print("Created tables (if not exist) in", DATABASE_URL)

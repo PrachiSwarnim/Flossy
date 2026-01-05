@@ -292,13 +292,14 @@ async def entrypoint(ctx: JobContext):
         stt=deepgram.STT(),
         llm=google.LLM(
             api_key=os.getenv("GOOGLE_API_KEY"),
-            model="gemini-2.0-flash-exp"
+            model="gemini-2.0-flash-001"
         ),
         tts=elevenlabs.TTS(
             api_key=os.getenv("ELEVEN_API_KEY"),
+            model="eleven_flash_v2.5",
             voice=elevenlabs.Voice(
-                id=os.getenv("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL"),
-                name="Flossy",
+                id=os.getenv("ELEVENLABS_VOICE_ID", "ZT9u07TYPVl83ejeLakq"),
+                name="Lily",
                 category="premade"
             )
         ),

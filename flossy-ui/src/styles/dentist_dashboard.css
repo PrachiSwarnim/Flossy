@@ -56,7 +56,51 @@ body {
 
 .done-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
+}
+
+.follow-up-btn {
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: 0.2s ease;
+}
+
+.follow-up-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(240, 184, 0, 0.3);
+}
+
+.missed-btn {
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: 0.2s ease;
+}
+
+.missed-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+/* Elegant Scrollbar */
+.elegant-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.elegant-scroll::-webkit-scrollbar-track {
+  background: rgba(42, 42, 42, 0.5);
+  border-radius: 4px;
+}
+
+.elegant-scroll::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+  border: 1px solid #333;
+}
+
+.elegant-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-gold);
 }
 
 /* =============== Main Wrapper =============== */
@@ -67,8 +111,8 @@ body {
   /* Top padding for fixed header */
 }
 
-/* =============== Welcome Title =============== */
-#welcomeMessage {
+/* ===============  Title =============== */
+#Message {
   font-size: 2.8rem;
   font-family: var(--font-heading);
   color: var(--primary-gold);
@@ -169,22 +213,43 @@ body {
 }
 
 .dashboard-select,
+.dashboard-input,
 .dashboard-textarea {
   width: 100%;
   padding: 0.8rem;
-  background: #2a2a2a;
-  border: 1px solid #444;
+  background: #2a2a2a !important;
+  border: 1px solid #444 !important;
   border-radius: 8px;
-  color: #fff;
+  color: #fff !important;
   font-family: var(--font-body);
   font-size: 0.95rem;
   outline: none;
   transition: 0.2s;
+  appearance: none;
+  /* Remove browser default UI */
+}
+
+/* Fix for number input white spinners */
+.dashboard-input::-webkit-outer-spin-button,
+.dashboard-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.dashboard-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Ensure select options are dark */
+.dashboard-select option {
+  background: #2a2a2a;
+  color: #fff;
 }
 
 .dashboard-select:focus,
+.dashboard-input:focus,
 .dashboard-textarea:focus {
-  border-color: var(--primary-gold);
+  border-color: var(--primary-gold) !important;
   box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
 }
 

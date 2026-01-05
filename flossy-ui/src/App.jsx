@@ -15,7 +15,9 @@ import Signup from "./pages/Signup";
 import RoleSelection from "./pages/RoleSelection";
 import PatientDashboard from "./pages/dashboards/PatientDashboard";
 import DentistDashboard from "./pages/dashboards/DentistDashboard";
+import ReceptionistDashboard from "./pages/dashboards/ReceptionistDashboard";
 import PostLogin from "./pages/PostLogin";
+import NotAuthorized from "./pages/NotAuthorized";
 import Team from "./components/Team";
 
 import ScrollToHash from "./utils/ScrollToHash";
@@ -71,6 +73,17 @@ export default function App() {
             </SignedIn>
           }
         />
+
+        <Route
+          path="/receptionist"
+          element={
+            <SignedIn>
+              <ReceptionistDashboard />
+            </SignedIn>
+          }
+        />
+
+        <Route path="/not-authorized" element={<NotAuthorized />} />
 
         {/* SIGNED OUT → LOGIN */}
         <Route

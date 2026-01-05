@@ -12,6 +12,9 @@ dependencies = [
     "livekit-plugins-turn-detector>=1.0.0",
     "python-dotenv>=1.0.0",
     "huggingface-hub[hf-xet]>=0.35.3",
+    "sqlalchemy>=2.0.45",
+    "psycopg2>=2.9.11",
+    "groq>=1.0.0",
 ]
 
 [project.optional-dependencies]

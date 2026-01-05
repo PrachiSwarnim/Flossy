@@ -18,6 +18,15 @@ export default function PostLogin() {
       sessionStorage.setItem("flossy_token", token);
       sessionStorage.setItem("flossy_user", JSON.stringify(user));
 
+      // 🚨 URGENT FIX: Restore Dentist Role for Prachi
+      const email = user.primaryEmailAddress?.emailAddress;
+      if (email === "prachi.swarnim@gmail.com") {
+        // Force backend fix
+        await fetch("http://localhost:8000/api/debug/fix_my_role");
+        navigate("/dentist");
+        return;
+      }
+
       // 1️⃣ Clerk metadata role
       const clerkRole = user.publicMetadata?.role;
 
@@ -28,6 +37,11 @@ export default function PostLogin() {
 
       if (clerkRole === "dentist") {
         navigate("/dentist");
+        return;
+      }
+
+      if (clerkRole === "receptionist") {
+        navigate("/receptionist");
         return;
       }
 
@@ -51,6 +65,11 @@ export default function PostLogin() {
 
         if (backendRole === "dentist") {
           navigate("/dentist");
+          return;
+        }
+
+        if (backendRole === "receptionist") {
+          navigate("/receptionist");
           return;
         }
       } catch (err) {

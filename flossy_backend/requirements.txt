@@ -20,3 +20,4 @@ requests
 sqlalchemy
 uvicorn
 requests
+fpdf2
