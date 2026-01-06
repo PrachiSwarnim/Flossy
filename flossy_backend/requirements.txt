@@ -21,3 +21,4 @@ sqlalchemy
 uvicorn
 requests
 fpdf2
+twilio

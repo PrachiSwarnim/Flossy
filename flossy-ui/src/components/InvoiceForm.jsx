@@ -63,7 +63,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
 
     const updateItem = (index, field, value) => {
         const newItems = [...items];
-        newItems[index][field] = value;
+        newItems[index] = { ...newItems[index], [field]: value }; // Correctly copy the object
 
         // Auto-fill cost if treatment name matches catalog
         if (field === "treatment_name") {
@@ -89,7 +89,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
 
     const updatePayment = (index, field, value) => {
         const newPayments = [...payments];
-        newPayments[index][field] = value;
+        newPayments[index] = { ...newPayments[index], [field]: value };
         setPayments(newPayments);
         if (field === "amount") setIsManualPayment(true);
     };
@@ -97,7 +97,9 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!patientName) return alert("Please select a patient.");
-        if (items.some(it => !it.treatment_name || it.cost < 0)) return alert("Please fill all treatment details with valid costs.");
+        if (items.some(it => !it.treatment_name || (it.treatment_name === "Other" && !it.custom_name) || it.cost < 0)) {
+            return alert("Please fill all treatment details (including custom names) with valid costs.");
+        }
 
         setIsSubmitting(true);
         try {
@@ -191,31 +193,33 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
                 </div>
 
                 {items.map((item, idx) => (
-                    <div key={idx} className="dynamic-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 40px', gap: '10px', marginBottom: '10px', background: '#222', padding: '10px', borderRadius: '8px' }}>
-                        <select
-                            value={item.treatment_name}
-                            onChange={(e) => updateItem(idx, 'treatment_name', e.target.value)}
-                            className="dashboard-select"
-                            required
-                        >
-                            <option value="">-- Select Treatment --</option>
-                            {catalog.map(cat => (
-                                <option key={cat.id} value={cat.name}>
-                                    {cat.name}
-                                </option>
-                            ))}
-                            <option value="Other">Other / Custom</option>
-                        </select>
-                        {item.treatment_name === "Other" && (
-                            <input
-                                placeholder="Enter Custom Treatment"
-                                value={item.custom_name || ""}
-                                onChange={(e) => updateItem(idx, 'custom_name', e.target.value)}
-                                className="dashboard-input"
-                                style={{ marginTop: '5px' }}
+                    <div key={idx} className="dynamic-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 40px', gap: '10px', marginBottom: '10px', background: '#222', padding: '10px', borderRadius: '8px', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <select
+                                value={item.treatment_name}
+                                onChange={(e) => updateItem(idx, 'treatment_name', e.target.value)}
+                                className="dashboard-select"
                                 required
-                            />
-                        )}
+                            >
+                                <option value="">-- Select Treatment --</option>
+                                {catalog.map(cat => (
+                                    <option key={cat.id} value={cat.name}>
+                                        {cat.name}
+                                    </option>
+                                ))}
+                                <option value="Other">Other / Custom</option>
+                            </select>
+                            {item.treatment_name === "Other" && (
+                                <input
+                                    placeholder="Treatment Name"
+                                    value={item.custom_name || ""}
+                                    onChange={(e) => updateItem(idx, 'custom_name', e.target.value)}
+                                    className="dashboard-input"
+                                    style={{ marginTop: '5px' }}
+                                    required
+                                />
+                            )}
+                        </div>
                         <div style={{ position: 'relative' }}>
                             <input
                                 type="number"
@@ -270,7 +274,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
                         <div style={{ position: 'relative' }}>
                             <input
                                 type="number"
-                                placeholder="Amount Paid"
+                                placeholder="Amount"
                                 value={p.amount || ""}
                                 onChange={(e) => updatePayment(idx, 'amount', e.target.value)}
                                 className="dashboard-input"

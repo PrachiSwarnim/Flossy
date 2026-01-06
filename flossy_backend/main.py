@@ -11,6 +11,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Callable, Optional, Generator, List
 import io
 from fpdf import FPDF
+from reminders import send_simulated_notification
 
 from fastapi import FastAPI, Request, HTTPException, Depends, Body, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -644,13 +645,11 @@ def get_today_appointments(request: Request, db: Session = Depends(get_db)):
         .order_by(Appointment.datetime.asc())
     )
 
-    if user.role == "dentist":
-        email_prefix = email.split("@")[0]
-        clean = email_prefix.replace(".", " ")
-        proper = " ".join([p.capitalize() for p in clean.split()])
-        dentist_name = f"Dr. {proper}"
-        appts = base_query.filter(Appointment.doctor_name.ilike(dentist_name)).all()
+    if user.role == "dentist" or user.role == "receptionist":
+        # Dentists (and Receptionists) see ALL appointments
+        appts = base_query.all()
     else:
+        # Patients only see their own
         patient = db.query(Patient).filter(Patient.user_id == user.id).first()
         if not patient:
             return {"appointments": []}
@@ -726,14 +725,14 @@ def dentist_upcoming(
     from sqlalchemy import or_
     all_candidates_query = db.query(Appointment).join(Appointment.patient).options(joinedload(Appointment.patient))
     
-    # 🔓 BYPASS: If Prachi (Admin), show ALL appointments
-    if email != "prachi.swarnim@gmail.com":
-        all_candidates_query = all_candidates_query.filter(
-            or_(
-                Appointment.doctor_name.ilike(dentist_name),
-                Appointment.doctor_name == None
-            )
-        )
+    # 🔓 SHOW ALL: All dentists now see all appointments
+    # if email != "prachi.swarnim@gmail.com":
+    #     all_candidates_query = all_candidates_query.filter(
+    #         or_(
+    #             Appointment.doctor_name.ilike(dentist_name),
+    #             Appointment.doctor_name == None
+    #         )
+    #     )
     
     # 🕵️‍♂️ HIDE ARCHIVED PATIENTS
     all_candidates_query = all_candidates_query.filter(Patient.is_archived == 0)
@@ -1289,7 +1288,15 @@ def add_patient_appointment(data: ManualPatientAppointmentCreate, db: Session = 
             created_at=datetime.now(timezone.utc)
         )
         db.add(new_presc)
+        db.add(new_presc)
         db.commit()
+
+    # --- TRIGGER BOOKING CONFIRMATION SMS ---
+    try:
+        from reminders import send_simulated_notification
+        send_simulated_notification(db, new_appt, level=0)
+    except Exception as e:
+        print(f"⚠️ Failed to send booking confirmation: {e}")
 
     return {"success": True, "appointment_id": new_appt.id}
 
@@ -1345,6 +1352,14 @@ def add_receptionist_patient(data: ReceptionistPatientAdd, db: Session = Depends
     db.add(new_appt)
     db.commit()
     db.refresh(new_appt)
+
+    # --- TRIGGER BOOKING CONFIRMATION SMS ---
+    try:
+        from reminders import send_simulated_notification
+        send_simulated_notification(db, new_appt, level=0)
+    except Exception as e:
+        print(f"⚠️ Failed to send booking confirmation: {e}")
+        
     return {"success": True, "appointment_id": new_appt.id}
 
 @app.get("/api/appointments/next")

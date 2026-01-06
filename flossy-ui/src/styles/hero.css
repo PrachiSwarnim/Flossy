@@ -68,3 +68,37 @@
     font-size: 2.5rem;
   }
 }
+
+/* Centering the Hero Booking Card - Below Carousel */
+.hero-form-container {
+  position: relative;
+  /* Changed from absolute to relative */
+  margin: 2rem auto;
+  /* Center horizontally and add vertical space */
+  width: 100%;
+  max-width: 1200px;
+  /* Constrain width */
+  display: flex;
+  justify-content: center;
+  pointer-events: auto;
+  background: transparent !important;
+  /* Override global .homepage-section > div */
+  z-index: 1;
+}
+
+/* Re-enable pointer events for the card itself */
+.hero-form-container>div {
+  pointer-events: auto;
+}
+
+@media (max-width: 768px) {
+  .hero-form-container {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    padding: 2rem 1rem;
+    background: var(--bg-dark);
+    /* Ensure contrast on mobile */
+  }
+}

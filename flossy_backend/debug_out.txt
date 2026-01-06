@@ -1,0 +1,5 @@
+DEBUG: Appointments count: 1
+DEBUG: Patients count: 1
+
+Change upcoming appointments:
+ - ID: 25 | Time: 2026-01-06 14:36:00+05:30 | Level: 5 | Patient: prachi

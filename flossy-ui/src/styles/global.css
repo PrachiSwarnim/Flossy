@@ -275,3 +275,5 @@ footer.footer {
   position: relative;
   z-index: 99999;
 }
+
+/* Aceternity effects handled via Tailwind config */

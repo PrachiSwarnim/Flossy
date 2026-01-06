@@ -16,9 +16,10 @@ import Tourism from "../components/Tourism";
 
 import "../styles/global.css";
 import "../styles/hero.css";
-import "../styles/hero.css";
 import "../styles/about.css";
 import VoiceChat from "../components/VoiceChat";
+import { Spotlight } from "../components/ui/Spotlight";
+import { Meteors } from "../components/ui/Meteors";
 import { useState } from "react";
 
 export default function Home() {
@@ -37,20 +38,94 @@ export default function Home() {
             <Header servicesRef={servicesRef} />
 
             {/* HERO SECTION */}
-            <section className="homepage-section" style={{ padding: 0 }}>
+            <section className="homepage-section" style={{ padding: 0, overflow: "hidden" }}>
                 <Carousel />
 
-                {/* Floating Appointment Form */}
-                <motion.div
-                    id="appointment"
-                    className="hero-form-container"
-                    style={{ scrollMarginTop: "120px" }}
-                    initial={{ y: 50, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.5, duration: 0.8 }}
-                >
-                    <AppointmentRequestForm />
-                </motion.div>
+                {/* Floating Appointment Form - Centered via Wrapper */}
+                <div className="hero-form-container">
+                    <Spotlight
+                        className=""
+                        fill="white"
+                        style={{ top: "-50%", left: "-20%", opacity: 0.5, transform: "rotate(-45deg)" }}
+                    />
+                    <motion.div
+                        id="appointment"
+                        style={{ scrollMarginTop: "120px" }}
+                        initial={{ y: 50, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.5, duration: 0.8 }}
+                    >
+                        {/* <AppointmentRequestForm /> */}
+                        <motion.div
+                            whileHover={{ scale: 1.05, boxShadow: "0 0 40px rgba(212, 175, 55, 0.6), 0 30px 60px rgba(0,0,0,0.6)" }}
+                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            style={{
+                                background: "url('/static/assets/image.jpg') center/cover no-repeat",
+                                position: "relative",
+                                padding: "2.5rem",
+                                borderRadius: "20px",
+                                border: "1px solid rgba(255, 255, 255, 0.2)",
+                                maxWidth: "400px",
+                                width: "100%",
+                                boxShadow: "0 0 25px rgba(212, 175, 55, 0.4), 0 25px 50px rgba(0,0,0,0.5)",
+                                textAlign: "center",
+                                overflow: "hidden"
+                            }}>
+                            <Meteors number={20} />
+                            {/* Dark Overlay for readability */}
+                            <div style={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: "rgba(0, 0, 0, 0.4)",
+                                backdropFilter: "blur(3px)",
+                                zIndex: 1
+                            }}></div>
+
+                            {/* Content */}
+                            <div style={{ position: "relative", zIndex: 2 }}>
+                                <h3 style={{
+                                    color: "var(--primary-gold)",
+                                    fontSize: "2rem",
+                                    marginBottom: "1rem",
+                                    fontFamily: "var(--font-heading)",
+                                    textShadow: "0 2px 4px rgba(0,0,0,0.8)"
+                                }}>Book Your Visit</h3>
+
+                                <p style={{
+                                    color: "#ccc",
+                                    marginBottom: "2rem",
+                                    lineHeight: "1.6",
+                                    fontSize: "1.05rem"
+                                }}>
+                                    To provide you with personalized care, please create a patient account to schedule your appointment instantly.
+                                </p>
+
+                                <Link to="/signup" style={{
+                                    display: "block",
+                                    width: "100%",
+                                    padding: "16px",
+                                    background: "linear-gradient(135deg, #f0b800 0%, #d4a000 100%)",
+                                    color: "#000",
+                                    fontWeight: "bold",
+                                    fontSize: "1.1rem",
+                                    borderRadius: "12px",
+                                    textDecoration: "none",
+                                    marginBottom: "1rem",
+                                    transition: "transform 0.2s"
+                                }}>
+                                    Create Patient Account
+                                </Link>
+
+                                <div style={{ color: "#aaa", fontSize: "0.9rem", textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}>
+                                    Already have an account? <Link to="/login" style={{ color: "var(--primary-gold)", textDecoration: "none", fontWeight: "bold" }}>Log In</Link>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                </div>
             </section>
 
 
