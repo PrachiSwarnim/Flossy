@@ -30,7 +30,7 @@ export default function Carousel() {
   // Move to prev slide
   const prevSlide = () => {
     if (index === 0) {
-      /0/ Loop back to end(real last slide)
+      // Loop back to end(real last slide)
       transitionRef.current = false;
       setIndex(images.length); // Jump to duplicate spot? No, jump to last real image index.
       // Actually, standard loop back logic:
