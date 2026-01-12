@@ -3,16 +3,36 @@ import { useSession } from '@clerk/clerk-react';
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
+const EXCHANGE_RATES = {
+    INR: 1,
+    USD: 0.012
+};
+
+const convertPrice = (amount, fromCurrency, toCurrency) => {
+    if (!amount) return 0;
+    const fromRate = EXCHANGE_RATES[fromCurrency] || 1;
+    const toRate = EXCHANGE_RATES[toCurrency] || 1;
+    // Base is INR. INR value = amount / fromRate. New Value = INR value * toRate.
+    // Wait, rates ARE relative to INR (e.g. 1 INR = 0.012 USD).
+    // So: Amount(INR) * Rate(USD) = Amount(USD).
+    // General: (Amount / Rate(From)) * Rate(To)
+    const val = (parseFloat(amount) / fromRate) * toRate;
+    return parseFloat(val.toFixed(2));
+};
+
+const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice }) => {
     const { session } = useSession();
     const [patientName, setPatientName] = useState("");
     const [currency, setCurrency] = useState("INR");
     const [discount, setDiscount] = useState(0);
-    const [discountType, setDiscountType] = useState("fixed"); // "fixed" or "percent"
-    const [items, setItems] = useState([{ treatment_name: "", cost: 0, treatment_date: new Date().toISOString().split('T')[0] }]);
+    const [items, setItems] = useState([{ treatment_name: "", cost: 0, discount: 0, discount_type: "flat", treatment_date: new Date().toISOString().split('T')[0] }]);
     const [payments, setPayments] = useState([{ payment_method: "UPI", amount: 0, paid_on: new Date().toISOString().split('T')[0] }]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isManualPayment, setIsManualPayment] = useState(false); // Track if user manually edited payment
+    const [patientSearch, setPatientSearch] = useState("");
+    const [showPatientSuggestions, setShowPatientSuggestions] = useState(false);
+    const [treatmentSearchTerm, setTreatmentSearchTerm] = useState("");
+    const [activeTreatmentIdx, setActiveTreatmentIdx] = useState(null);
     const [catalog, setCatalog] = useState([]);
 
     // Fetch Treatment Catalog
@@ -32,13 +52,19 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
     }, []);
 
     // Auto-calculate totals
+    const calculateItemDiscountAmount = (item) => {
+        const cost = parseFloat(item.cost) || 0;
+        const disc = parseFloat(item.discount) || 0;
+        if (item.discount_type === "percent") {
+            return (cost * disc) / 100;
+        }
+        return disc;
+    };
+
     const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.cost) || 0), 0);
+    const totalItemDiscount = items.reduce((sum, item) => sum + calculateItemDiscountAmount(item), 0);
 
-    const discountValue = discountType === "percent"
-        ? (subtotal * (parseFloat(discount || 0) / 100))
-        : parseFloat(discount || 0);
-
-    const totalAmount = Math.max(0, subtotal - discountValue);
+    const totalAmount = Math.max(0, subtotal - totalItemDiscount);
     const totalPaid = payments.reduce((sum, pay) => sum + (parseFloat(pay.amount) || 0), 0);
     const amountDue = totalAmount - totalPaid;
 
@@ -51,8 +77,29 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
         }
     }, [totalAmount, isManualPayment]);
 
+    // Handle Currency Change & Auto-Convert Items
+    const handleCurrencyChange = (newCurrency) => {
+        const prevCurrency = currency;
+        setCurrency(newCurrency);
+
+        // Convert Invoice Items
+        const convertedItems = items.map(item => ({
+            ...item,
+            cost: convertPrice(item.cost, prevCurrency, newCurrency),
+            discount: item.discount_type === 'flat' ? convertPrice(item.discount, prevCurrency, newCurrency) : item.discount
+        }));
+        setItems(convertedItems);
+
+        // Convert Payments
+        const convertedPayments = payments.map(p => ({
+            ...p,
+            amount: convertPrice(p.amount, prevCurrency, newCurrency)
+        }));
+        setPayments(convertedPayments);
+    };
+
     const addItem = () => {
-        setItems([...items, { treatment_name: "", cost: 0, treatment_date: new Date().toISOString().split('T')[0] }]);
+        setItems([...items, { treatment_name: "", cost: 0, discount: 0, discount_type: "flat", treatment_date: new Date().toISOString().split('T')[0] }]);
     };
 
     const removeItem = (index) => {
@@ -69,7 +116,8 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
         if (field === "treatment_name") {
             const match = catalog.find(t => t.name.toLowerCase() === value.toLowerCase());
             if (match) {
-                newItems[index].cost = match.cost;
+                // Convert default INR cost to current currency
+                newItems[index].cost = convertPrice(match.cost, 'INR', currency);
             }
         }
 
@@ -90,15 +138,17 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
     const updatePayment = (index, field, value) => {
         const newPayments = [...payments];
         newPayments[index] = { ...newPayments[index], [field]: value };
+        // If user manually edits amount, stop auto-updating it
+        if (field === "amount") {
+            setIsManualPayment(true);
+        }
         setPayments(newPayments);
-        if (field === "amount") setIsManualPayment(true);
     };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!patientName) return alert("Please select a patient.");
         if (items.some(it => !it.treatment_name || (it.treatment_name === "Other" && !it.custom_name) || it.cost < 0)) {
-            return alert("Please fill all treatment details (including custom names) with valid costs.");
+            return alert("Please fill all treatment details with valid costs.");
         }
 
         setIsSubmitting(true);
@@ -112,22 +162,30 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
                 },
                 body: JSON.stringify({
                     patient_name: patientName,
-                    discount: discountValue, // Send the calculated absolute discount
-                    items: items.map(it => ({
-                        ...it,
-                        treatment_name: it.treatment_name === "Other" ? it.custom_name : it.treatment_name,
-                        cost: parseFloat(it.cost)
-                    })),
+                    discount: 0,
+                    items: items.map(it => {
+                        return {
+                            ...it,
+                            treatment_name: it.treatment_name === "Other" ? it.custom_name : it.treatment_name,
+                            cost: parseFloat(it.cost),
+                            discount: calculateItemDiscountAmount(it)
+                        };
+                    }),
                     payments: payments.map(p => ({ ...p, amount: parseFloat(p.amount) })),
-                    currency: currency // Future proofing backend
+                    currency: currency
                 })
             });
 
             if (res.ok) {
-                alert("Invoice generated successfully!");
+                const result = await res.json();
+                alert(`Invoice generated successfully! (${result.invoice_number})`);
+                if (downloadInvoice && result.invoice_id) {
+                    downloadInvoice(result.invoice_id, result.invoice_number, true);
+                }
                 setPatientName("");
+                setPatientSearch("");
                 setDiscount(0);
-                setItems([{ treatment_name: "", cost: 0, treatment_date: new Date().toISOString().split('T')[0] }]);
+                setItems([{ treatment_name: "", cost: 0, discount: 0, discount_type: "flat", treatment_date: new Date().toISOString().split('T')[0] }]);
                 setPayments([{ payment_method: "UPI", amount: 0, paid_on: new Date().toISOString().split('T')[0] }]);
                 setIsManualPayment(false);
                 if (onInvoiceCreated) onInvoiceCreated();
@@ -147,32 +205,76 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
         <div className="invoice-form-container" style={{ color: '#fff' }}>
             <form onSubmit={handleSubmit} className="premium-form">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                    <div className="form-group">
+                    <div className="form-group" style={{ position: "relative" }}>
                         <label style={{ color: '#f0b800', fontWeight: 'bold' }}>Select Patient</label>
-                        <select
-                            value={patientName}
-                            onChange={(e) => setPatientName(e.target.value)}
-                            className="dashboard-select"
-                            required
-                        >
-                            <option value="">-- Choose Patient --</option>
-                            {patientsList.map(p => (
-                                <option key={p.id} value={p.name}>{p.name}</option>
-                            ))}
-                        </select>
+                        <div className="patient-search-container" style={{ position: "relative" }}>
+                            <div style={{ position: "relative" }}>
+                                <input
+                                    type="text"
+                                    placeholder="Search patient name..."
+                                    value={patientSearch || patientName}
+                                    onChange={(e) => {
+                                        setPatientSearch(e.target.value);
+                                        setShowPatientSuggestions(true);
+                                        if (patientName) setPatientName("");
+                                    }}
+                                    onFocus={() => setShowPatientSuggestions(true)}
+                                    className="dashboard-input"
+                                    style={{ paddingLeft: "35px" }}
+                                />
+                                <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#f0b800", opacity: 0.7 }}></i>
+                            </div>
+
+                            {showPatientSuggestions && (patientSearch.trim() !== "" || (patientsList && patientsList.length > 0)) && (
+                                <div className="patient-suggestions elegant-scroll" style={{
+                                    position: "absolute", top: "100%", left: 0, right: 0,
+                                    zIndex: 101, background: "#1a1a1a", border: "1px solid #444",
+                                    borderRadius: "8px", marginTop: "5px", maxHeight: "180px",
+                                    overflowY: "scroll", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+                                }}>
+                                    {patientsList
+                                        .filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase()))
+                                        .map((p, i) => (
+                                            <div
+                                                key={p.id}
+                                                onClick={() => {
+                                                    setPatientName(p.name);
+                                                    setPatientSearch(p.name);
+                                                    setShowPatientSuggestions(false);
+                                                }}
+                                                style={{
+                                                    padding: "10px 15px", cursor: "pointer", borderBottom: "1px solid #333",
+                                                    background: patientName === p.name ? "#2a2a2a" : "transparent"
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = "#2a2a2a"}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = patientName === p.name ? "#2a2a2a" : "transparent"}
+                                            >
+                                                <div style={{ fontWeight: "600", color: "#fff" }}>{p.name}</div>
+                                                {p.phone && <div style={{ fontSize: "0.75rem", color: "#888" }}>{p.phone}</div>}
+                                            </div>
+                                        ))}
+                                    {patientsList.filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase())).length === 0 && (
+                                        <div style={{ padding: "15px", color: "#888", textAlign: "center" }}>No patients found.</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        {showPatientSuggestions && (
+                            <div
+                                style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}
+                                onClick={() => setShowPatientSuggestions(false)}
+                            ></div>
+                        )}
                     </div>
                     <div className="form-group">
                         <label style={{ color: '#f0b800', fontWeight: 'bold' }}>Currency</label>
                         <select
                             value={currency}
-                            onChange={(e) => setCurrency(e.target.value)}
+                            onChange={(e) => handleCurrencyChange(e.target.value)}
                             className="dashboard-select"
                         >
                             <option value="INR">INR (₹)</option>
                             <option value="USD">USD ($)</option>
-                            <option value="EUR">EUR (€)</option>
-                            <option value="GBP">GBP (£)</option>
-                            <option value="AED">AED</option>
                         </select>
                     </div>
                 </div>
@@ -185,33 +287,87 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
                     </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 40px', gap: '10px', marginBottom: '5px', padding: '0 10px', fontSize: '0.8rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    <div>Treatment</div>
-                    <div>Cost</div>
-                    <div>Treatment Date</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 40px', gap: '15px', marginBottom: '5px', padding: '0 10px', fontSize: '0.85rem', color: '#f0b800', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', alignItems: 'center' }}>
+                    <div style={{ paddingLeft: '2px' }}>Treatment</div>
+                    <div style={{ paddingLeft: '2px' }}>Cost</div>
+                    <div style={{ paddingLeft: '2px' }}>Disc.</div>
+                    <div style={{ paddingLeft: '2px' }}>Date</div>
                     <div></div>
                 </div>
 
                 {items.map((item, idx) => (
-                    <div key={idx} className="dynamic-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 40px', gap: '10px', marginBottom: '10px', background: '#222', padding: '10px', borderRadius: '8px', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <select
-                                value={item.treatment_name}
-                                onChange={(e) => updateItem(idx, 'treatment_name', e.target.value)}
-                                className="dashboard-select"
-                                required
-                            >
-                                <option value="">-- Select Treatment --</option>
-                                {catalog.map(cat => (
-                                    <option key={cat.id} value={cat.name}>
-                                        {cat.name}
-                                    </option>
-                                ))}
-                                <option value="Other">Other / Custom</option>
-                            </select>
+                    <div key={idx} className="dynamic-row" style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 40px', gap: '15px', marginBottom: '10px', background: '#222', padding: '10px', borderRadius: '8px', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    type="text"
+                                    placeholder="Search treatment..."
+                                    value={activeTreatmentIdx === idx ? treatmentSearchTerm : item.treatment_name}
+                                    onChange={(e) => {
+                                        setTreatmentSearchTerm(e.target.value);
+                                        setActiveTreatmentIdx(idx);
+                                        if (item.treatment_name) updateItem(idx, 'treatment_name', ""); // Reset selection
+                                    }}
+                                    onFocus={() => {
+                                        setTreatmentSearchTerm(item.treatment_name || "");
+                                        setActiveTreatmentIdx(idx);
+                                    }}
+                                    className="dashboard-input"
+                                    style={{ paddingLeft: '35px' }}
+                                />
+                                <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#f0b800', opacity: 0.7 }}></i>
+                            </div>
+
+                            {activeTreatmentIdx === idx && (treatmentSearchTerm.trim() !== "" || catalog.length > 0) && (
+                                <div className="treatment-suggestions elegant-scroll" style={{
+                                    position: "absolute", top: "100%", left: 0, right: 0,
+                                    zIndex: 102, background: "#1a1a1a", border: "1px solid #444",
+                                    borderRadius: "8px", marginTop: "5px", maxHeight: "180px",
+                                    overflowY: "scroll", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+                                }}>
+                                    {catalog
+                                        .filter(cat => cat.name.toLowerCase().includes(treatmentSearchTerm.toLowerCase()))
+                                        .map((cat) => (
+                                            <div
+                                                key={cat.id}
+                                                onClick={() => {
+                                                    updateItem(idx, 'treatment_name', cat.name);
+                                                    setTreatmentSearchTerm(cat.name);
+                                                    setActiveTreatmentIdx(null);
+                                                }}
+                                                style={{
+                                                    padding: "10px 15px", cursor: "pointer", borderBottom: "1px solid #333",
+                                                    background: item.treatment_name === cat.name ? "#2a2a2a" : "transparent"
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = "#2a2a2a"}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = item.treatment_name === cat.name ? "#2a2a2a" : "transparent"}
+                                            >
+                                                <div style={{ fontWeight: "600", color: "#fff" }}>{cat.name}</div>
+                                                <div style={{ fontSize: "0.75rem", color: "#f0b800" }}>{currency} {convertPrice(cat.cost, 'INR', currency)}</div>
+                                            </div>
+                                        ))}
+                                    <div
+                                        onClick={() => {
+                                            updateItem(idx, 'treatment_name', "Other");
+                                            setActiveTreatmentIdx(null);
+                                        }}
+                                        style={{ padding: "10px 15px", cursor: "pointer", color: "#f0b800", fontStyle: "italic" }}
+                                    >
+                                        + Add Other / Custom
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTreatmentIdx === idx && (
+                                <div
+                                    style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 101 }}
+                                    onClick={() => setActiveTreatmentIdx(null)}
+                                ></div>
+                            )}
+
                             {item.treatment_name === "Other" && (
                                 <input
-                                    placeholder="Treatment Name"
+                                    placeholder="Enter Custom Treatment Name"
                                     value={item.custom_name || ""}
                                     onChange={(e) => updateItem(idx, 'custom_name', e.target.value)}
                                     className="dashboard-input"
@@ -229,7 +385,39 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
                                 className="dashboard-input"
                                 required
                             />
-                            <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.8rem' }}>{currency}</span>
+                        </div>
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type="number"
+                                placeholder="Disc."
+                                value={item.discount || ""}
+                                onChange={(e) => updateItem(idx, 'discount', e.target.value)}
+                                className="dashboard-input"
+                                style={{ paddingRight: '50px' }}
+                            />
+                            <select
+                                value={item.discount_type}
+                                onChange={(e) => updateItem(idx, 'discount_type', e.target.value)}
+                                style={{
+                                    position: 'absolute',
+                                    right: '4px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    width: '42px',
+                                    background: '#333',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    color: '#f0b800',
+                                    fontSize: '0.75rem',
+                                    height: '30px',
+                                    cursor: 'pointer',
+                                    outline: 'none',
+                                    textAlign: 'center'
+                                }}
+                            >
+                                <option value="flat">{currency}</option>
+                                <option value="percent">%</option>
+                            </select>
                         </div>
                         <input
                             type="date"
@@ -237,7 +425,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
                             onChange={(e) => updateItem(idx, 'treatment_date', e.target.value)}
                             className="dashboard-input"
                         />
-                        <button type="button" onClick={() => removeItem(idx)} disabled={items.length === 1} style={{ background: 'transparent', color: '#ff4444', border: 'none', cursor: 'pointer' }}>
+                        <button type="button" onClick={() => removeItem(idx)} disabled={items.length === 1} style={{ background: 'transparent', color: '#ff4444', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                             <i className="fas fa-trash"></i>
                         </button>
                     </div>
@@ -246,23 +434,23 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
                 {/* Payments */}
                 <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', marginBottom: '0.5rem' }}>
                     <h4 style={{ color: '#f0b800' }}>Payment Records</h4>
-                    <button type="button" onClick={addPayment} className="action-btn-mini" style={{ background: '#f0b800', color: '#000', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}>
+                    <button type="button" onClick={addPayment} className="action-btn-mini" style={{ background: '#f0b800', color: '#000', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
                         <i className="fas fa-plus"></i> Add Payment Item
                     </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 40px', gap: '10px', marginBottom: '5px', padding: '0 10px', fontSize: '0.8rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    <div>Method</div>
-                    <div>Amount</div>
-                    <div>Payment Date</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 40px', gap: '15px', marginBottom: '5px', padding: '0 10px', fontSize: '0.85rem', color: '#f0b800', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', alignItems: 'center' }}>
+                    <div style={{ paddingLeft: '2px' }}>Method</div>
+                    <div style={{ paddingLeft: '2px' }}>Amount</div>
+                    <div style={{ paddingLeft: '2px', gridColumn: '3 / 5' }}>Payment Date</div>
                     <div></div>
                 </div>
 
-                {payments.map((p, idx) => (
-                    <div key={idx} className="dynamic-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 40px', gap: '10px', marginBottom: '10px', background: '#222', padding: '10px', borderRadius: '8px' }}>
+                {payments.map((p, pIdx) => (
+                    <div key={pIdx} className="dynamic-row" style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 40px', gap: '15px', marginBottom: '10px', background: '#222', padding: '10px', borderRadius: '8px', alignItems: 'center' }}>
                         <select
                             value={p.payment_method}
-                            onChange={(e) => updatePayment(idx, 'payment_method', e.target.value)}
+                            onChange={(e) => updatePayment(pIdx, 'payment_method', e.target.value)}
                             className="dashboard-select"
                         >
                             <option value="UPI">UPI</option>
@@ -276,7 +464,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
                                 type="number"
                                 placeholder="Amount"
                                 value={p.amount || ""}
-                                onChange={(e) => updatePayment(idx, 'amount', e.target.value)}
+                                onChange={(e) => updatePayment(pIdx, 'amount', e.target.value)}
                                 className="dashboard-input"
                             />
                             <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.8rem' }}>{currency}</span>
@@ -284,49 +472,35 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated }) => {
                         <input
                             type="date"
                             value={p.paid_on}
-                            onChange={(e) => updatePayment(idx, 'paid_on', e.target.value)}
+                            onChange={(e) => updatePayment(pIdx, 'paid_on', e.target.value)}
                             className="dashboard-input"
+                            style={{ gridColumn: '3 / 5' }}
                         />
-                        <button type="button" onClick={() => removePayment(idx)} disabled={payments.length === 1} style={{ background: 'transparent', color: '#ff4444', border: 'none', cursor: 'pointer' }}>
+                        <button type="button" onClick={() => removePayment(pIdx)} disabled={payments.length === 1} style={{ background: 'transparent', color: '#ff4444', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                             <i className="fas fa-trash"></i>
                         </button>
                     </div>
                 ))}
 
                 {/* Summary */}
+                {/* Summary */}
                 <div className="invoice-summary" style={{ marginTop: '1.5rem', padding: '15px', background: '#1a1a1a', borderRadius: '10px', border: '1px solid #333' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span>Gross Amount:</span>
-                        <span style={{ fontWeight: 'bold' }}>{currency} {subtotal.toLocaleString()}</span>
+                        <span>Subtotal (Gross):</span>
+                        <span style={{ fontWeight: 'bold' }}>{currency} {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
-                        <span>Discount:</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <select
-                                value={discountType}
-                                onChange={(e) => setDiscountType(e.target.value)}
-                                className="dashboard-select"
-                                style={{ width: 'auto', height: '32px', padding: '0 8px', minWidth: '60px' }}
-                            >
-                                <option value="fixed">{currency}</option>
-                                <option value="percent">%</option>
-                            </select>
-                            <input
-                                type="number"
-                                value={discount || ""}
-                                onChange={(e) => setDiscount(e.target.value)}
-                                className="dashboard-input"
-                                style={{ width: '80px', height: '32px', textAlign: 'right' }}
-                                placeholder="0"
-                            />
+                    {totalItemDiscount > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#f0b800' }}>
+                            <span>Total Item Discounts:</span>
+                            <span style={{ fontWeight: 'bold' }}>- {currency} {totalItemDiscount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
-                    </div>
+                    )}
 
                     <hr style={{ borderColor: '#333', margin: '10px 0' }} />
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.1rem', color: '#f0b800', marginTop: '5px' }}>
-                        <span>Total Amount:</span>
+                        <span>Total Payable:</span>
                         <span>{currency} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
 

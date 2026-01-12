@@ -22,8 +22,18 @@
 
   --font-heading: "Playfair Display", serif;
   --font-body: "Inter", sans-serif;
+  --font-brand: "Cooper Black", serif;
+  --font-tagline: "Monotype Corsiva", cursive;
 
   --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.text-brand {
+  font-family: var(--font-brand) !important;
+}
+
+.text-tagline {
+  font-family: var(--font-tagline) !important;
 }
 
 * {

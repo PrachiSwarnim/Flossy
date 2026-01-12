@@ -11,6 +11,18 @@ from datetime import datetime, timezone, timedelta
 from typing import Callable, Optional, Generator, List
 import io
 from fpdf import FPDF
+
+class FlossyPDF(FPDF):
+    def header(self):
+        # Background Fill
+        self.set_fill_color(248, 248, 248)
+        self.rect(0, 0, 210, 297, 'F')
+
+        # Background/Margin Decoration
+        self.set_draw_color(212, 175, 55) # Gold
+        self.set_line_width(0.5)
+        self.rect(5, 5, 200, 287) # Subtle border
+
 from reminders import send_simulated_notification
 
 from fastapi import FastAPI, Request, HTTPException, Depends, Body, Query
@@ -35,6 +47,7 @@ class InvoiceItemCreate(BaseModel):
     treatment_name: str
     treatment_date: Optional[str] = None # format "YYYY-MM-DD"
     cost: float
+    discount: float = 0.0
 
 class PaymentRecordCreate(BaseModel):
     receipt_number: Optional[str] = None
@@ -56,6 +69,7 @@ class ManualPatientAppointmentCreate(BaseModel):
     datetime: datetime
     reason: str
     prescription_details: Optional[str] = None
+    sex: Optional[str] = None
 
 class ReceptionistPatientAdd(BaseModel):
     name: str
@@ -64,6 +78,7 @@ class ReceptionistPatientAdd(BaseModel):
     datetime: datetime
     reason: str
     doctor_name: Optional[str] = None
+    sex: Optional[str] = None
 
 from livekit import api
 
@@ -401,6 +416,39 @@ def init_db():
                     if "follow_up_status" not in columns:
                         conn.execute(text("ALTER TABLE appointments ADD COLUMN follow_up_status VARCHAR(50);"))
             except Exception as e: print(f"Migration error (appointments): {e}")
+
+            # 3. Check 'patients' table for 'sex'
+            try:
+                columns = [c['name'].lower() for c in inspector.get_columns('patients')]
+                if columns and "sex" not in columns:
+                    conn.execute(text("ALTER TABLE patients ADD COLUMN sex VARCHAR(10);"))
+            except Exception as e: print(f"Migration error (patients sex): {e}")
+            
+            # 4. Ensure Prescription IDs start from 1000
+            try:
+                # Check if table is empty
+                res = conn.execute(text("SELECT COUNT(*) FROM prescriptions")).scalar()
+                if res == 0:
+                    # Insert dummy row with ID 999 so next is 1000
+                    # We need a valid patient_id. If no patients, this might fail or we create a dummy patient.
+                    # Creating dummy patient first if needed.
+                    p_res = conn.execute(text("SELECT id FROM patients LIMIT 1")).scalar()
+                    pid = p_res
+                    if not pid:
+                        # Create dummy patient
+                        conn.execute(text("INSERT INTO patients (name, phone, source) VALUES ('System', '0000000000', 'system')"))
+                        pid = conn.execute(text("SELECT id FROM patients WHERE phone='0000000000'")).scalar()
+                    
+                    if pid:
+                        # Insert dummy prescription 999
+                        # Assuming 'created_at' defaults handle themselves or are nullable.
+                        # SQLite syntax vs Postgres. Using simple INSERT.
+                        conn.execute(text(f"INSERT INTO prescriptions (id, patient_id, details) VALUES (999, {pid}, 'System Offset');"))
+                        print("Initialized Prescription ID sequence to start from 1000.")
+            except Exception as e: print(f"Sequence init error: {e}")
+            
+            conn.commit()
+
             
             # 3. Check 'prescriptions' table
             try:
@@ -413,6 +461,13 @@ def init_db():
                     try: conn.execute(text("ALTER TABLE prescriptions ALTER COLUMN details DROP NOT NULL;"))
                     except: pass 
             except Exception as e: print(f"Migration error (prescriptions): {e}")
+
+            # 4. Check 'invoice_items' table for 'discount'
+            try:
+                columns = [c['name'].lower() for c in inspector.get_columns('invoice_items')]
+                if columns and "discount" not in columns:
+                    conn.execute(text("ALTER TABLE invoice_items ADD COLUMN discount FLOAT DEFAULT 0.0;"))
+            except Exception as e: print(f"Migration error (invoice_items discount): {e}")
             
             # 4. Check 'invoices' table
             try:
@@ -743,15 +798,15 @@ def dentist_upcoming(
         .all()
     )
 
-    today_appts, upcoming_appts = [], []
+    today_appts, upcoming_appts, history_appts = [], [], []
 
     for a in all_candidates:
-        is_today_strict = today_start <= a.datetime < today_end
-        is_past_pending = a.datetime < today_start and a.status == "scheduled"
-
-        if is_today_strict or is_past_pending:
+        # Strict separations
+        if a.datetime < today_start:
+            history_appts.append(a)
+        elif today_start <= a.datetime < today_end:
             today_appts.append(a)
-        elif a.datetime >= today_end:
+        else:
             upcoming_appts.append(a)
 
     def fmt(a):
@@ -770,6 +825,7 @@ def dentist_upcoming(
     return {
         "today": [fmt(a) for a in today_appts],
         "upcoming": [fmt(a) for a in upcoming_appts],
+        "history": [fmt(a) for a in history_appts]
     }
 
 @app.get("/api/appointments/receptionist_upcoming")
@@ -869,6 +925,7 @@ class PatientUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     age: Optional[int] = None
+    sex: Optional[str] = None
 
 @app.patch("/api/patients/{id}")
 def update_patient(id: int, data: PatientUpdate, db: Session = Depends(get_db), user = Depends(require_role("receptionist"))):
@@ -882,6 +939,8 @@ def update_patient(id: int, data: PatientUpdate, db: Session = Depends(get_db), 
         patient.phone = data.phone
     if data.age is not None:
         patient.age = data.age
+    if data.sex:
+        patient.sex = data.sex
         
     db.commit()
     return {"success": True}
@@ -996,7 +1055,7 @@ def get_dentist_prescriptions(db: Session = Depends(get_db), user = Depends(requ
     }
 
 @app.get("/api/prescriptions/{id}/pdf")
-def download_prescription_pdf(id: int, db: Session = Depends(get_db)):
+def download_prescription_pdf(id: int, stamp: bool = Query(True), db: Session = Depends(get_db)):
     presc = db.query(Prescription).filter(Prescription.id == id).first()
     if not presc:
         raise HTTPException(status_code=404, detail="Prescription not found")
@@ -1024,35 +1083,40 @@ def download_prescription_pdf(id: int, db: Session = Depends(get_db)):
         doc_name = f"Dr. {doc_name}"
 
     # 2. Generate PDF
-    pdf = FPDF()
+    pdf = FlossyPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    
-    # Background/Margin Decoration
-    pdf.set_draw_color(212, 175, 55) # Gold
-    pdf.set_line_width(0.5)
-    pdf.rect(5, 5, 200, 287) # Subtle border
     
     # Header: Logo & Clinic Info
     logo_path = r"c:\Users\Prachi Swarnim\Desktop\Flossy\flossy-ui\public\static\assets\logo.png"
     try:
-        pdf.image(logo_path, 10, 10, 30)
+        pdf.image(logo_path, 10, 15, 30)
     except:
         pass
         
-    pdf.set_xy(45, 12)
-    pdf.set_font("Arial", "B", 18)
-    pdf.set_text_color(212, 175, 55) # Unified Gold
-    pdf.cell(0, 10, "SMILE ARTISTS DENTAL STUDIO", ln=True)
+    pdf.set_xy(45, 15)
+    pdf.set_font("Times", "B", 24)
+    pdf.set_text_color(240, 184, 0) # Unified Gold
+    brand_w = pdf.get_string_width("Smile Artists")
+    pdf.cell(0, 8, "Smile Artists", ln=True)
+    
+    pdf.set_font("Times", "I", 14)
+    tag_w = pdf.get_string_width("...crafting smiles")
+    pdf.set_x(45 + brand_w - tag_w) # Align right edge to brand right edge
+    pdf.set_text_color(240, 184, 0)
+    pdf.cell(0, 6, "...crafting smiles", ln=True)
+    pdf.ln(2) # Space between tagline and address
     
     pdf.set_x(45)
-    pdf.set_font("Arial", "", 10)
+    pdf.set_font("Arial", "", 9)
     pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 5, "Bangalore, India | Ph: +91 98765 43210", ln=True)
+    pdf.cell(0, 5, "573, Smile Artists Dental Studio, Artemis Hospital Road", ln=True)
     pdf.set_x(45)
-    pdf.cell(0, 5, "Email: hello@smileartists.in | Web: www.smileartists.in", ln=True)
+    pdf.cell(0, 5, "Koyal Vihar, Gurugram - 122003, Haryana, India", ln=True)
+    pdf.set_x(45)
+    pdf.cell(0, 5, "Ph: +91 9693288488, +91 8507213999 | Web: www.smileartists.in", ln=True)
     
-    pdf.ln(15)
+    pdf.ln(5)
     
     pdf.set_font("Arial", "B", 14)
     pdf.set_fill_color(244, 244, 244)
@@ -1069,7 +1133,21 @@ def download_prescription_pdf(id: int, db: Session = Depends(get_db)):
     pdf.set_font("Arial", "B", 10)
     pdf.cell(30, 8, "Prescription ID:")
     pdf.set_font("Arial", "", 10)
-    pdf.cell(0, 8, f"#{presc.id}", ln=True)
+    pdf.cell(0, 8, f"#{1000 + presc.id}", ln=True)
+
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(30, 8, "Age / Sex:")
+    pdf.set_font("Arial", "", 10)
+    # Default to N/A if missing
+    p_age = str(presc.patient.age) if presc.patient and presc.patient.age else "N/A"
+    p_sex = presc.patient.sex if presc.patient and presc.patient.sex else "N/A"
+    pdf.cell(70, 8, f"{p_age} / {p_sex}")
+
+    pdf.set_font("Arial", "B", 10)
+    # Positioning Patient ID in the middle of Prescription ID and Dentist
+    pdf.cell(30, 8, "Patient ID:")
+    pdf.set_font("Arial", "", 10)
+    pdf.cell(0, 8, f"P-{1000 + presc.patient_id}", ln=True)
     
     pdf.set_font("Arial", "B", 10)
     pdf.cell(30, 8, "Date:")
@@ -1124,20 +1202,22 @@ def download_prescription_pdf(id: int, db: Session = Depends(get_db)):
         pdf.multi_cell(0, 6, presc.details)
     
     # Authorized Signatory
-    if pdf.get_y() > 240: pdf.add_page() # Check for space
-    pdf.set_y(-50)
-    pdf.set_font("Arial", "I", 10)
-    pdf.cell(0, 10, "Authorized Signatory", ln=True, align="R")
-    pdf.set_font("Arial", "B", 11)
-    pdf.cell(0, 5, doc_name, ln=True, align="R")
+    # Authorized Signatory
+    if pdf.get_y() > 250: pdf.add_page() 
     
-    # Footer
-    pdf.set_y(-20)
-    pdf.set_draw_color(212, 175, 55)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.set_font("Arial", "I", 8)
-    pdf.set_text_color(150, 150, 150)
-    pdf.cell(0, 10, "Smile Artists Dental Studio - Dedicated to your perfect smile.", align="C")
+    pdf.set_auto_page_break(False) 
+    
+    if stamp:
+        # Blue Stamp Logo
+        stamp_path = r"Clinic Stamp.jpg"
+        try:
+            # Rotate -5 degrees around the center of the stamp to look realistic
+            with pdf.rotation(angle=-5, x=167.5, y=262):
+                pdf.image(stamp_path, x=150, y=252, w=35) 
+        except:
+            pdf.image(stamp_path, x=150, y=252, w=35) 
+
+
 
     pdf_bytes = bytes(pdf.output())
     return StreamingResponse(
@@ -1254,7 +1334,8 @@ def add_patient_appointment(data: ManualPatientAppointmentCreate, db: Session = 
             name=data.name,
             phone=data.phone,
             contact_datetime=datetime.now(timezone.utc),
-            source="manual"
+            source="manual",
+            sex=data.sex
         )
         db.add(patient)
         db.commit()
@@ -1324,7 +1405,8 @@ def add_receptionist_patient(data: ReceptionistPatientAdd, db: Session = Depends
             phone=data.phone,
             age=data.age,
             contact_datetime=datetime.now(timezone.utc),
-            source="manual"
+            source="manual",
+            sex=data.sex
         )
         db.add(patient)
         db.commit()
@@ -1685,79 +1767,92 @@ def create_invoice(data: InvoiceCreate,
     """
     Creates an itemized invoice. Accessible by both dentist and receptionist.
     """
-    # 1. Find patient
-    patient = db.query(Patient).filter(Patient.name.ilike(data.patient_name)).first()
-    if not patient:
-        # Fallback: check User table
-        u_p = db.query(User).filter(User.name.ilike(data.patient_name)).first()
-        if u_p:
-            patient = db.query(Patient).filter(Patient.user_id == u_p.id).first()
+    try:
+        # 1. Find patient
+        patient = db.query(Patient).filter(Patient.name.ilike(data.patient_name)).first()
+        if not patient:
+            # Fallback: check User table
+            u_p = db.query(User).filter(User.name.ilike(data.patient_name)).first()
+            if u_p:
+                patient = db.query(Patient).filter(Patient.user_id == u_p.id).first()
+                
+        if not patient:
+            raise HTTPException(status_code=404, detail=f"Patient '{data.patient_name}' not found.")
+
+        # 3. Create main Invoice record
+        invoice = Invoice(
+            invoice_number=data.invoice_number or "PENDING", # Placeholder
+            patient_id=patient.id,
+            doctor_id=user.id if user.role == "dentist" else None,
+            discount=data.discount,
+            currency=data.currency or "INR",
+            status="paid"
+        )
+        db.add(invoice)
+        db.flush() 
+        
+        if not data.invoice_number:
+            # Start sequence from 1000 (ID 1 -> 1000)
+            invoice.invoice_number = f"INV-{999 + invoice.id}" 
+
+        # 4. Add items
+        gross_amount = 0.0
+        for itm in data.items:
+            t_date = datetime.now(timezone.utc)
+            if itm.treatment_date:
+                try: t_date = datetime.strptime(itm.treatment_date, "%Y-%m-%d")
+                except: pass
             
-    if not patient:
-        raise HTTPException(status_code=404, detail=f"Patient '{data.patient_name}' not found.")
+            db.add(InvoiceItem(
+                invoice_id=invoice.id,
+                treatment_name=itm.treatment_name,
+                treatment_date=t_date,
+                cost=itm.cost,
+                discount=itm.discount
+            ))
+            gross_amount += itm.cost - itm.discount
 
-    # 2. Generate invoice number if not provided
-    inv_num = data.invoice_number or f"INV-{uuid.uuid4().hex[:8].upper()}"
+        # total_amount is sum(items net) - global discount
+        invoice.total_amount = gross_amount - data.discount
 
-    # 3. Create main Invoice record
-    invoice = Invoice(
-        invoice_number=inv_num,
-        patient_id=patient.id,
-        doctor_id=user.id if user.role == "dentist" else None,
-        discount=data.discount,
-        currency=data.currency or "INR",
-        status="paid"
-    )
-    db.add(invoice)
-    db.flush() 
+        # 5. Add payments
+        total_paid = 0.0
+        for pay in data.payments:
+            p_date = datetime.now(timezone.utc)
+            if pay.paid_on:
+                try: p_date = datetime.strptime(pay.paid_on, "%Y-%m-%d")
+                except: pass
+            
+            rec_num = pay.receipt_number or f"REC-{uuid.uuid4().hex[:8].upper()}"
+            db.add(PaymentRecord(
+                invoice_id=invoice.id,
+                receipt_number=rec_num,
+                paid_on=p_date,
+                payment_method=pay.payment_method,
+                amount=pay.amount
+            ))
+            total_paid += pay.amount
 
-    # 4. Add items
-    gross_amount = 0.0
-    for itm in data.items:
-        t_date = datetime.now(timezone.utc)
-        if itm.treatment_date:
-            try: t_date = datetime.strptime(itm.treatment_date, "%Y-%m-%d")
-            except: pass
-        
-        db.add(InvoiceItem(
-            invoice_id=invoice.id,
-            treatment_name=itm.treatment_name,
-            treatment_date=t_date,
-            cost=itm.cost
-        ))
-        gross_amount += itm.cost
+        # Update status based on payment
+        if total_paid >= invoice.total_amount:
+            invoice.status = "paid"
+        elif total_paid > 0:
+            invoice.status = "partially_paid"
+        else:
+            invoice.status = "unpaid"
 
-    invoice.total_amount = gross_amount - data.discount
+        db.commit()
+        db.refresh(invoice)
+        return {"success": True, "invoice_id": invoice.id, "invoice_number": invoice.invoice_number}
+    except Exception as e:
+        db.rollback()
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"ERROR creating invoice: {error_details}")
+        with open("backend_debug.log", "a") as f:
+            f.write(f"\n--- INVOICE CREATE ERROR ---\n{error_details}\n")
+        raise HTTPException(status_code=500, detail=str(e))
 
-    # 5. Add payments
-    total_paid = 0.0
-    for pay in data.payments:
-        p_date = datetime.now(timezone.utc)
-        if pay.paid_on:
-            try: p_date = datetime.strptime(pay.paid_on, "%Y-%m-%d")
-            except: pass
-        
-        rec_num = pay.receipt_number or f"REC-{uuid.uuid4().hex[:8].upper()}"
-        db.add(PaymentRecord(
-            invoice_id=invoice.id,
-            receipt_number=rec_num,
-            paid_on=p_date,
-            payment_method=pay.payment_method,
-            amount=pay.amount
-        ))
-        total_paid += pay.amount
-
-    # Update status based on payment
-    if total_paid >= invoice.total_amount:
-        invoice.status = "paid"
-    elif total_paid > 0:
-        invoice.status = "partially_paid"
-    else:
-        invoice.status = "unpaid"
-
-    db.commit()
-    db.refresh(invoice)
-    return {"success": True, "invoice_id": invoice.id, "invoice_number": invoice.invoice_number}
 
 @app.get("/api/invoices/history")
 def get_invoice_history(db: Session = Depends(get_db), 
@@ -1783,46 +1878,51 @@ def get_invoice_history(db: Session = Depends(get_db),
     return {"invoices": results}
 
 @app.get("/api/invoices/{id}/pdf")
-def download_invoice_pdf(id: int, db: Session = Depends(get_db)):
+def download_invoice_pdf(id: int, stamp: bool = Query(True), db: Session = Depends(get_db)):
     invoice = db.query(Invoice).filter(Invoice.id == id).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    pdf = FPDF()
+    pdf = FlossyPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    
-    # Background Decoration
-    pdf.set_draw_color(212, 175, 55) # Gold
-    pdf.set_line_width(0.5)
-    pdf.rect(5, 5, 200, 287) 
 
     # --- HEADER ---
     logo_path = r"c:\Users\Prachi Swarnim\Desktop\Flossy\flossy-ui\public\static\assets\logo.png"
     try:
-        pdf.image(logo_path, 10, 10, 30)
+        pdf.image(logo_path, 10, 15, 30)
     except:
         pass
         
-    pdf.set_xy(45, 12)
-    pdf.set_font("Arial", "B", 18)
+    pdf.set_xy(45, 15)
+    pdf.set_font("Times", "B", 24)
     pdf.set_text_color(212, 175, 55) # Gold
-    pdf.cell(0, 10, "SMILE ARTISTS DENTAL STUDIO", ln=True)
+    brand_w = pdf.get_string_width("Smile Artists")
+    pdf.cell(0, 8, "Smile Artists", ln=True)
     
-    pdf.set_font("Arial", "I", 10)
+    pdf.set_font("Times", "I", 14)
+    tag_w = pdf.get_string_width("...crafting smiles")
+    pdf.set_x(45 + brand_w - tag_w) 
+    pdf.set_text_color(212, 175, 55)
+    pdf.cell(0, 6, "...crafting smiles", ln=True)
+    pdf.ln(2) # Space between tagline and address
+    
     pdf.set_x(45)
+    pdf.set_font("Arial", "", 9)
     pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 5, "...crafting smiles | ISO 9001:2015 Certified", ln=True)
+    pdf.cell(0, 5, "573, Smile Artists Dental Studio, Artemis Hospital Road", ln=True)
     pdf.set_x(45)
-    pdf.cell(0, 5, "Official Digital Invoice", ln=True)
+    pdf.cell(0, 5, "Koyal Vihar, Gurugram - 122003, Haryana, India", ln=True)
+    pdf.set_x(45)
+    pdf.cell(0, 5, "Ph: +91 9693288488, +91 8507213999 | Web: www.smileartists.in", ln=True)
     
-    pdf.ln(12)
+    pdf.ln(5)
     
     # Document Title
     pdf.set_font("Arial", "B", 14)
     pdf.set_fill_color(244, 244, 244)
     pdf.set_text_color(26, 26, 26)
-    pdf.cell(190, 10, " TAX INVOICE ", ln=True, align="C", fill=True)
+    pdf.cell(190, 10, " OFFICIAL DIGITAL INVOICE ", ln=True, align="C", fill=True)
     pdf.ln(5)
     
     # Patient Info Row
@@ -1840,7 +1940,7 @@ def download_invoice_pdf(id: int, db: Session = Depends(get_db)):
     pdf.set_font("Arial", "B", 10)
     pdf.cell(30, 8, "Age/Sex:")
     pdf.set_font("Arial", "", 10)
-    pdf.cell(70, 8, f"{invoice.patient.age or 'N/A'}")
+    pdf.cell(70, 8, f"{invoice.patient.age or 'N/A'} / {invoice.patient.sex or 'N/A'}")
     
     pdf.set_font("Arial", "B", 10)
     pdf.cell(30, 8, "Date:")
@@ -1854,24 +1954,46 @@ def download_invoice_pdf(id: int, db: Session = Depends(get_db)):
     pdf.set_fill_color(212, 175, 55)
     pdf.set_text_color(255, 255, 255)
     pdf.cell(15, 10, "S.No", border=1, align="C", fill=True)
-    pdf.cell(100, 10, " Treatment Description", border=1, fill=True)
-    pdf.cell(35, 10, " Date", border=1, align="C", fill=True)
-    pdf.cell(0, 10, f" Amount ({invoice.currency})", border=1, align="C", fill=True, ln=True)
+    pdf.cell(85, 10, " Description", border=1, fill=True)
+    pdf.cell(30, 10, " Date", border=1, align="C", fill=True)
+    pdf.cell(30, 10, f" Cost ({invoice.currency})", border=1, align="C", fill=True)
+    pdf.cell(30, 10, " Disc.", border=1, align="C", fill=True, ln=True)
     
     pdf.set_text_color(26, 26, 26)
     pdf.set_font("Arial", "", 10)
     gross_amount = 0
+    total_item_discount = 0
     for idx, item in enumerate(invoice.items, 1):
+        item_discount = getattr(item, "discount", 0.0) or 0.0
         pdf.cell(15, 8, str(idx), border=1, align="C")
-        pdf.cell(100, 8, f" {item.treatment_name}", border=1)
-        pdf.cell(35, 8, item.treatment_date.strftime("%b %d, %Y"), border=1, align="C")
-        pdf.cell(0, 8, f"{item.cost:,.2f}", border=1, align="R", ln=True)
+        pdf.cell(85, 8, f" {item.treatment_name}", border=1)
+        t_date_str = item.treatment_date.strftime("%b %d, %Y") if item.treatment_date else "N/A"
+        pdf.cell(30, 8, t_date_str, border=1, align="C")
+        pdf.cell(30, 8, f"{item.cost:,.2f}", border=1, align="R")
+        pdf.cell(30, 8, f"{item_discount:,.2f}", border=1, align="R", ln=True)
         gross_amount += item.cost
+        total_item_discount += item_discount
         
     pdf.set_font("Arial", "B", 10)
     pdf.cell(150, 8, "Gross Amount", border=1, align="R")
-    pdf.cell(0, 8, f"{gross_amount:,.2f}", border=1, align="R", ln=True)
-    pdf.cell(150, 8, "Discount", border=1, align="R")
+    pdf.cell(0, 8, f"{invoice.currency} {gross_amount:,.2f}", border=1, align="R", ln=True)
+    
+    # Calculate total discount (Global Invoice Discount + Sum of Item Discounts)
+    # Note: Logic depends on how you want to present it. Usually item discounts reduce the subtotal.
+    # But here we are just listing them.
+    # The invoice object has a 'discount' field which is the global discount. 
+    # Current logic: total_amount = sum(items) - global_discount. 
+    # If we want item discounts to affect total, we should subtract them too. 
+    # However, create_invoice logic uses `gross - global_discount`.
+    # Let's assume the user meant VISUAL breakdown only, or we update total logic.
+    # User said: "show the discount for each treatment separately".
+    # I will just list "Total Item Disc." line if > 0.
+    
+    if total_item_discount > 0:
+         pdf.cell(150, 8, "Item Discounts", border=1, align="R")
+         pdf.cell(0, 8, f"({total_item_discount:,.2f})", border=1, align="R", ln=True)
+
+    pdf.cell(150, 8, "Additional Discount", border=1, align="R")
     pdf.cell(0, 8, f"({invoice.discount:,.2f})", border=1, align="R", ln=True)
     
     pdf.set_fill_color(245, 245, 245)
@@ -1897,12 +2019,12 @@ def download_invoice_pdf(id: int, db: Session = Depends(get_db)):
         pdf.cell(60, 7, f" {pay.receipt_number}", border=1)
         pdf.cell(35, 7, pay.paid_on.strftime("%b %d, %Y"), border=1, align="C")
         pdf.cell(40, 7, pay.payment_method, border=1, align="C")
-        pdf.cell(0, 7, f"{pay.amount:,.2f}", border=1, align="R", ln=True)
+        pdf.cell(0, 7, f"{invoice.currency} {pay.amount:,.2f}", border=1, align="R", ln=True)
         total_paid += pay.amount
         
     pdf.set_font("Arial", "B", 9)
     pdf.cell(150, 8, "Total Amount Paid", border=1, align="R")
-    pdf.cell(0, 8, f"{total_paid:,.2f}", border=1, align="R", ln=True)
+    pdf.cell(0, 8, f"{invoice.currency} {total_paid:,.2f}", border=1, align="R", ln=True)
 
     # Final Summary
     due = invoice.total_amount - total_paid
@@ -1912,21 +2034,34 @@ def download_invoice_pdf(id: int, db: Session = Depends(get_db)):
     pdf.set_text_color(200, 0, 0) if due > 0 else pdf.set_text_color(0, 150, 0)
     pdf.cell(0, 10, f"{invoice.currency} {max(0, due):,.2f}", border="B", align="R", ln=True)
 
+
     # Signature/Footer
     if pdf.get_y() > 240: pdf.add_page()
-    pdf.set_y(-25)
-    pdf.set_draw_color(212, 175, 55)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.set_font("Arial", "I", 8)
-    pdf.set_text_color(150, 150, 150)
-    pdf.cell(0, 10, "Smile Artists Dental Studio - Computer Generated Electronic Invoice", align="C")
+    
+    if stamp:
+        # Blue Stamp Logo
+        stamp_path = r"Clinic Stamp.jpg"
+        try:
+            # Rotate -5 degrees around the center of the stamp to look realistic
+            with pdf.rotation(angle=-5, x=167.5, y=262):
+                pdf.image(stamp_path, x=150, y=252, w=35)
+        except:
+            try: pdf.image(stamp_path, x=150, y=252, w=35)
+            except: pass
 
-    pdf_bytes = bytes(pdf.output())
-    return StreamingResponse(
-        io.BytesIO(pdf_bytes),
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=invoice_{invoice.invoice_number}.pdf"}
-    )
+
+    try:
+        pdf_bytes = bytes(pdf.output())
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=invoice_{invoice.invoice_number}.pdf"}
+        )
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"PDF Error: {error_details}")
+        return JSONResponse(status_code=500, content={"detail": f"PDF Generation Error: {str(e)}", "traceback": error_details})
 
 # Startup event: lightweight init only
 # ------------------------------------------------------------------

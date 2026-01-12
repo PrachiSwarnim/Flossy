@@ -20,3 +20,28 @@ body {
 footer.footer {
   margin-top: auto;
 }
+
+/* Custom Scrollbar for Search Suggestions */
+.elegant-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.elegant-scroll::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 10px;
+}
+
+.elegant-scroll::-webkit-scrollbar-thumb {
+  background: #f0b800;
+  border-radius: 10px;
+}
+
+.elegant-scroll::-webkit-scrollbar-thumb:hover {
+  background: #d4a300;
+}
+
+/* Ensure the container actually scrolls */
+.elegant-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #f0b800 #1a1a1a;
+}

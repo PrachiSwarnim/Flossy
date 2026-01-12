@@ -11,6 +11,62 @@ import "../../styles/dashboard_extras.css";
 
 const API = "http://localhost:8000";
 
+const DENTAL_MEDICATIONS = [
+  // Antibiotics
+  { name: "Amoxicillin 500mg", type: "Antibiotic" },
+  { name: "Augmentin 625mg", type: "Antibiotic" },
+  { name: "Metronidazole 400mg", type: "Antibiotic" },
+  { name: "Clindamycin 300mg", type: "Antibiotic" },
+  { name: "Azithromycin 500mg", type: "Antibiotic" },
+  { name: "Oflox-OZ (Oflox + Ornidazole)", type: "Antibiotic" },
+  { name: "Doxycycline 100mg", type: "Antibiotic" },
+
+  // Pain Relief / NSAIDs
+  { name: "Ibuprofen 400mg", type: "Pain Relief" },
+  { name: "Ibuprofen 600mg", type: "Pain Relief" },
+  { name: "Paracetamol 500mg", type: "Pain Relief" },
+  { name: "Paracetamol 650mg", type: "Pain Relief" },
+  { name: "Zerodol-P (Aceclofenac + PCM)", type: "Pain Relief" },
+  { name: "Zerodol-SP (Aceclo + PCM + Serato)", type: "Pain Relief" },
+  { name: "Ketorolac (Ketanov) 10mg", type: "Pain Relief" },
+  { name: "Ketorol DT (Dr. Reddy's)", type: "Pain Relief" },
+  { name: "Combiflam (Ibu + PCM)", type: "Pain Relief" },
+
+  // Antacids (to be given with NSAIDs)
+  { name: "Pantoprazole 40mg (Pan-40)", type: "Antacid" },
+  { name: "Ranitidine 150mg (Rantac)", type: "Antacid" },
+  { name: "Omeprazole 20mg", type: "Antacid" },
+
+  // Steroids & Anti-inflammatory
+  { name: "Dexamethasone 4mg", type: "Steroid" },
+  { name: "Chymoral Forte", type: "Anti-inflammatory" },
+  { name: "Prednisolone 5mg", type: "Steroid" },
+  { name: "Wysolone 10mg", type: "Steroid" },
+
+  // Mouthwashes & Topical
+  { name: "Chlorhexidine Mouthwash", type: "Mouthwash" },
+  { name: "Senquel AD Mouthwash", type: "Mouthwash" },
+  { name: "Hexidine Mouthwash", type: "Mouthwash" },
+  { name: "Lidocaine Topical Ointment", type: "Anesthetic" },
+  { name: "Kenacort Oral Paste", type: "Topical Steroid" },
+  { name: "Orasore Gel", type: "Ulcer Gel" },
+  { name: "Candid Mouth Paint", type: "Antifungal" },
+  { name: "Rexidin M Forte Gel", type: "Antiseptic Gel" },
+  { name: "Omnigel (Topical Gel)", type: "Pain Relief" },
+
+  // Hemostatics (Stop Bleeding)
+  { name: "Tranexamic Acid 500mg (Pause)", type: "Hemostatic" },
+  { name: "Ethamsylate 500mg (Revitostept)", type: "Hemostatic" },
+
+  // Supplements & Specialized
+  { name: "Vitamin C (Celin) 500mg", type: "Supplement" },
+  { name: "Vitamin B-Complex (Becosules)", type: "Supplement" },
+  { name: "Calcium + Vitamin D3 (Shelcal)", type: "Supplement" },
+  { name: "Sensodyne Repair and Protect Toothpaste", type: "Toothpaste" },
+  { name: "Thermoseal Toothpaste", type: "Toothpaste" },
+  { name: "Vantej Toothpaste", type: "Toothpaste" },
+];
+
 export default function DentistDashboard() {
   const { user, isLoaded } = useUser();
   const { session } = useSession();
@@ -33,6 +89,7 @@ export default function DentistDashboard() {
   const [pageLoading, setPageLoading] = useState(true);
   const [today, setToday] = useState([]);
   const [upcoming, setUpcoming] = useState([]);
+  const [history, setHistory] = useState([]);
   const [aiOpen, setAiOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -75,6 +132,7 @@ export default function DentistDashboard() {
     const data = await res.json();
     setToday(data.today || []);
     setUpcoming(data.upcoming || []);
+    setHistory(data.history || []);
   }
 
   // === Artificial Delay + Load Data ===
@@ -182,6 +240,14 @@ export default function DentistDashboard() {
       .join(" ");
   }
 
+  function addMedication(medName) {
+    if (!medName) return;
+    setPrescRecommendations(prev => {
+      const newLine = prev && !prev.endsWith("\n") ? "\n• " : (prev ? "• " : "• ");
+      return prev + newLine + medName;
+    });
+  }
+
 
   // === Prescription State ===
   const [prescPatient, setPrescPatient] = useState("");
@@ -189,6 +255,10 @@ export default function DentistDashboard() {
   const [prescDiagnosis, setPrescDiagnosis] = useState("");
   const [prescTreatment, setPrescTreatment] = useState("");
   const [prescRecommendations, setPrescRecommendations] = useState("");
+  const [medSearch, setMedSearch] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [patientSearch, setPatientSearch] = useState("");
+  const [showPatientSuggestions, setShowPatientSuggestions] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [patientsList, setPatientsList] = useState([]);
   const [historyPrescriptions, setHistoryPrescriptions] = useState([]);
@@ -239,11 +309,11 @@ export default function DentistDashboard() {
     }
   }
 
-  async function downloadInvoice(id, invNum) {
+  async function downloadInvoice(id, invNum, stamp = true) {
     if (!session) return;
     try {
       const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/invoices/${id}/pdf`, {
+      const res = await fetch(`${API}/api/invoices/${id}/pdf?stamp=${stamp}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -251,7 +321,7 @@ export default function DentistDashboard() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `invoice_${invNum}.pdf`;
+        a.download = `invoice_${invNum}${stamp ? "" : "_plain"}.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -317,11 +387,11 @@ export default function DentistDashboard() {
     }
   }
 
-  async function downloadPrescription(id) {
+  async function downloadPrescription(id, stamp = true) {
     if (!session) return;
     try {
       const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/prescriptions/${id}/pdf`, {
+      const res = await fetch(`${API}/api/prescriptions/${id}/pdf?stamp=${stamp}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -329,7 +399,7 @@ export default function DentistDashboard() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `prescription_${id}.pdf`;
+        a.download = `prescription_${id}${stamp ? "" : "_plain"}.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -385,6 +455,7 @@ export default function DentistDashboard() {
 
       if (res.ok) {
         setPrescPatient("");
+        setPatientSearch("");
         setPrescDetails("");
         setPrescDiagnosis("");
         setPrescTreatment("");
@@ -448,341 +519,581 @@ export default function DentistDashboard() {
       <main className="dentist-main">
         <h2 id="Message">Welcome back, Dr. {fullName}!</h2>
 
-        <div className="grid">
-          <div className="card animate-fade-up" style={{ animationDelay: "0.1s" }}>
-            <div className="card-header">
-              <h3>Today’s Appointments</h3>
-              <i className="fas fa-calendar-check card-icon"></i>
-            </div>
-            {today.length ? (
-              today.map((a) => (
-                <div className="appt-item" key={a.id}>
-                  <b>
-                    {new Date(a.time).toLocaleTimeString("en-IN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true
-                    })}
-                  </b>
-                  <div className="appt-patient">{capitalizeFullName(a.patient_name)}
-                    <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
-                      {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
-                    </span>
-                  </div>
-                  <div className="appt-reason">{a.reason}</div>
+        <div className="dashboard-layout" style={{ display: "flex", flexDirection: "column", gap: "2rem", paddingBottom: "3rem" }}>
 
-                  {/* 🔥 Buttons */}
-                  {a.status === "scheduled" && (
-                    <div className="action-buttons" style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                      <button
-                        className="done-btn"
-                        onClick={() => markCompleted(a.id)}
-                        style={{ padding: "6px 12px", background: "#2ecc71", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1 }}
-                      >
-                        <i className="fas fa-check"></i> Completed
-                      </button>
-                      <button
-                        className="follow-up-btn"
-                        style={{ padding: "6px 12px", background: "#f0b800", color: "#000", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1 }}
-                        onClick={() => openFollowUpModal(a.id)}
-                      >
-                        <i className="fas fa-clock"></i> Follow Up
-                      </button>
-                      <button
-                        className="missed-btn"
-                        style={{ padding: "6px 12px", background: "#e74c3c", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1 }}
-                        onClick={() => markNotVisited(a.id)}
-                      >
-                        <i className="fas fa-times"></i> Not Visited
-                      </button>
+          {/* ROW 1: APPOINTMENTS (SIDE BY SIDE) */}
+          <div className="row-appointments" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "1.5rem" }}>
+
+            {/* TODAY */}
+            <div className="card animate-fade-up" style={{ animationDelay: "0.1s", flex: "1", minWidth: "400px", maxWidth: "600px" }}>
+              <div className="card-header">
+                <h3>Today’s Appointments</h3>
+                <i className="fas fa-calendar-check card-icon"></i>
+              </div>
+              {today.length ? (
+                today.map((a) => (
+                  <div className="appt-item" key={a.id}>
+                    <b>
+                      {new Date(a.time).toLocaleTimeString("en-IN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true
+                      })}
+                    </b>
+                    <div className="appt-patient">{capitalizeFullName(a.patient_name)}
+                      <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
+                        {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
+                      </span>
                     </div>
-                  )}
+                    <div className="appt-reason">{a.reason}</div>
 
-                  {a.status === "completed" && (
-                    <span className="completed-tag" style={{ color: "#2ecc71", display: "block", marginTop: "5px" }}>
-                      <i className="fas fa-check-circle"></i> Completed
-                    </span>
-                  )}
+                    {/* 🔥 Buttons */}
+                    {a.status === "scheduled" && (
+                      <div className="action-buttons" style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                        <button
+                          className="done-btn"
+                          onClick={() => markCompleted(a.id)}
+                          style={{ height: "40px", padding: "0 12px", background: "#2ecc71", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}
+                        >
+                          <i className="fas fa-check" style={{ marginRight: "8px" }}></i> Completed
+                        </button>
+                        <button
+                          className="follow-up-btn"
+                          style={{ height: "40px", padding: "0 12px", background: "#f0b800", color: "#000", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}
+                          onClick={() => openFollowUpModal(a.id)}
+                        >
+                          <i className="fas fa-clock" style={{ marginRight: "8px" }}></i> Follow Up
+                        </button>
+                        <button
+                          className="missed-btn"
+                          style={{ height: "40px", padding: "0 12px", background: "#e74c3c", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}
+                          onClick={() => markNotVisited(a.id)}
+                        >
+                          <i className="fas fa-times" style={{ marginRight: "8px" }}></i> Not Visited
+                        </button>
+                      </div>
+                    )}
 
-                  {a.status === "missed" && (
-                    <span className="missed-tag" style={{ color: "#e74c3c", display: "block", marginTop: "5px" }}>
-                      <i className="fas fa-times-circle"></i> Not Visited
-                    </span>
-                  )}
+                    {a.status === "completed" && (
+                      <span className="completed-tag" style={{ color: "#2ecc71", display: "block", marginTop: "5px" }}>
+                        <i className="fas fa-check-circle"></i> Completed
+                      </span>
+                    )}
 
-                  {a.status === "follow_up" && (
-                    <div className="follow-up-tag" style={{ color: "#f0b800", marginTop: "5px" }}>
-                      <i className="fas fa-clock"></i> Follow Up Required
-                      <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>Note: {a.follow_up_reason}</div>
+                    {a.status === "missed" && (
+                      <span className="missed-tag" style={{ color: "#e74c3c", display: "block", marginTop: "5px" }}>
+                        <i className="fas fa-times-circle"></i> Not Visited
+                      </span>
+                    )}
 
-                      {/* Follow-up Status Tracking */}
-                      <div className="follow-up-actions" style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
-                        {!a.follow_up_status ? (
-                          <>
-                            <button
-                              onClick={() => updateFollowUpStatus(a.id, "completed")}
-                              style={{ fontSize: "0.75rem", background: "#28a745", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
-                            >Mark Done</button>
-                            <button
-                              onClick={() => updateFollowUpStatus(a.id, "missed")}
-                              style={{ fontSize: "0.75rem", background: "#dc3545", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
-                            >Mark Missed</button>
-                          </>
-                        ) : (
-                          <span style={{
-                            fontSize: "0.75rem",
-                            fontWeight: "bold",
-                            color: a.follow_up_status === "completed" ? "#28a745" : "#dc3545",
-                            textTransform: "capitalize"
-                          }}>
-                            Follow-up {a.follow_up_status}
+                    {a.status === "follow_up" && (
+                      <div className="follow-up-tag" style={{ color: "#f0b800", marginTop: "5px" }}>
+                        <i className="fas fa-clock"></i> Follow Up Required
+                        <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>Note: {a.follow_up_reason}</div>
+
+                        {/* Follow-up Status Tracking */}
+                        <div className="follow-up-actions" style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
+                          {!a.follow_up_status ? (
+                            <>
+                              <button
+                                onClick={() => updateFollowUpStatus(a.id, "completed")}
+                                style={{ fontSize: "0.75rem", background: "#28a745", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
+                              >Mark Done</button>
+                              <button
+                                onClick={() => updateFollowUpStatus(a.id, "missed")}
+                                style={{ fontSize: "0.75rem", background: "#dc3545", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
+                              >Mark Missed</button>
+                            </>
+                          ) : (
+                            <span style={{
+                              fontSize: "0.75rem",
+                              fontWeight: "bold",
+                              color: a.follow_up_status === "completed" ? "#28a745" : "#dc3545",
+                              textTransform: "capitalize"
+                            }}>
+                              Follow-up {a.follow_up_status}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="empty-state">No appointments remaining today.</p>
+              )}
+            </div>
+
+            {/* UPCOMING */}
+            <div className="card animate-fade-up" style={{ animationDelay: "0.15s", flex: "1", minWidth: "400px", maxWidth: "600px" }}>
+              <div className="card-header">
+                <h3>Upcoming Appointments</h3>
+                <i className="fas fa-calendar-alt card-icon"></i>
+              </div>
+              {upcoming.length ? (
+                upcoming.map((a) => (
+                  <div className="appt-item" key={a.id} style={{ opacity: 0.8 }}>
+                    <b>
+                      {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true
+                      })}
+                    </b>
+                    <div className="appt-patient">{capitalizeFullName(a.patient_name)}
+                      <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
+                        {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
+                      </span>
+                    </div>
+                    <div className="appt-reason">{a.reason}</div>
+                    <div className="appt-status status-upcoming">Scheduled</div>
+                  </div>
+                ))
+              ) : (
+                <p className="empty-state">No upcoming appointments.</p>
+              )}
+            </div>
+
+          </div>
+
+          {/* ROW 1.5: HISTORY (CENTERED) */}
+          <div className="row-history" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+            <div className="card animate-fade-up" style={{ animationDelay: "0.2s", width: "100%", maxWidth: "1000px" }}>
+              <div className="card-header">
+                <h3>Appointment History</h3>
+                <i className="fas fa-history card-icon"></i>
+              </div>
+              <div className="history-list">
+                {history.length ? (
+                  history.map((a) => (
+                    <div className="appt-item" key={a.id} style={{ opacity: (!a.status || !["completed", "missed", "follow_up"].includes(a.status)) ? 1 : 0.7 }}>
+                      <b>
+                        {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true
+                        })}
+                      </b>
+                      <div className="appt-patient">{capitalizeFullName(a.patient_name)}
+                        <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
+                          {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
+                        </span>
+                      </div>
+                      <div className="appt-reason">{a.reason}</div>
+
+                      {/* Overdue/Past Scheduled items still actionable */}
+                      {(!a.status || !["completed", "missed", "follow_up"].includes(a.status)) && (
+                        <>
+                          <span style={{ color: "#e74c3c", fontWeight: "bold", display: "block", marginTop: "5px", marginBottom: "5px" }}>
+                            ⚠️ Overdue / Past Pending
                           </span>
+                          <div className="action-buttons" style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                            <button
+                              className="done-btn"
+                              onClick={() => markCompleted(a.id)}
+                              style={{ height: "40px", padding: "0 12px", background: "#2ecc71", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}
+                            >
+                              <i className="fas fa-check" style={{ marginRight: "8px" }}></i> Completed
+                            </button>
+                            <button
+                              className="follow-up-btn"
+                              style={{ height: "40px", padding: "0 12px", background: "#f0b800", color: "#000", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}
+                              onClick={() => openFollowUpModal(a.id)}
+                            >
+                              <i className="fas fa-clock" style={{ marginRight: "8px" }}></i> Follow Up
+                            </button>
+                            <button
+                              className="missed-btn"
+                              style={{ height: "40px", padding: "0 12px", background: "#e74c3c", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}
+                              onClick={() => markNotVisited(a.id)}
+                            >
+                              <i className="fas fa-times" style={{ marginRight: "8px" }}></i> Not Visited
+                            </button>
+                          </div>
+                        </>
+                      )}
+
+                      {a.status === "completed" && (
+                        <span className="completed-tag" style={{ color: "#2ecc71", display: "block", marginTop: "5px" }}>
+                          <i className="fas fa-check-circle"></i> Completed
+                        </span>
+                      )}
+
+                      {a.status === "missed" && (
+                        <span className="missed-tag" style={{ color: "#e74c3c", display: "block", marginTop: "5px" }}>
+                          <i className="fas fa-times-circle"></i> Not Visited
+                        </span>
+                      )}
+
+                      {a.status === "follow_up" && (
+                        <div className="follow-up-tag" style={{ color: "#f0b800", marginTop: "5px" }}>
+                          <i className="fas fa-clock"></i> Follow Up Required
+                          <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>Note: {a.follow_up_reason}</div>
+                          {/* History Follow-ups can still be acted upon */}
+                          <div className="follow-up-actions" style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
+                            {!a.follow_up_status ? (
+                              <>
+                                <button
+                                  onClick={() => updateFollowUpStatus(a.id, "completed")}
+                                  style={{ fontSize: "0.75rem", background: "#28a745", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
+                                >Mark Done</button>
+                                <button
+                                  onClick={() => updateFollowUpStatus(a.id, "missed")}
+                                  style={{ fontSize: "0.75rem", background: "#dc3545", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
+                                >Mark Missed</button>
+                              </>
+                            ) : (
+                              <span style={{
+                                fontSize: "0.75rem",
+                                fontWeight: "bold",
+                                color: a.follow_up_status === "completed" ? "#28a745" : "#dc3545",
+                                textTransform: "capitalize"
+                              }}>
+                                Follow-up {a.follow_up_status}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="empty-state">No appointment history found.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ROW 2: PRESCRIPTIONS (CENTERED) */}
+          <div className="row-prescriptions" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+            <div className="card animate-fade-up" style={{ animationDelay: "0.2s", width: "100%", maxWidth: "1000px" }}>
+              <div className="card-header">
+                <h3>Prescriptions</h3>
+                <i className="fas fa-file-prescription card-icon"></i>
+              </div>
+              <div className="prescription-form">
+                <div className="form-group" style={{ position: "relative" }}>
+                  <label>Select Patient</label>
+                  <div className="patient-search-container" style={{ position: "relative" }}>
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type="text"
+                        placeholder="Search patient name..."
+                        value={patientSearch || prescPatient}
+                        onChange={(e) => {
+                          setPatientSearch(e.target.value);
+                          setShowPatientSuggestions(true);
+                          if (prescPatient) setPrescPatient(""); // Clear selection if typing
+                        }}
+                        onFocus={() => setShowPatientSuggestions(true)}
+                        className="dashboard-input"
+                        style={{ paddingLeft: "35px" }}
+                      />
+                      <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#f0b800", opacity: 0.7 }}></i>
+                    </div>
+
+                    {showPatientSuggestions && (patientSearch.trim() !== "" || patientsList.length > 0) && (
+                      <div className="patient-suggestions elegant-scroll" style={{
+                        position: "absolute", top: "100%", left: 0, right: 0,
+                        zIndex: 101, background: "#1a1a1a", border: "1px solid #444",
+                        borderRadius: "8px", marginTop: "5px", maxHeight: "180px",
+                        overflowY: "scroll", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+                      }}>
+                        {patientsList
+                          .filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase()))
+                          .map((p, i) => (
+                            <div
+                              key={p.id}
+                              onClick={() => {
+                                setPrescPatient(p.name);
+                                setPatientSearch(p.name);
+                                setShowPatientSuggestions(false);
+                              }}
+                              style={{
+                                padding: "10px 15px", cursor: "pointer", borderBottom: "1px solid #333",
+                                background: prescPatient === p.name ? "#2a2a2a" : "transparent"
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = "#2a2a2a"}
+                              onMouseLeave={(e) => e.currentTarget.style.background = prescPatient === p.name ? "#2a2a2a" : "transparent"}
+                            >
+                              <div style={{ fontWeight: "600", color: "#fff" }}>{p.name}</div>
+                              {p.phone && <div style={{ fontSize: "0.75rem", color: "#888" }}>{p.phone}</div>}
+                            </div>
+                          ))}
+                        {patientsList.filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase())).length === 0 && (
+                          <div style={{ padding: "15px", color: "#888", textAlign: "center" }}>No patients found.</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Close suggestions when clicking outside */}
+                  {showPatientSuggestions && (
+                    <div
+                      style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}
+                      onClick={() => setShowPatientSuggestions(false)}
+                    ></div>
+                  )}
+                </div>
+
+                <div className="structured-presc-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div className="form-group">
+                    <label>Diagnosis</label>
+                    <textarea
+                      placeholder="e.g. Chronic Gingivitis..."
+                      value={prescDiagnosis}
+                      onChange={(e) => handleBulletInput(e, setPrescDiagnosis, prescDiagnosis)}
+                      className="dashboard-textarea"
+                      rows="3"
+                    ></textarea>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Treatment Plan</label>
+                    <textarea
+                      placeholder="e.g. Scaling and Root Planing..."
+                      value={prescTreatment}
+                      onChange={(e) => handleBulletInput(e, setPrescTreatment, prescTreatment)}
+                      className="dashboard-textarea"
+                      rows="3"
+                    ></textarea>
+                  </div>
+
+                  <div className="form-group" style={{ gridColumn: "span 2", position: "relative" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <label style={{ margin: 0 }}>Recommendations / Medications</label>
+
+                      {/* Search Bar for Medications */}
+                      <div className="med-search-container" style={{ position: "relative", width: "100%", maxWidth: "350px" }}>
+                        <div style={{ position: "relative" }}>
+                          <input
+                            type="text"
+                            placeholder="Search medications..."
+                            value={medSearch}
+                            onChange={(e) => {
+                              setMedSearch(e.target.value);
+                              setShowSuggestions(true);
+                            }}
+                            onFocus={() => setShowSuggestions(true)}
+                            className="dashboard-input"
+                            style={{
+                              padding: "8px 12px 8px 35px",
+                              height: "38px",
+                              fontSize: "0.9rem",
+                              borderRadius: "8px",
+                              border: "1px solid #444",
+                              background: "#222"
+                            }}
+                          />
+                          <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#f0b800", opacity: 0.7 }}></i>
+                        </div>
+
+                        {showSuggestions && medSearch.trim() !== "" && (
+                          <div className="med-suggestions elegant-scroll" style={{
+                            position: "absolute", top: "100%", left: 0, right: 0,
+                            zIndex: 100, background: "#1a1a1a", border: "1px solid #444",
+                            borderRadius: "8px", marginTop: "5px", maxHeight: "250px",
+                            overflowY: "scroll", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+                          }}>
+                            {DENTAL_MEDICATIONS.filter(m =>
+                              m.name.toLowerCase().includes(medSearch.toLowerCase()) ||
+                              m.type.toLowerCase().includes(medSearch.toLowerCase())
+                            ).map((m, i) => (
+                              <div
+                                key={i}
+                                onClick={() => {
+                                  addMedication(m.name);
+                                  setMedSearch("");
+                                  setShowSuggestions(false);
+                                }}
+                                style={{
+                                  padding: "10px 15px", cursor: "pointer", borderBottom: "1px solid #333",
+                                  transition: "background 0.2s"
+                                }}
+                                onMouseEnter={(e) => e.target.style.background = "#2a2a2a"}
+                                onMouseLeave={(e) => e.target.style.background = "transparent"}
+                              >
+                                <div style={{ fontWeight: "bold", color: "#fff" }}>{m.name}</div>
+                                <div style={{ fontSize: "0.75rem", color: "#f0b800" }}>{m.type}</div>
+                              </div>
+                            ))}
+                            {DENTAL_MEDICATIONS.filter(m =>
+                              m.name.toLowerCase().includes(medSearch.toLowerCase()) ||
+                              m.type.toLowerCase().includes(medSearch.toLowerCase())
+                            ).length === 0 && (
+                                <div style={{ padding: "15px", color: "#888", textAlign: "center" }}>No medications found.</div>
+                              )}
+                          </div>
                         )}
                       </div>
                     </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <p className="empty-state">No appointments remaining today.</p>
-            )}
-          </div>
+                    <textarea
+                      placeholder="e.g. Warm salt water rinses, twice daily..."
+                      value={prescRecommendations}
+                      onChange={(e) => handleBulletInput(e, setPrescRecommendations, prescRecommendations)}
+                      className="dashboard-textarea"
+                      rows="4"
+                    ></textarea>
 
-          {/* UPCOMING APPOINTMENTS (New Section) */}
-          <div className="card animate-fade-up" style={{ animationDelay: "0.15s" }}>
-            <div className="card-header">
-              <h3>Upcoming Appointments</h3>
-              <i className="fas fa-calendar-alt card-icon"></i>
-            </div>
-            {upcoming.length ? (
-              upcoming.map((a) => (
-                <div className="appt-item" key={a.id} style={{ opacity: 0.8 }}>
-                  <b>
-                    {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true
-                    })}
-                  </b>
-                  <div className="appt-patient">{capitalizeFullName(a.patient_name)}
-                    <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
-                      {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
-                    </span>
+                    {/* Close suggestions when clicking outside */}
+                    {showSuggestions && (
+                      <div
+                        style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 90 }}
+                        onClick={() => setShowSuggestions(false)}
+                      ></div>
+                    )}
                   </div>
-                  <div className="appt-reason">{a.reason}</div>
-                  <div className="appt-status status-upcoming">Scheduled</div>
                 </div>
-              ))
-            ) : (
-              <p className="empty-state">No upcoming appointments.</p>
-            )}
-          </div>
 
-
-
-          <div className="card animate-fade-up" style={{ animationDelay: "0.3s" }}>
-            <div className="card-header">
-              <h3>AI Insights</h3>
-              <i className="fas fa-brain card-icon"></i>
-            </div>
-            <div className="info-box warning">
-              <i className="fas fa-exclamation-triangle"></i>
-              <span>FlossyAI detected gum disease risk this week.</span>
-            </div>
-          </div>
-
-          <div className="card animate-fade-up" style={{ animationDelay: "0.4s" }}>
-            <div className="card-header">
-              <h3>Notifications</h3>
-              <i className="fas fa-bell card-icon"></i>
-            </div>
-            <div className="info-box info">
-              <i className="fas fa-info-circle"></i>
-              <span>2 new appointment requests pending approval.</span>
-            </div>
-          </div>
-
-          {/* PRESCRIPTION CARD */}
-          <div className="card animate-fade-up" style={{ animationDelay: "0.5s", gridColumn: "span 2" }}>
-            <div className="card-header">
-              <h3>Prescriptions</h3>
-              <i className="fas fa-file-prescription card-icon"></i>
-            </div>
-            <div className="prescription-form">
-              <div className="form-group">
-                <label>Select Patient</label>
-                <select
-                  value={prescPatient}
-                  onChange={(e) => setPrescPatient(e.target.value)}
-                  className="dashboard-select"
+                <button
+                  className="upload-btn"
+                  onClick={handlePrescriptionUpload}
+                  disabled={isUploading}
+                  style={{ marginTop: "1rem" }}
                 >
-                  <option value="">-- Choose Patient --</option>
-                  {patientsList.length > 0 ? (
-                    patientsList.map(p => (
-                      <option key={p.id} value={p.name}>{p.name}</option>
-                    ))
-                  ) : (
-                    <option disabled>{pageLoading ? "Loading patients..." : "No registered patients found."}</option>
-                  )}
-                </select>
+                  {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-upload"></i>}
+                  {isUploading ? " Uploading..." : " Upload Prescription"}
+                </button>
               </div>
 
-              <div className="structured-presc-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                <div className="form-group">
-                  <label>Diagnosis</label>
-                  <textarea
-                    placeholder="e.g. Chronic Gingivitis..."
-                    value={prescDiagnosis}
-                    onChange={(e) => handleBulletInput(e, setPrescDiagnosis, prescDiagnosis)}
-                    className="dashboard-textarea"
-                    rows="3"
-                  ></textarea>
-                </div>
-
-                <div className="form-group">
-                  <label>Treatment Plan</label>
-                  <textarea
-                    placeholder="e.g. Scaling and Root Planing..."
-                    value={prescTreatment}
-                    onChange={(e) => handleBulletInput(e, setPrescTreatment, prescTreatment)}
-                    className="dashboard-textarea"
-                    rows="3"
-                  ></textarea>
-                </div>
-
-                <div className="form-group" style={{ gridColumn: "span 2" }}>
-                  <label>Recommendations / Medications</label>
-                  <textarea
-                    placeholder="e.g. Warm salt water rinses, twice daily..."
-                    value={prescRecommendations}
-                    onChange={(e) => handleBulletInput(e, setPrescRecommendations, prescRecommendations)}
-                    className="dashboard-textarea"
-                    rows="3"
-                  ></textarea>
-                </div>
-              </div>
-
-              <button
-                className="upload-btn"
-                onClick={handlePrescriptionUpload}
-                disabled={isUploading}
-                style={{ marginTop: "1rem" }}
-              >
-                {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-upload"></i>}
-                {isUploading ? " Uploading..." : " Upload Prescription"}
-              </button>
-            </div>
-
-            {/* PREVIOUS PRESCRIPTIONS LIST */}
-            {historyPrescriptions.length > 0 && (
-              <div className="recent-prescriptions" style={{ marginTop: "2rem", borderTop: "1px solid #333", paddingTop: "1rem" }}>
-                <h4 style={{ marginBottom: "1rem", color: "#f0b800" }}>Recent Prescriptions</h4>
-                <div className="presc-list" style={{ maxHeight: "300px", overflowY: "auto" }}>
-                  {historyPrescriptions.map(p => (
-                    <div key={p.id} className="presc-item-mini" style={{
-                      background: "#222", padding: "10px", borderRadius: "8px", marginBottom: "10px",
-                      display: "flex", justifyContent: "space-between", alignItems: "center"
-                    }}>
-                      <div>
-                        <b style={{ color: "#fff" }}>{capitalizeFullName(p.patient)}</b>
-                        <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(p.date).toLocaleDateString()}</div>
-                        <div style={{ fontSize: "0.85rem", color: "#ccc", marginTop: "4px" }}>
-                          {p.diagnosis ? `Dx: ${p.diagnosis.substring(0, 40)}...` :
-                            p.details ? p.details.substring(0, 40) + "..." : "No details"}
+              {/* PREVIOUS PRESCRIPTIONS LIST */}
+              {historyPrescriptions.length > 0 && (
+                <div className="recent-prescriptions" style={{ marginTop: "2rem", borderTop: "1px solid #333", paddingTop: "1rem" }}>
+                  <h4 style={{ marginBottom: "1rem", color: "#f0b800" }}>Recent Prescriptions</h4>
+                  <div className="presc-list" style={{ maxHeight: "300px", overflowY: "auto" }}>
+                    {historyPrescriptions.map(p => (
+                      <div key={p.id} className="presc-item-mini" style={{
+                        background: "#222", padding: "10px", borderRadius: "8px", marginBottom: "10px",
+                        display: "flex", justifyContent: "space-between", alignItems: "center"
+                      }}>
+                        <div>
+                          <b style={{ color: "#fff" }}>{capitalizeFullName(p.patient)}</b>
+                          <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(p.date).toLocaleDateString()}</div>
+                          <div style={{ fontSize: "0.85rem", color: "#ccc", marginTop: "4px" }}>
+                            {p.diagnosis ? `Dx: ${p.diagnosis.substring(0, 40)}...` :
+                              p.details ? p.details.substring(0, 40) + "..." : "No details"}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <button
+                            onClick={() => downloadPrescription(p.id, true)}
+                            style={{ background: "#f0b800", border: "none", color: "#000", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer", fontWeight: "bold" }}
+                          >
+                            <i className="fas fa-stamp"></i> Stamped
+                          </button>
+                          <button
+                            onClick={() => downloadPrescription(p.id, false)}
+                            style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
+                          >
+                            Plain
+                          </button>
                         </div>
                       </div>
-                      <button
-                        onClick={() => downloadPrescription(p.id)}
-                        style={{ background: "transparent", border: "1px solid #f0b800", color: "#f0b800", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
-                      >
-                        <i className="fas fa-download"></i> PDF
-                      </button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* ROW 3: BILLING & INVOICES (CENTERED) */}
+          <div className="row-billing" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+            <div className="card animate-fade-up" style={{ animationDelay: "0.3s", width: "100%", maxWidth: "1000px" }}>
+              <div className="card-header">
+                <h3>Billing & Invoices</h3>
+                <i className="fas fa-file-invoice-dollar card-icon"></i>
               </div>
-            )}
-          </div>
+              <InvoiceForm
+                patientsList={patientsList}
+                onInvoiceCreated={fetchInvoices}
+                downloadInvoice={downloadInvoice}
+              />
 
-          {/* ALL PATIENTS TABLE */}
-          <div className="card animate-fade-up" style={{ animationDelay: "0.55s", gridColumn: "span 2" }}>
-            <div className="card-header">
-              <h3>All Registered Patients</h3>
-              <i className="fas fa-users card-icon"></i>
-            </div>
-            <div className="elegant-scroll" style={{ padding: "1rem", overflowX: "auto", maxHeight: "300px", overflowY: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", color: "#fff", textAlign: "left" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid #333" }}>
-                    <th style={{ padding: "12px", color: "#f0b800" }}>Name</th>
-                    <th style={{ padding: "12px", color: "#f0b800" }}>Phone</th>
-                    <th style={{ padding: "12px", color: "#f0b800" }}>Source</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {patientsList.length > 0 ? (
-                    patientsList.map(p => (
-                      <tr key={p.id} style={{ borderBottom: "1px solid #222" }}>
-                        <td style={{ padding: "12px" }}>{p.name}</td>
-                        <td style={{ padding: "12px", color: "#888" }}>{p.phone}</td>
-                        <td style={{ padding: "12px" }}>
-                          <span style={{
-                            padding: "4px 8px",
-                            borderRadius: "4px",
-                            fontSize: "0.75rem",
-                            background: p.source === "website" ? "#3498db33" : p.source === "manual" ? "#e67e2233" : "#9b59b633",
-                            color: p.source === "website" ? "#3498db" : p.source === "manual" ? "#e67e22" : "#9b59b6",
-                            textTransform: "uppercase",
-                            fontWeight: "bold"
-                          }}>
-                            {p.source || "website"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="3" style={{ textAlign: "center", padding: "2rem", color: "#888" }}>No patients found.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
 
-          {/* INVOICE CARD */}
-          <div className="card animate-fade-up" style={{ animationDelay: "0.6s", gridColumn: "span 2" }}>
-            <div className="card-header">
-              <h3>Billing & Invoices</h3>
-              <i className="fas fa-file-invoice-dollar card-icon"></i>
-            </div>
-            <InvoiceForm patientsList={patientsList} onInvoiceCreated={fetchInvoices} />
-
-            {invoices.length > 0 && (
-              <div className="recent-prescriptions" style={{ marginTop: "2rem", borderTop: "1px solid #333", paddingTop: "1rem" }}>
-                <h4 style={{ marginBottom: "1rem", color: "#f0b800" }}>Recent Invoices</h4>
-                <div className="presc-list" style={{ maxHeight: "300px", overflowY: "auto" }}>
-                  {invoices.map(inv => (
-                    <div key={inv.id} className="presc-item-mini" style={{
-                      background: "#222", padding: "10px", borderRadius: "8px", marginBottom: "10px",
-                      display: "flex", justifyContent: "space-between", alignItems: "center"
-                    }}>
-                      <div>
-                        <b style={{ color: "#fff" }}>{inv.patient_name}</b>
-                        <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(inv.date).toLocaleDateString()}</div>
-                        <div style={{ fontSize: "0.85rem", color: "#2ecc71" }}>{inv.currency} {inv.total.toLocaleString()} ({inv.invoice_number})</div>
+              {invoices.length > 0 && (
+                <div className="recent-prescriptions" style={{ marginTop: "2rem", borderTop: "1px solid #333", paddingTop: "1rem" }}>
+                  <h4 style={{ marginBottom: "1rem", color: "#f0b800" }}>Recent Invoices</h4>
+                  <div className="presc-list elegant-scroll" style={{ maxHeight: "300px", overflowY: "auto" }}>
+                    {invoices.map(inv => (
+                      <div key={inv.id} className="presc-item-mini" style={{
+                        background: "#222", padding: "10px", borderRadius: "8px", marginBottom: "10px",
+                        display: "flex", justifyContent: "space-between", alignItems: "center"
+                      }}>
+                        <div>
+                          <b style={{ color: "#fff" }}>{inv.patient_name}</b>
+                          <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(inv.date).toLocaleDateString()}</div>
+                          <div style={{ fontSize: "0.85rem", color: "#2ecc71" }}>{inv.currency} {inv.total.toLocaleString()} ({inv.invoice_number})</div>
+                        </div>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <button
+                            onClick={() => downloadInvoice(inv.id, inv.invoice_number, true)}
+                            style={{ background: "#f0b800", border: "none", color: "#000", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer", fontWeight: "bold" }}
+                          >
+                            <i className="fas fa-stamp"></i> Stamped
+                          </button>
+                          <button
+                            onClick={() => downloadInvoice(inv.id, inv.invoice_number, false)}
+                            style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
+                          >
+                            Plain
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => downloadInvoice(inv.id, inv.invoice_number)}
-                        style={{ background: "transparent", border: "1px solid #f0b800", color: "#f0b800", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
-                      >
-                        <i className="fas fa-download"></i> PDF
-                      </button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* ROW 4: ALL REGISTERED PATIENTS (CENTERED) */}
+          <div className="row-patients" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+            <div className="card animate-fade-up" style={{ animationDelay: "0.4s", width: "100%", maxWidth: "1000px" }}>
+              <div className="card-header">
+                <h3>All Registered Patients</h3>
+                <i className="fas fa-users card-icon"></i>
               </div>
-            )}
+              <div className="elegant-scroll" style={{ padding: "1rem", overflowX: "auto", maxHeight: "300px", overflowY: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", color: "#fff", textAlign: "left" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid #333" }}>
+                      <th style={{ padding: "12px", color: "#f0b800" }}>Name</th>
+                      <th style={{ padding: "12px", color: "#f0b800" }}>Phone</th>
+                      <th style={{ padding: "12px", color: "#f0b800" }}>Email</th>
+                      <th style={{ padding: "12px", color: "#f0b800" }}>Source</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {patientsList.length > 0 ? (
+                      patientsList.map(p => (
+                        <tr key={p.id} style={{ borderBottom: "1px solid #222" }}>
+                          <td style={{ padding: "12px" }}>{p.name}</td>
+                          <td style={{ padding: "12px", color: "#888" }}>{p.phone}</td>
+                          <td style={{ padding: "12px", color: "#888" }}>{p.email || "-"}</td>
+                          <td style={{ padding: "12px" }}>
+                            <span style={{
+                              padding: "4px 8px",
+                              borderRadius: "4px",
+                              fontSize: "0.75rem",
+                              background: p.source === "website" ? "#3498db33" : p.source === "manual" ? "#e67e2233" : "#9b59b633",
+                              color: p.source === "website" ? "#3498db" : p.source === "manual" ? "#e67e22" : "#9b59b6",
+                              textTransform: "uppercase",
+                              fontWeight: "bold"
+                            }}>
+                              {p.source || "website"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="4" style={{ textAlign: "center", padding: "2rem", color: "#888" }}>No patients found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
         </div>

@@ -18,6 +18,7 @@ export default function ReceptionistDashboard() {
     const [patientName, setPatientName] = useState("");
     const [patientPhone, setPatientPhone] = useState("");
     const [patientAge, setPatientAge] = useState("");
+    const [patientSex, setPatientSex] = useState("M");
     const [visitDate, setVisitDate] = useState("");
     const [visitReason, setVisitReason] = useState("");
     const [assignedDoctor, setAssignedDoctor] = useState("");
@@ -34,6 +35,7 @@ export default function ReceptionistDashboard() {
     const [editName, setEditName] = useState("");
     const [editPhone, setEditPhone] = useState("");
     const [editAge, setEditAge] = useState("");
+    const [editSex, setEditSex] = useState("M");
 
     // Appointment Actions State
     const [followUpOpen, setFollowUpOpen] = useState(false);
@@ -182,9 +184,9 @@ export default function ReceptionistDashboard() {
         }
     }
 
-    async function downloadInvoice(id, invNum) {
+    async function downloadInvoice(id, invNum, stamp = true) {
         const token = await session.getToken({ template: "default" });
-        const res = await fetch(`${API}/api/invoices/${id}/pdf`, {
+        const res = await fetch(`${API}/api/invoices/${id}/pdf?stamp=${stamp}`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
@@ -192,7 +194,7 @@ export default function ReceptionistDashboard() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `invoice_${invNum}.pdf`;
+            a.download = `invoice_${invNum}${stamp ? "" : "_plain"}.pdf`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -221,7 +223,8 @@ export default function ReceptionistDashboard() {
                     age: parseInt(patientAge),
                     datetime: visitDate,
                     reason: visitReason,
-                    doctor_name: assignedDoctor || null
+                    doctor_name: assignedDoctor || null,
+                    sex: patientSex
                 })
             });
 
@@ -230,6 +233,7 @@ export default function ReceptionistDashboard() {
                 setPatientName("");
                 setPatientPhone("");
                 setPatientAge("");
+                setPatientSex("M");
                 setVisitDate("");
                 setVisitReason("");
                 setAssignedDoctor("");
@@ -278,6 +282,7 @@ export default function ReceptionistDashboard() {
         setEditName(patient.name);
         setEditPhone(patient.phone);
         setEditAge(patient.age || "");
+        setEditSex(patient.sex || "M");
         setIsEditModalOpen(true);
     }
 
@@ -295,7 +300,8 @@ export default function ReceptionistDashboard() {
                 body: JSON.stringify({
                     name: editName,
                     phone: editPhone,
-                    age: parseInt(editAge)
+                    age: parseInt(editAge),
+                    sex: editSex
                 })
             });
 
@@ -547,6 +553,18 @@ export default function ReceptionistDashboard() {
                                     style={{ width: "100%", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff" }}
                                 />
                             </div>
+                            <div className="form-group" style={{ flex: 1 }}>
+                                <label style={{ color: "#888", marginBottom: "5px", display: "block" }}>Sex</label>
+                                <select
+                                    value={patientSex}
+                                    onChange={e => setPatientSex(e.target.value)}
+                                    style={{ width: "100%", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff" }}
+                                >
+                                    <option value="M">Male</option>
+                                    <option value="F">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div className="form-group">
@@ -621,12 +639,20 @@ export default function ReceptionistDashboard() {
                                             <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(inv.date).toLocaleDateString()}</div>
                                             <div style={{ fontSize: "0.9rem", color: "#2ecc71", fontWeight: "bold" }}>{inv.currency} {inv.total.toLocaleString()}</div>
                                         </div>
-                                        <button
-                                            onClick={() => downloadInvoice(inv.id, inv.invoice_number)}
-                                            style={{ background: "transparent", border: "1px solid #f0b800", color: "#f0b800", padding: "6px 12px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
-                                        >
-                                            <i className="fas fa-download"></i> PDF
-                                        </button>
+                                        <div style={{ display: "flex", gap: "8px" }}>
+                                            <button
+                                                onClick={() => downloadInvoice(inv.id, inv.invoice_number, true)}
+                                                style={{ background: "#f0b800", border: "none", color: "#000", padding: "6px 12px", borderRadius: "4px", fontSize: "0.80rem", cursor: "pointer", fontWeight: "bold" }}
+                                            >
+                                                <i className="fas fa-stamp"></i> Stamped
+                                            </button>
+                                            <button
+                                                onClick={() => downloadInvoice(inv.id, inv.invoice_number, false)}
+                                                style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "6px 12px", borderRadius: "4px", fontSize: "0.80rem", cursor: "pointer" }}
+                                            >
+                                                Plain
+                                            </button>
+                                        </div>
                                     </div>
                                 ))
                             ) : (
@@ -737,6 +763,17 @@ export default function ReceptionistDashboard() {
                                     type="number" value={editAge} onChange={e => setEditAge(e.target.value)}
                                     style={{ width: "100%", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
                                 />
+                            </div>
+                            <div>
+                                <label style={{ color: "#888", fontSize: "0.8rem" }}>Sex</label>
+                                <select
+                                    value={editSex} onChange={e => setEditSex(e.target.value)}
+                                    style={{ width: "100%", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
+                                >
+                                    <option value="M">Male</option>
+                                    <option value="F">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
                             </div>
                             <div style={{ display: "flex", gap: "10px", marginTop: "1rem" }}>
                                 <button

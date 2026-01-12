@@ -42,6 +42,7 @@ class Patient(Base):
     contact_datetime = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     source = Column(String(50), default="website") # "website", "manual", "voice"
+    sex = Column(String(10), nullable=True) # "M", "F", "Other"
     is_archived = Column(Integer, default=0) # 0 = False, 1 = True (SQLite friendly)
 
     # Relationships
@@ -183,6 +184,7 @@ class InvoiceItem(Base):
     treatment_name = Column(String(200), nullable=False)
     treatment_date = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     cost = Column(Float, nullable=False)
+    discount = Column(Float, default=0.0)
 
     invoice = relationship("Invoice", back_populates="items")
 

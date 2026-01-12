@@ -47,7 +47,10 @@ export default function Header({ openAI }) {
       <header className="header">
         <div className="logo">
           <img src="/static/assets/logo.png" alt="Smile Artists Logo" />
-          <span>Smile Artists</span>
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: "0.9", alignItems: "flex-end", gap: "5px" }}>
+            <span style={{ textTransform: "none" }}>Smile Artists</span>
+            <span className="text-tagline" style={{ fontSize: "1.1rem", color: "#d4af37", textTransform: "none", letterSpacing: "0px" }}>...crafting smiles</span>
+          </div>
         </div>
 
         {/* Header Actions */}

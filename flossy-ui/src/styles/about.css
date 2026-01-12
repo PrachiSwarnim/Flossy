@@ -100,14 +100,15 @@
 /* DECORATIVE ELEMENTS (Boldo Style) */
 .image-decoration {
   position: absolute;
-  top: -30px;
-  right: -30px;
+  top: 0px;
+  right: 0px;
   width: 100%;
   height: 100%;
-  border: 4px solid var(--primary-gold);
+  border: 2px solid var(--primary-gold);
   border-radius: 20px;
   z-index: 1;
   opacity: 0.5;
+  pointer-events: none;
 }
 
 /* RESPONSIVE */

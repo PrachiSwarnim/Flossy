@@ -3,12 +3,16 @@ import "../styles/carousel.css";
 
 export default function Carousel() {
   const images = [
-    "/static/assets/download.jpeg",
-    "/static/assets/download (1).jpeg",
-    "/static/assets/download (2).jpeg",
-    "/static/assets/images.jpeg",
-    "/static/assets/images (1).jpeg",
-    "/static/assets/images (2).jpeg",
+    "/static/assets/Smile Artists Board 2.jpg",
+    "/static/assets/Clinic Exterior 3.jpg",
+    "/static/assets/Clinic Outside Exterior View.jpg",
+    "/static/assets/Patient Tree 2.jpg",
+    "/static/assets/Patient 2.jpeg",
+    "/static/assets/Clinic Exterior 2.jpg",
+    "/static/assets/Smile Artists Board 1.jpg",
+    "/static/assets/Clinic Exterior 4.jpg",
+    "/static/assets/Clinic Exterior 1.jpg",
+    "/static/assets/Patient 1.jpg",
   ];
 
   const [index, setIndex] = useState(0);
@@ -26,7 +30,7 @@ export default function Carousel() {
   // Move to prev slide
   const prevSlide = () => {
     if (index === 0) {
-      // Loop back to end (real last slide)
+      /0/ Loop back to end(real last slide)
       transitionRef.current = false;
       setIndex(images.length); // Jump to duplicate spot? No, jump to last real image index.
       // Actually, standard loop back logic:
