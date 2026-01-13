@@ -5,10 +5,14 @@ export default function ScrollToHash() {
   const { hash } = useLocation();
 
   useEffect(() => {
-    if (hash) {
-      const el = document.querySelector(hash);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (hash && !hash.includes("?") && !hash.includes("=")) {
+      try {
+        const el = document.querySelector(hash);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      } catch (e) {
+        console.warn("Invalid hash selector:", hash);
       }
     }
   }, [hash]);

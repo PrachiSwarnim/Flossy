@@ -135,17 +135,24 @@ export default function DentistDashboard() {
     setHistory(data.history || []);
   }
 
-  // === Artificial Delay + Load Data ===
+  // === Load Data ===
   useEffect(() => {
-    const email = user?.primaryEmailAddress?.emailAddress;
-    const role = user?.publicMetadata?.role;
-
     if (!isLoaded) return;
+
+    // Check permission (Redundant with top-level check but safe)
+    const role = user?.publicMetadata?.role;
+    const email = user?.primaryEmailAddress?.emailAddress;
+
     if (role !== "dentist" && email !== "prachi.swarnim@gmail.com") return;
 
-    setTimeout(() => {
-      loadAppointments().finally(() => setPageLoading(false));
-    }, 1000);
+    // Start loading
+    loadAppointments()
+      .catch(e => console.error("Failed to load appointments:", e))
+      .finally(() => setPageLoading(false));
+
+    // Safety timeout: forced stop after 5 seconds
+    const timer = setTimeout(() => setPageLoading(false), 5000);
+    return () => clearTimeout(timer);
   }, [isLoaded, user]);
 
   // === Full Name ===
@@ -251,6 +258,8 @@ export default function DentistDashboard() {
 
   // === Prescription State ===
   const [prescPatient, setPrescPatient] = useState("");
+  const [editingPrescId, setEditingPrescId] = useState(null);
+  const [prescDate, setPrescDate] = useState(new Date().toISOString().split('T')[0]);
   const [prescDetails, setPrescDetails] = useState("");
   const [prescDiagnosis, setPrescDiagnosis] = useState("");
   const [prescTreatment, setPrescTreatment] = useState("");
@@ -263,6 +272,28 @@ export default function DentistDashboard() {
   const [patientsList, setPatientsList] = useState([]);
   const [historyPrescriptions, setHistoryPrescriptions] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [editingInvoice, setEditingInvoice] = useState(null);
+
+  async function startEditingInvoice(inv) {
+    if (!inv || !inv.id) return;
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/invoices/${inv.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEditingInvoice(data);
+        // Scroll to form
+        document.querySelector('.row-billing')?.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        alert("Failed to load invoice details.");
+      }
+    } catch (e) {
+      console.error("Error loading invoice:", e);
+      alert("Error loading invoice.");
+    }
+  }
 
   // Load Real Patients from DB
   useEffect(() => {
@@ -309,7 +340,7 @@ export default function DentistDashboard() {
     }
   }
 
-  async function downloadInvoice(id, invNum, stamp = true) {
+  async function downloadInvoice(id, invNum, stamp = true, patientName = "") {
     if (!session) return;
     try {
       const token = await session.getToken({ template: "default" });
@@ -321,7 +352,8 @@ export default function DentistDashboard() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `invoice_${invNum}${stamp ? "" : "_plain"}.pdf`;
+        const safeName = patientName ? patientName.replace(/[^a-zA-Z0-9]/g, "_") : "";
+        a.download = `${safeName}_invoice_${invNum}${stamp ? "" : "_plain"}.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -387,7 +419,7 @@ export default function DentistDashboard() {
     }
   }
 
-  async function downloadPrescription(id, stamp = true) {
+  async function downloadPrescription(id, stamp = true, patientName = "") {
     if (!session) return;
     try {
       const token = await session.getToken({ template: "default" });
@@ -399,7 +431,8 @@ export default function DentistDashboard() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `prescription_${id}${stamp ? "" : "_plain"}.pdf`;
+        const safeName = patientName ? patientName.replace(/[^a-zA-Z0-9]/g, "_") : "";
+        a.download = `${safeName}_prescription${stamp ? "" : "_plain"}.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -427,7 +460,32 @@ export default function DentistDashboard() {
     }
 
     setter(e.target.value);
+    setter(e.target.value);
   };
+
+  function startEditing(p) {
+    setEditingPrescId(p.id);
+    setPrescPatient(p.patient);
+    setPatientSearch(p.patient);
+    setPrescDate(p.date ? p.date.split('T')[0] : new Date().toISOString().split('T')[0]);
+    setPrescDetails(p.details || "");
+    setPrescDiagnosis(p.diagnosis || "");
+    setPrescTreatment(p.treatment_plan || "");
+    setPrescRecommendations(p.recommendations || "");
+    // Scroll to form
+    document.querySelector('.prescription-form')?.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function cancelEditing() {
+    setEditingPrescId(null);
+    setPrescPatient("");
+    setPatientSearch("");
+    setPrescDetails("");
+    setPrescDiagnosis("");
+    setPrescTreatment("");
+    setPrescRecommendations("");
+    setPrescDate(new Date().toISOString().split('T')[0]);
+  }
 
   async function handlePrescriptionUpload() {
     if (!prescPatient) return alert("Select a patient first.");
@@ -438,8 +496,14 @@ export default function DentistDashboard() {
 
     try {
       const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/prescriptions`, {
-        method: "POST",
+      const url = editingPrescId
+        ? `${API}/api/prescriptions/${editingPrescId}`
+        : `${API}/api/prescriptions`;
+
+      const method = editingPrescId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
@@ -449,7 +513,8 @@ export default function DentistDashboard() {
           details: prescDetails,
           diagnosis: prescDiagnosis,
           treatment_plan: prescTreatment,
-          recommendations: prescRecommendations
+          recommendations: prescRecommendations,
+          created_at: prescDate
         })
       });
 
@@ -460,11 +525,13 @@ export default function DentistDashboard() {
         setPrescDiagnosis("");
         setPrescTreatment("");
         setPrescRecommendations("");
-        alert(`Prescription uploaded successfully for ${prescPatient}!`);
+        setEditingPrescId(null); // Reset edit mode
+
+        alert(`Prescription ${editingPrescId ? "updated" : "uploaded"} successfully!`);
         loadHistoryPrescriptions();
       } else {
         const err = await res.json();
-        alert("Upload failed: " + (err.detail || "Unknown error"));
+        alert((editingPrescId ? "Update" : "Upload") + " failed: " + (err.detail || "Unknown error"));
       }
     } catch (err) {
       console.error("Prescription upload error:", err);
@@ -772,68 +839,95 @@ export default function DentistDashboard() {
                 <i className="fas fa-file-prescription card-icon"></i>
               </div>
               <div className="prescription-form">
-                <div className="form-group" style={{ position: "relative" }}>
-                  <label>Select Patient</label>
-                  <div className="patient-search-container" style={{ position: "relative" }}>
-                    <div style={{ position: "relative" }}>
-                      <input
-                        type="text"
-                        placeholder="Search patient name..."
-                        value={patientSearch || prescPatient}
-                        onChange={(e) => {
-                          setPatientSearch(e.target.value);
-                          setShowPatientSuggestions(true);
-                          if (prescPatient) setPrescPatient(""); // Clear selection if typing
-                        }}
-                        onFocus={() => setShowPatientSuggestions(true)}
-                        className="dashboard-input"
-                        style={{ paddingLeft: "35px" }}
-                      />
-                      <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#f0b800", opacity: 0.7 }}></i>
-                    </div>
-
-                    {showPatientSuggestions && (patientSearch.trim() !== "" || patientsList.length > 0) && (
-                      <div className="patient-suggestions elegant-scroll" style={{
-                        position: "absolute", top: "100%", left: 0, right: 0,
-                        zIndex: 101, background: "#1a1a1a", border: "1px solid #444",
-                        borderRadius: "8px", marginTop: "5px", maxHeight: "180px",
-                        overflowY: "scroll", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
-                      }}>
-                        {patientsList
-                          .filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase()))
-                          .map((p, i) => (
-                            <div
-                              key={p.id}
-                              onClick={() => {
-                                setPrescPatient(p.name);
-                                setPatientSearch(p.name);
-                                setShowPatientSuggestions(false);
-                              }}
-                              style={{
-                                padding: "10px 15px", cursor: "pointer", borderBottom: "1px solid #333",
-                                background: prescPatient === p.name ? "#2a2a2a" : "transparent"
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = "#2a2a2a"}
-                              onMouseLeave={(e) => e.currentTarget.style.background = prescPatient === p.name ? "#2a2a2a" : "transparent"}
-                            >
-                              <div style={{ fontWeight: "600", color: "#fff" }}>{p.name}</div>
-                              {p.phone && <div style={{ fontSize: "0.75rem", color: "#888" }}>{p.phone}</div>}
-                            </div>
-                          ))}
-                        {patientsList.filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase())).length === 0 && (
-                          <div style={{ padding: "15px", color: "#888", textAlign: "center" }}>No patients found.</div>
+                <div style={{ display: "flex", gap: "1rem" }}>
+                  <div className="form-group" style={{ position: "relative", flex: 1 }}>
+                    <label>Select Patient</label>
+                    <div className="patient-search-container" style={{ position: "relative" }}>
+                      <div style={{ position: "relative" }}>
+                        <input
+                          type="text"
+                          placeholder="Search patient name..."
+                          value={patientSearch || prescPatient}
+                          onChange={(e) => {
+                            setPatientSearch(e.target.value);
+                            setShowPatientSuggestions(true);
+                            if (prescPatient) setPrescPatient(""); // Clear selection if typing
+                          }}
+                          onFocus={() => setShowPatientSuggestions(true)}
+                          className="dashboard-input"
+                          style={{ paddingLeft: "35px" }}
+                        />
+                        <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#f0b800", opacity: 0.7 }}></i>
+                        {(patientSearch || prescPatient) && (
+                          <i
+                            className="fas fa-times-circle"
+                            style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#888", cursor: "pointer" }}
+                            onClick={() => {
+                              setPatientSearch("");
+                              setPrescPatient("");
+                            }}
+                          ></i>
                         )}
                       </div>
+
+                      {showPatientSuggestions && (patientSearch.trim() !== "" || patientsList.length > 0) && (
+                        <div className="patient-suggestions elegant-scroll" style={{
+                          position: "absolute", top: "100%", left: 0, right: 0,
+                          zIndex: 101, background: "#1a1a1a", border: "1px solid #444",
+                          borderRadius: "8px", marginTop: "5px", maxHeight: "180px",
+                          overflowY: "scroll", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+                        }}>
+                          {patientsList
+                            .filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase()))
+                            .map((p, i) => (
+                              <div
+                                key={p.id}
+                                onClick={() => {
+                                  setPrescPatient(p.name);
+                                  setPatientSearch(p.name);
+                                  setShowPatientSuggestions(false);
+                                }}
+                                style={{
+                                  padding: "10px 15px", cursor: "pointer", borderBottom: "1px solid #333",
+                                  background: prescPatient === p.name ? "#2a2a2a" : "transparent"
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = "#2a2a2a"}
+                                onMouseLeave={(e) => e.currentTarget.style.background = prescPatient === p.name ? "#2a2a2a" : "transparent"}
+                              >
+                                <div style={{ fontWeight: "600", color: "#fff" }}>{p.name}</div>
+                                {p.phone && <div style={{ fontSize: "0.75rem", color: "#888" }}>{p.phone}</div>}
+                              </div>
+                            ))}
+                          {patientsList.filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase())).length === 0 && (
+                            <div style={{ padding: "15px", color: "#888", textAlign: "center" }}>No patients found.</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Close suggestions when clicking outside */}
+                    {showPatientSuggestions && (
+                      <div
+                        style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}
+                        onClick={() => setShowPatientSuggestions(false)}
+                      ></div>
                     )}
                   </div>
+                  <div className="form-group" style={{ width: "180px" }}>
+                    <label>Date</label>
+                    <input type="date" value={prescDate} onChange={e => setPrescDate(e.target.value)} className="dashboard-input" />
+                  </div>
+                </div>
 
-                  {/* Close suggestions when clicking outside */}
-                  {showPatientSuggestions && (
-                    <div
-                      style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}
-                      onClick={() => setShowPatientSuggestions(false)}
-                    ></div>
-                  )}
+                <div className="form-group" style={{ marginBottom: "1rem" }}>
+                  <label>Chief Complaint</label>
+                  <textarea
+                    placeholder="e.g. Severe toothache..."
+                    value={prescDetails}
+                    onChange={e => setPrescDetails(e.target.value)}
+                    className="dashboard-textarea"
+                    rows="2"
+                  ></textarea>
                 </div>
 
                 <div className="structured-presc-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
@@ -949,47 +1043,69 @@ export default function DentistDashboard() {
                   className="upload-btn"
                   onClick={handlePrescriptionUpload}
                   disabled={isUploading}
-                  style={{ marginTop: "1rem" }}
+                  style={{ marginTop: "1rem", background: editingPrescId ? "#2ecc71" : "#f0b800", color: editingPrescId ? "#fff" : "#000" }}
                 >
-                  {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-upload"></i>}
-                  {isUploading ? " Uploading..." : " Upload Prescription"}
+                  {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className={`fas ${editingPrescId ? "fa-save" : "fa-upload"}`}></i>}
+                  {isUploading ? (editingPrescId ? " Updating..." : " Uploading...") : (editingPrescId ? " Update Prescription" : " Upload Prescription")}
                 </button>
+                {editingPrescId && (
+                  <button
+                    onClick={cancelEditing}
+                    style={{ marginLeft: "10px", background: "transparent", border: "1px solid #777", color: "#ccc", padding: "10px 20px", borderRadius: "8px", cursor: "pointer" }}
+                  >
+                    Cancel Edit
+                  </button>
+                )}
               </div>
 
+
               {/* PREVIOUS PRESCRIPTIONS LIST */}
-              {historyPrescriptions.length > 0 && (
+              {historyPrescriptions.length > 0 && prescPatient && (
                 <div className="recent-prescriptions" style={{ marginTop: "2rem", borderTop: "1px solid #333", paddingTop: "1rem" }}>
-                  <h4 style={{ marginBottom: "1rem", color: "#f0b800" }}>Recent Prescriptions</h4>
+                  <h4 style={{ marginBottom: "1rem", color: "#f0b800" }}>
+                    {prescPatient ? `Prescriptions for ${prescPatient}` : "Recent Prescriptions"}
+                  </h4>
                   <div className="presc-list" style={{ maxHeight: "300px", overflowY: "auto" }}>
-                    {historyPrescriptions.map(p => (
-                      <div key={p.id} className="presc-item-mini" style={{
-                        background: "#222", padding: "10px", borderRadius: "8px", marginBottom: "10px",
-                        display: "flex", justifyContent: "space-between", alignItems: "center"
-                      }}>
-                        <div>
-                          <b style={{ color: "#fff" }}>{capitalizeFullName(p.patient)}</b>
-                          <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(p.date).toLocaleDateString()}</div>
-                          <div style={{ fontSize: "0.85rem", color: "#ccc", marginTop: "4px" }}>
-                            {p.diagnosis ? `Dx: ${p.diagnosis.substring(0, 40)}...` :
-                              p.details ? p.details.substring(0, 40) + "..." : "No details"}
+                    {historyPrescriptions
+                      .filter(p => !prescPatient || p.patient.toLowerCase() === prescPatient.toLowerCase())
+                      .map(p => (
+                        <div key={p.id} className="presc-item-mini" style={{
+                          background: "#222", padding: "10px", borderRadius: "8px", marginBottom: "10px",
+                          display: "flex", justifyContent: "space-between", alignItems: "center"
+                        }}>
+                          <div>
+                            <b style={{ color: "#fff" }}>{capitalizeFullName(p.patient)}</b>
+                            <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(p.date).toLocaleDateString()}</div>
+                            <div style={{ fontSize: "0.85rem", color: "#ccc", marginTop: "4px" }}>
+                              {p.diagnosis ? `Dx: ${p.diagnosis.substring(0, 40)}...` :
+                                p.details ? p.details.substring(0, 40) + "..." : "No details"}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              onClick={() => startEditing(p)}
+                              style={{ background: "#222", border: "1px solid #555", color: "#f0b800", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
+                            >
+                              <i className="fas fa-edit"></i> Edit
+                            </button>
+                            <button
+                              onClick={() => downloadPrescription(p.id, true, p.patient)}
+                              style={{ background: "#f0b800", border: "none", color: "#000", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer", fontWeight: "bold" }}
+                            >
+                              <i className="fas fa-stamp"></i> Stamped
+                            </button>
+                            <button
+                              onClick={() => downloadPrescription(p.id, false, p.patient)}
+                              style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
+                            >
+                              Plain
+                            </button>
                           </div>
                         </div>
-                        <div style={{ display: "flex", gap: "8px" }}>
-                          <button
-                            onClick={() => downloadPrescription(p.id, true)}
-                            style={{ background: "#f0b800", border: "none", color: "#000", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer", fontWeight: "bold" }}
-                          >
-                            <i className="fas fa-stamp"></i> Stamped
-                          </button>
-                          <button
-                            onClick={() => downloadPrescription(p.id, false)}
-                            style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
-                          >
-                            Plain
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    {prescPatient && historyPrescriptions.filter(p => p.patient.toLowerCase() === prescPatient.toLowerCase()).length === 0 && (
+                      <p style={{ color: "#888", fontStyle: "italic" }}>No prescriptions found for this patient.</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -1005,41 +1121,57 @@ export default function DentistDashboard() {
               </div>
               <InvoiceForm
                 patientsList={patientsList}
-                onInvoiceCreated={fetchInvoices}
+                onInvoiceCreated={() => { fetchInvoices(); setEditingInvoice(null); }}
                 downloadInvoice={downloadInvoice}
+                editingInvoice={editingInvoice}
+                onCancelEdit={() => setEditingInvoice(null)}
+                preSelectedPatient={prescPatient}
               />
 
 
-              {invoices.length > 0 && (
+              {invoices.length > 0 && prescPatient && (
                 <div className="recent-prescriptions" style={{ marginTop: "2rem", borderTop: "1px solid #333", paddingTop: "1rem" }}>
-                  <h4 style={{ marginBottom: "1rem", color: "#f0b800" }}>Recent Invoices</h4>
+                  <h4 style={{ marginBottom: "1rem", color: "#f0b800" }}>
+                    {prescPatient ? `Invoices for ${prescPatient}` : "Recent Invoices"}
+                  </h4>
                   <div className="presc-list elegant-scroll" style={{ maxHeight: "300px", overflowY: "auto" }}>
-                    {invoices.map(inv => (
-                      <div key={inv.id} className="presc-item-mini" style={{
-                        background: "#222", padding: "10px", borderRadius: "8px", marginBottom: "10px",
-                        display: "flex", justifyContent: "space-between", alignItems: "center"
-                      }}>
-                        <div>
-                          <b style={{ color: "#fff" }}>{inv.patient_name}</b>
-                          <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(inv.date).toLocaleDateString()}</div>
-                          <div style={{ fontSize: "0.85rem", color: "#2ecc71" }}>{inv.currency} {inv.total.toLocaleString()} ({inv.invoice_number})</div>
+                    {invoices
+                      .filter(inv => !prescPatient || (inv.patient_name || "").toLowerCase() === prescPatient.toLowerCase())
+                      .map(inv => (
+                        <div key={inv.id} className="presc-item-mini" style={{
+                          background: "#222", padding: "10px", borderRadius: "8px", marginBottom: "10px",
+                          display: "flex", justifyContent: "space-between", alignItems: "center"
+                        }}>
+                          <div>
+                            <b style={{ color: "#fff" }}>{inv.patient_name}</b>
+                            <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(inv.date).toLocaleDateString()}</div>
+                            <div style={{ fontSize: "0.85rem", color: "#2ecc71" }}>{inv.currency} {inv.total.toLocaleString()} ({inv.invoice_number})</div>
+                          </div>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              onClick={() => startEditingInvoice(inv)}
+                              style={{ background: "#2ecc71", border: "none", color: "#000", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer", fontWeight: "bold" }}
+                            >
+                              <i className="fas fa-edit"></i> Edit
+                            </button>
+                            <button
+                              onClick={() => downloadInvoice(inv.id, inv.invoice_number, true, inv.patient_name)}
+                              style={{ background: "#f0b800", border: "none", color: "#000", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer", fontWeight: "bold" }}
+                            >
+                              <i className="fas fa-stamp"></i> Stamped
+                            </button>
+                            <button
+                              onClick={() => downloadInvoice(inv.id, inv.invoice_number, false, inv.patient_name)}
+                              style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
+                            >
+                              Plain
+                            </button>
+                          </div>
                         </div>
-                        <div style={{ display: "flex", gap: "8px" }}>
-                          <button
-                            onClick={() => downloadInvoice(inv.id, inv.invoice_number, true)}
-                            style={{ background: "#f0b800", border: "none", color: "#000", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer", fontWeight: "bold" }}
-                          >
-                            <i className="fas fa-stamp"></i> Stamped
-                          </button>
-                          <button
-                            onClick={() => downloadInvoice(inv.id, inv.invoice_number, false)}
-                            style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
-                          >
-                            Plain
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    {prescPatient && invoices.filter(inv => (inv.patient_name || "").toLowerCase() === prescPatient.toLowerCase()).length === 0 && (
+                      <p style={{ color: "#888", fontStyle: "italic" }}>No invoices found for this patient.</p>
+                    )}
                   </div>
                 </div>
               )}

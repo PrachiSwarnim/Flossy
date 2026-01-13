@@ -20,13 +20,14 @@ const convertPrice = (amount, fromCurrency, toCurrency) => {
     return parseFloat(val.toFixed(2));
 };
 
-const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice }) => {
+const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingInvoice, onCancelEdit, preSelectedPatient, onPatientChange }) => {
     const { session } = useSession();
     const [patientName, setPatientName] = useState("");
     const [currency, setCurrency] = useState("INR");
     const [discount, setDiscount] = useState(0);
     const [items, setItems] = useState([{ treatment_name: "", cost: 0, discount: 0, discount_type: "flat", treatment_date: new Date().toISOString().split('T')[0] }]);
     const [payments, setPayments] = useState([{ payment_method: "UPI", amount: 0, paid_on: new Date().toISOString().split('T')[0] }]);
+    const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isManualPayment, setIsManualPayment] = useState(false); // Track if user manually edited payment
     const [patientSearch, setPatientSearch] = useState("");
@@ -34,6 +35,44 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice }) => {
     const [treatmentSearchTerm, setTreatmentSearchTerm] = useState("");
     const [activeTreatmentIdx, setActiveTreatmentIdx] = useState(null);
     const [catalog, setCatalog] = useState([]);
+
+    // Populate form if editing
+    useEffect(() => {
+        if (editingInvoice) {
+            setPatientName(editingInvoice.patient_name || "");
+            setPatientSearch(editingInvoice.patient_name || ""); // Pre-fill search
+            setCurrency(editingInvoice.currency || "INR");
+            setDiscount(editingInvoice.discount || 0);
+
+            // Format dates from API (ISO) to YYYY-MM-DD
+            const invDate = editingInvoice.date ? new Date(editingInvoice.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            setInvoiceDate(invDate);
+
+            if (editingInvoice.items && editingInvoice.items.length > 0) {
+                setItems(editingInvoice.items.map(i => ({
+                    ...i,
+                    treatment_date: i.treatment_date ? new Date(i.treatment_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                    discount_type: i.discount_type || "flat" // API usually returns calculated discount, we assume flat for simplicity in edit reverse eng? Or just flat. 
+                })));
+            }
+
+            if (editingInvoice.payments && editingInvoice.payments.length > 0) {
+                setPayments(editingInvoice.payments.map(p => ({
+                    ...p,
+                    paid_on: p.paid_on ? new Date(p.paid_on).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+                })));
+                setIsManualPayment(true); // Don't auto-overwrite amounts
+            }
+        }
+    }, [editingInvoice]);
+
+    // Handle pre-selected patient from dashboard
+    useEffect(() => {
+        if (!editingInvoice && preSelectedPatient) {
+            setPatientName(preSelectedPatient);
+            setPatientSearch(preSelectedPatient);
+        }
+    }, [preSelectedPatient, editingInvoice]);
 
     // Fetch Treatment Catalog
     useEffect(() => {
@@ -50,6 +89,13 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice }) => {
         }
         fetchCatalog();
     }, []);
+
+    // Notify parent when patient changes
+    useEffect(() => {
+        if (onPatientChange) {
+            onPatientChange(patientName);
+        }
+    }, [patientName, onPatientChange]);
 
     // Auto-calculate totals
     const calculateItemDiscountAmount = (item) => {
@@ -70,12 +116,12 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice }) => {
 
     // Auto-fill payment amount if not manual
     useEffect(() => {
-        if (!isManualPayment && payments.length === 1) {
+        if (!isManualPayment && payments.length === 1 && !editingInvoice) { // Only auto-fill for new invoices to avoid overwriting existing data
             const newPayments = [...payments];
             newPayments[0].amount = Math.max(0, totalAmount);
             setPayments(newPayments);
         }
-    }, [totalAmount, isManualPayment]);
+    }, [totalAmount, isManualPayment, editingInvoice]);
 
     // Handle Currency Change & Auto-Convert Items
     const handleCurrencyChange = (newCurrency) => {
@@ -154,8 +200,12 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice }) => {
         setIsSubmitting(true);
         try {
             const token = await session.getToken({ template: "default" });
-            const res = await fetch(`${API}/api/invoices`, {
-                method: "POST",
+
+            const url = editingInvoice ? `${API}/api/invoices/${editingInvoice.id}` : `${API}/api/invoices`;
+            const method = editingInvoice ? "PUT" : "POST";
+
+            const res = await fetch(url, {
+                method: method,
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
@@ -172,30 +222,40 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice }) => {
                         };
                     }),
                     payments: payments.map(p => ({ ...p, amount: parseFloat(p.amount) })),
-                    currency: currency
+                    currency: currency,
+                    date: invoiceDate
                 })
             });
 
             if (res.ok) {
                 const result = await res.json();
-                alert(`Invoice generated successfully! (${result.invoice_number})`);
-                if (downloadInvoice && result.invoice_id) {
+                alert(`Invoice ${editingInvoice ? "updated" : "generated"} successfully!`);
+
+                // If editing, don't auto-download on save unless requested? Just alert for now.
+                if (!editingInvoice && downloadInvoice && result.invoice_id) {
                     downloadInvoice(result.invoice_id, result.invoice_number, true);
                 }
+
+                // Reset form or trigger callback
+                if (onInvoiceCreated) onInvoiceCreated();
+
+                // Clear State
                 setPatientName("");
                 setPatientSearch("");
                 setDiscount(0);
                 setItems([{ treatment_name: "", cost: 0, discount: 0, discount_type: "flat", treatment_date: new Date().toISOString().split('T')[0] }]);
                 setPayments([{ payment_method: "UPI", amount: 0, paid_on: new Date().toISOString().split('T')[0] }]);
                 setIsManualPayment(false);
-                if (onInvoiceCreated) onInvoiceCreated();
+
+                if (editingInvoice && onCancelEdit) onCancelEdit(); // Exit edit mode
+
             } else {
                 const err = await res.json();
-                alert("Failed to create invoice: " + (err.detail || "Unknown error"));
+                alert("Failed to save invoice: " + (err.detail || "Unknown error"));
             }
         } catch (err) {
             console.error(err);
-            alert("Error creating invoice.");
+            alert("Error saving invoice.");
         } finally {
             setIsSubmitting(false);
         }
@@ -204,7 +264,13 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice }) => {
     return (
         <div className="invoice-form-container" style={{ color: '#fff' }}>
             <form onSubmit={handleSubmit} className="premium-form">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {editingInvoice && (
+                    <div style={{ background: "#f39c1222", border: "1px solid #f39c12", padding: "10px", borderRadius: "8px", marginBottom: "15px", color: "#f39c12", fontWeight: "bold", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>Editing Invoice #{editingInvoice.invoice_number}</span>
+                        <button type="button" onClick={onCancelEdit} style={{ background: "transparent", border: "1px solid #f39c12", color: "#f39c12", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}>Cancel</button>
+                    </div>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '20px' }}>
                     <div className="form-group" style={{ position: "relative" }}>
                         <label style={{ color: '#f0b800', fontWeight: 'bold' }}>Select Patient</label>
                         <div className="patient-search-container" style={{ position: "relative" }}>
@@ -265,6 +331,15 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice }) => {
                                 onClick={() => setShowPatientSuggestions(false)}
                             ></div>
                         )}
+                    </div>
+                    <div className="form-group">
+                        <label style={{ color: '#f0b800', fontWeight: 'bold' }}>Date</label>
+                        <input
+                            type="date"
+                            value={invoiceDate}
+                            onChange={(e) => setInvoiceDate(e.target.value)}
+                            className="dashboard-input"
+                        />
                     </div>
                     <div className="form-group">
                         <label style={{ color: '#f0b800', fontWeight: 'bold' }}>Currency</label>
@@ -519,10 +594,10 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice }) => {
                     type="submit"
                     disabled={isSubmitting}
                     className="upload-btn"
-                    style={{ width: '100%', marginTop: '1.5rem', background: '#f0b800', color: '#000', fontWeight: 'bold', padding: '12px' }}
+                    style={{ width: '100%', marginTop: '1.5rem', background: editingInvoice ? "#2ecc71" : "#f0b800", color: editingInvoice ? "#fff" : "#000", fontWeight: 'bold', padding: '12px' }}
                 >
-                    {isSubmitting ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-file-invoice"></i>}
-                    {isSubmitting ? " Generating..." : " Generate & Save Invoice"}
+                    {isSubmitting ? <i className="fas fa-spinner fa-spin"></i> : <i className={editingInvoice ? "fas fa-save" : "fas fa-file-invoice"}></i>}
+                    {isSubmitting ? (editingInvoice ? " Updating..." : " Generating...") : (editingInvoice ? " Update Invoice" : " Generate & Save Invoice")}
                 </button>
             </form>
         </div>

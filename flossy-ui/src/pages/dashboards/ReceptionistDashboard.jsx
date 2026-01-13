@@ -27,7 +27,9 @@ export default function ReceptionistDashboard() {
     const [invoices, setInvoices] = useState([]);
     const [today, setToday] = useState([]);
     const [upcoming, setUpcoming] = useState([]);
+    const [history, setHistory] = useState([]);
     const [doctorsList, setDoctorsList] = useState([]);
+    const [invoicePatient, setInvoicePatient] = useState(""); // Track selected patient in Invoice Form
 
     // Edit Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -41,6 +43,9 @@ export default function ReceptionistDashboard() {
     const [followUpOpen, setFollowUpOpen] = useState(false);
     const [selectedApptId, setSelectedApptId] = useState(null);
     const [followUpReason, setFollowUpReason] = useState("");
+
+    // Invoice Edit State
+    const [editingInvoice, setEditingInvoice] = useState(null);
 
     // === Full Name ===
     const fullName =
@@ -181,10 +186,20 @@ export default function ReceptionistDashboard() {
             const data = await res.json();
             setToday(data.today || []);
             setUpcoming(data.upcoming || []);
+            setHistory(data.history || []);
         }
     }
 
-    async function downloadInvoice(id, invNum, stamp = true) {
+    function capitalizeFullName(name) {
+        if (!name) return "";
+        return name
+            .trim()
+            .split(/\s+/)
+            .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+            .join(" ");
+    }
+
+    async function downloadInvoice(id, invNum, stamp = true, patientName = "") {
         const token = await session.getToken({ template: "default" });
         const res = await fetch(`${API}/api/invoices/${id}/pdf?stamp=${stamp}`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -194,7 +209,8 @@ export default function ReceptionistDashboard() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `invoice_${invNum}${stamp ? "" : "_plain"}.pdf`;
+            const safeName = patientName ? patientName.replace(/[^a-zA-Z0-9]/g, "_") : "";
+            a.download = `${safeName}_invoice_${invNum}${stamp ? "" : "_plain"}.pdf`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -513,6 +529,78 @@ export default function ReceptionistDashboard() {
                     </div>
                 </div>
 
+                {/* APPOINTMENT HISTORY */}
+                <div className="card animate-fade-up" style={{ marginTop: "2rem" }}>
+                    <div className="card-header">
+                        <h3>Appointment History</h3>
+                        <i className="fas fa-history card-icon"></i>
+                    </div>
+                    <div className="history-list" style={{ maxHeight: "400px", overflowY: "auto" }}>
+                        {history.length ? (
+                            history.map((a) => (
+                                <div className="appt-item" key={a.id} style={{ opacity: 0.85 }}>
+                                    <b>
+                                        {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                            hour12: true
+                                        })}
+                                    </b>
+                                    <div style={{ color: "#fff", fontSize: "0.95rem", marginTop: "5px" }}>
+                                        {capitalizeFullName(a.patient_name)}
+                                        <span style={{ marginLeft: "10px", fontSize: "0.85rem", color: "#888" }}>
+                                            {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
+                                        </span>
+                                    </div>
+                                    <div style={{ color: "#888", fontSize: "0.85rem" }}>{a.reason}</div>
+                                    <div style={{ color: "#f0b800", fontSize: "0.8rem", marginTop: "4px" }}>
+                                        <i className="fas fa-user-md"></i> {a.doctor_name}
+                                    </div>
+
+                                    {a.status === "completed" && (
+                                        <span style={{ color: "#2ecc71", display: "block", marginTop: "5px" }}>
+                                            <i className="fas fa-check-circle"></i> Completed
+                                        </span>
+                                    )}
+
+                                    {a.status === "missed" && (
+                                        <span style={{ color: "#e74c3c", display: "block", marginTop: "5px" }}>
+                                            <i className="fas fa-times-circle"></i> Not Visited
+                                        </span>
+                                    )}
+
+                                    {a.status === "follow_up" && (
+                                        <div style={{ color: "#f0b800", marginTop: "5px" }}>
+                                            <i className="fas fa-clock"></i> Follow Up Required
+                                            <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>Note: {a.follow_up_reason}</div>
+                                            <div className="follow-up-actions" style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
+                                                {!a.follow_up_status ? (
+                                                    <>
+                                                        <button
+                                                            onClick={() => updateFollowUpStatus(a.id, "completed")}
+                                                            style={{ fontSize: "0.75rem", background: "#28a745", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
+                                                        >Mark Done</button>
+                                                        <button
+                                                            onClick={() => updateFollowUpStatus(a.id, "missed")}
+                                                            style={{ fontSize: "0.75rem", background: "#dc3545", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
+                                                        >Mark Missed</button>
+                                                    </>
+                                                ) : (
+                                                    <span style={{ fontSize: "0.75rem", fontWeight: "bold", color: a.follow_up_status === "completed" ? "#28a745" : "#dc3545", textTransform: "capitalize" }}>
+                                                        Follow-up {a.follow_up_status}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        ) : (
+                            <p style={{ color: "#888", textAlign: "center", padding: "2rem" }}>No appointment history yet.</p>
+                        )}
+                    </div>
+                </div>
+
                 <h2 style={{ color: "#f0b800", marginBottom: "2rem" }}>Clinic Reception - New Patient Arrival</h2>
 
                 <div id="arrivalForm" className="card animate-fade-up" style={{ maxWidth: "600px", margin: "0 auto" }}>
@@ -612,51 +700,77 @@ export default function ReceptionistDashboard() {
                 </div>
 
                 {/* INVOICE SECTION */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem", marginTop: "3rem" }}>
+                <div style={{ marginTop: "3rem" }}>
                     <div className="card animate-fade-up">
                         <div className="card-header">
                             <h3>Generate New Invoice</h3>
                             <i className="fas fa-file-invoice-dollar card-icon"></i>
                         </div>
-                        <InvoiceForm patientsList={patientsList} onInvoiceCreated={fetchInvoices} />
+                        <InvoiceForm
+                            patientsList={patientsList}
+                            onInvoiceCreated={() => { fetchInvoices(); setEditingInvoice(null); }}
+                            downloadInvoice={downloadInvoice}
+                            editingInvoice={editingInvoice}
+                            onCancelEdit={() => setEditingInvoice(null)}
+                            onPatientChange={(name) => setInvoicePatient(name)}
+                        />
                     </div>
 
-                    <div className="card animate-fade-up">
+                    {/* Invoice History - Only shows when patient is selected */}
+                    <div className="card animate-fade-up" style={{ marginTop: "2rem" }}>
                         <div className="card-header">
-                            <h3>Invoice History</h3>
+                            <h3>Invoice History {invoicePatient && <span style={{ color: "#888", fontWeight: "normal" }}>- {invoicePatient}</span>}</h3>
                             <i className="fas fa-history card-icon"></i>
                         </div>
-                        <div className="presc-list elegant-scroll" style={{ maxHeight: "600px", overflowY: "auto", marginTop: "1rem" }}>
-                            {invoices.length > 0 ? (
-                                invoices.map(inv => (
-                                    <div key={inv.id} className="presc-item-mini" style={{
-                                        background: "#222", padding: "12px", borderRadius: "8px", marginBottom: "12px",
-                                        display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid #333"
-                                    }}>
-                                        <div>
-                                            <b style={{ color: "#fff", display: "block" }}>{inv.patient_name}</b>
-                                            <span style={{ fontSize: "0.8rem", color: "#f0b800" }}>{inv.invoice_number}</span>
-                                            <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(inv.date).toLocaleDateString()}</div>
-                                            <div style={{ fontSize: "0.9rem", color: "#2ecc71", fontWeight: "bold" }}>{inv.currency} {inv.total.toLocaleString()}</div>
-                                        </div>
-                                        <div style={{ display: "flex", gap: "8px" }}>
-                                            <button
-                                                onClick={() => downloadInvoice(inv.id, inv.invoice_number, true)}
-                                                style={{ background: "#f0b800", border: "none", color: "#000", padding: "6px 12px", borderRadius: "4px", fontSize: "0.80rem", cursor: "pointer", fontWeight: "bold" }}
-                                            >
-                                                <i className="fas fa-stamp"></i> Stamped
-                                            </button>
-                                            <button
-                                                onClick={() => downloadInvoice(inv.id, inv.invoice_number, false)}
-                                                style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "6px 12px", borderRadius: "4px", fontSize: "0.80rem", cursor: "pointer" }}
-                                            >
-                                                Plain
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
+                        <div className="presc-list elegant-scroll" style={{ maxHeight: "400px", overflowY: "auto", marginTop: "1rem" }}>
+                            {invoicePatient ? (
+                                invoices.filter(inv => (inv.patient_name || "").toLowerCase() === invoicePatient.toLowerCase()).length > 0 ? (
+                                    invoices
+                                        .filter(inv => (inv.patient_name || "").toLowerCase() === invoicePatient.toLowerCase())
+                                        .map(inv => (
+                                            <div key={inv.id} className="presc-item-mini" style={{
+                                                background: "#222", padding: "12px", borderRadius: "8px", marginBottom: "12px",
+                                                display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid #333"
+                                            }}>
+                                                <div>
+                                                    <b style={{ color: "#fff", display: "block" }}>{inv.patient_name}</b>
+                                                    <span style={{ fontSize: "0.8rem", color: "#f0b800" }}>{inv.invoice_number}</span>
+                                                    <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(inv.date).toLocaleDateString()}</div>
+                                                    <div style={{ fontSize: "0.9rem", color: "#2ecc71", fontWeight: "bold" }}>{inv.currency} {inv.total.toLocaleString()}</div>
+                                                </div>
+                                                <div style={{ display: "flex", gap: "8px" }}>
+                                                    <button
+                                                        onClick={() => setEditingInvoice(inv)}
+                                                        style={{ background: "#2ecc71", border: "none", color: "#000", padding: "6px 12px", borderRadius: "4px", fontSize: "0.80rem", cursor: "pointer", fontWeight: "bold" }}
+                                                    >
+                                                        <i className="fas fa-edit"></i> Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => downloadInvoice(inv.id, inv.invoice_number, true, inv.patient_name)}
+                                                        style={{ background: "#f0b800", border: "none", color: "#000", padding: "6px 12px", borderRadius: "4px", fontSize: "0.80rem", cursor: "pointer", fontWeight: "bold" }}
+                                                    >
+                                                        <i className="fas fa-stamp"></i> Stamped
+                                                    </button>
+                                                    <button
+                                                        onClick={() => downloadInvoice(inv.id, inv.invoice_number, false, inv.patient_name)}
+                                                        style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "6px 12px", borderRadius: "4px", fontSize: "0.80rem", cursor: "pointer" }}
+                                                    >
+                                                        Plain
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                ) : (
+                                    <p style={{ color: "#888", textAlign: "center", padding: "2rem" }}>
+                                        <i className="fas fa-info-circle" style={{ marginRight: "8px" }}></i>
+                                        No invoices found for {invoicePatient}
+                                    </p>
+                                )
                             ) : (
-                                <p style={{ color: "#888", textAlign: "center" }}>No invoices generated yet.</p>
+                                <p style={{ color: "#888", textAlign: "center", padding: "2rem" }}>
+                                    <i className="fas fa-search" style={{ marginRight: "8px" }}></i>
+                                    Select a patient above to view their invoice history
+                                </p>
                             )}
                         </div>
                     </div>

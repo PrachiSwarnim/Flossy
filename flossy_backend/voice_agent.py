@@ -7,8 +7,8 @@ import json
 from livekit.agents import AutoSubscribe, JobContext, WorkerOptions, cli, llm, mcp
 from livekit.agents.pipeline import VoicePipelineAgent
 from livekit.plugins import google, tavus, deepgram, silero, elevenlabs
-from database import SessionLocal
-from models import User, Appointment, Patient
+from app.core.database import SessionLocal
+from app.models import User, Appointment, Patient
 from sqlalchemy import and_
 import re
 import numpy as np
@@ -16,11 +16,11 @@ import asyncio
 
 try:
     from rl_core import bandit, ACTIONS, PROMPT_VARIANTS, MODELS
-    from utils import embed_with_client
-    from llm_client import genai_client
+    from app.core.utils import embed_with_client
+    from app.services.llm_client import genai_client
     RL_AVAILABLE = True
 except ImportError:
-    logger.warning("RL modules not found. Defaulting to static prompt.")
+    logging.warning("RL modules not found. Defaulting to static prompt.")
     RL_AVAILABLE = False
 
 load_dotenv()

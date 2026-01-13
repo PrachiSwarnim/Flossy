@@ -80,7 +80,7 @@ export default function PatientDashboard() {
     }
   }
 
-  async function downloadPrescription(id, isLegacy = false) {
+  async function downloadPrescription(id, isLegacy = false, patientName = "") {
     if (isLegacy) {
       alert("Legacy prescriptions cannot be downloaded as PDFs yet. Please ask your doctor to re-upload this in the new system.");
       return;
@@ -96,7 +96,8 @@ export default function PatientDashboard() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `prescription_${id}.pdf`;
+        const safeName = patientName ? patientName.replace(/[^a-zA-Z0-9]/g, "_") : "";
+        a.download = `${safeName}_prescription.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -365,7 +366,7 @@ export default function PatientDashboard() {
                       <span className="presc-date">{new Date(p.date).toLocaleDateString()}</span>
                       <p className="presc-details">{p.details}</p>
                     </div>
-                    <button className="download-btn" onClick={() => downloadPrescription(p.id, p.isLegacy)}>
+                    <button className="download-btn" onClick={() => downloadPrescription(p.id, p.isLegacy, p.patient || fullName)}>
                       <i className="fas fa-download"></i> {p.isLegacy ? "Legacy" : "Download"}
                     </button>
                   </div>

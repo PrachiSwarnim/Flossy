@@ -17,14 +17,14 @@ from google.cloud import speech
 from google.oauth2 import service_account
 
 # --- DATABASE IMPORTS ---
-from database import SessionLocal
-from models import Appointment, Patient, User
+from app.core.database import SessionLocal
+from app.models import Appointment, Patient, User
 from sqlalchemy import and_
 
 # --- RL IMPORTS ---
 try:
     from rl_core import bandit, ACTIONS, PROMPT_VARIANTS
-    from utils import embed_with_client
+    from app.core.utils import embed_with_client
     RL_AVAILABLE = True
 except ImportError:
     logging.warning("⚠️ RL modules not found. Defaulting to static prompt.")
@@ -54,7 +54,7 @@ voice_states: dict = {}
 # -------------------------
 async def groq_stt(audio_chunks: list) -> str:
     """Uses Groq Whisper for fast, free speech-to-text."""
-    from llm_client import groq_client
+    from app.services.llm_client import groq_client
     import tempfile
     
     if not groq_client:
@@ -249,7 +249,7 @@ async def send_bot(ws: WebSocket, text: str):
     
     # 3. Generate and Stream Audio
     try:
-        from services.tts import stream_text_to_speech
+        from app.services.tts import stream_text_to_speech
         print(f"🎙️ Streaming TTS for: {text[:30]}...")
         for chunk in stream_text_to_speech(text):
             if chunk:
@@ -262,8 +262,8 @@ async def send_bot(ws: WebSocket, text: str):
 
 async def process_conversation_turn(text: str, st: dict, mode: str = "VOICE", ws: WebSocket = None):
     """Handles one turn of conversation using Gemini with Tools, with Groq fallback."""
-    from llm_client import genai_client, groq_client
-    from utils import ai_generate
+    from app.services.llm_client import genai_client, groq_client
+    from app.core.utils import ai_generate
 
     if ws:
         await ws.send_json({"type": "status", "content": "Thinking..."})

@@ -22,7 +22,7 @@ export default function PostLogin() {
       const email = user.primaryEmailAddress?.emailAddress;
       if (email === "prachi.swarnim@gmail.com") {
         // Force backend fix
-        await fetch("http://localhost:8000/api/debug/fix_my_role");
+        // await fetch("http://localhost:8000/api/debug/fix_my_role");
         navigate("/dentist");
         return;
       }
