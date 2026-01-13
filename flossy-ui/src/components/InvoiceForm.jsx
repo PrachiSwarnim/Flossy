@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSession } from '@clerk/clerk-react';
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API = import.meta.env.VITE_API_BASE_URL;
 
 const EXCHANGE_RATES = {
     INR: 1,

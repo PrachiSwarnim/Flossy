@@ -9,7 +9,7 @@ import InvoiceForm from "../../components/InvoiceForm";
 import "../../styles/dentist_dashboard.css";
 import "../../styles/dashboard_extras.css";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_BASE_URL;
 
 const DENTAL_MEDICATIONS = [
   // Antibiotics

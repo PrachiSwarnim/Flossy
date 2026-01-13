@@ -40,7 +40,7 @@ export default function AppointmentRequestForm() {
 
         // BETTER UX: Send to backend as "Guest Inquiry" then prompt signup.
         try {
-            const API = "http://localhost:8000";
+            const API = import.meta.env.VITE_API_BASE_URL;
             await fetch(`${API}/api/contact_request`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

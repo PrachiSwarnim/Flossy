@@ -125,7 +125,7 @@ export default function PatientDashboard() {
     }
   }, [fullName]);
 
-  const API = "http://localhost:8000";
+  const API = import.meta.env.VITE_API_BASE_URL;
 
   async function refreshAll() {
     console.log("🔄 AI Action detected: Refreshing Patient Dashboard...");

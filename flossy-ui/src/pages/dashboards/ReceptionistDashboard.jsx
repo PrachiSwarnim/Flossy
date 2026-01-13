@@ -7,7 +7,7 @@ import Footer from "../../components/Footer";
 import InvoiceForm from "../../components/InvoiceForm";
 import "../../styles/dentist_dashboard.css";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_BASE_URL;
 
 export default function ReceptionistDashboard() {
     const { user, isLoaded } = useUser();
