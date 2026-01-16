@@ -8,3 +8,9 @@ nlu_model
 appointments.db
 vosk-model-small-en-us-0.15
 books
+flossy-ui\.env
+flossy-ui\.env.local
+flossy-ui\.env.production
+flossy_backend\.env
+flossy_backend\.env.local
+flossy_backend\.env.production
