@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 import re
 
-from core.database import get_db
-from models import User
+from app.core.database import get_db
+from app.models import User
 
 router = APIRouter()
 

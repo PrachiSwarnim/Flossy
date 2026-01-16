@@ -1,9 +1,9 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
-from models import Appointment, Interaction, Patient
-from core.database import SessionLocal
-from services.llm_client import genai_client
+from app.models import Appointment, Interaction, Patient
+from app.core.database import SessionLocal
+from app.services.llm_client import genai_client
 
 # THRESHOLDS (Hours before appointment)
 # We map levels to hours remaining

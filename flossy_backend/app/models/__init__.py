@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, LargeBinary, Float
 from sqlalchemy.orm import relationship
-from core.database import Base
+from app.core.database import Base
 from datetime import datetime
 from datetime import timezone
 
@@ -58,6 +58,7 @@ class Appointment(Base):
 
     doctor_name = Column(String(120), nullable=True)  # UI only
     reason = Column(String(255), nullable=True)
+    denial_reason = Column(Text, nullable=True) # Reason for rescheduling/denial
 
     reminder_level = Column(Integer, default=0)
     follow_up_reason = Column(Text, nullable=True)

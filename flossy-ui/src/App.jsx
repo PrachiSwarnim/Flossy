@@ -12,7 +12,7 @@ import Services from "./pages/Services";
 import Tourism from "./pages/DentalTourism";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import RoleSelection from "./pages/RoleSelection";
+
 import PatientDashboard from "./pages/dashboards/PatientDashboard";
 import DentistDashboard from "./pages/dashboards/DentistDashboard";
 import ReceptionistDashboard from "./pages/dashboards/ReceptionistDashboard";
@@ -46,15 +46,7 @@ export default function App() {
         />
 
 
-        {/* PROTECTED ROUTES */}
-        <Route
-          path="/role_selection"
-          element={
-            <SignedIn>
-              <RoleSelection />
-            </SignedIn>
-          }
-        />
+
 
         <Route
           path="/patient"

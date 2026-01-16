@@ -14,14 +14,13 @@
     display: flex;
     flex-direction: row;
     background: var(--bg-card);
-    /* Dark Theme */
-    border-radius: 16px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    border-radius: 20px;
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.4);
     overflow: hidden;
-    max-width: 900px;
+    max-width: 950px;
     width: 100%;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .appointment-card:hover {
@@ -32,9 +31,11 @@
 
 /* Left Image Side */
 .appointment-image {
-    flex: 1;
+    flex: 0.8;
+    /* Reduced from 1 to give form more room and prevent extreme image zoom */
     position: relative;
     overflow: hidden;
+    min-width: 280px;
 }
 
 .appointment-image img {
@@ -68,8 +69,8 @@
 }
 
 .appointment-form-content {
-    flex: 1;
-    padding: 2rem;
+    flex: 1.2;
+    padding: 2.5rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -154,6 +155,47 @@
     transform: translateY(0);
 }
 
+/* DASHBOARD MODAL OVERRIDES */
+.dashboard-form {
+    padding: 0;
+    margin: 0;
+}
+
+.dashboard-form .appointment-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.dashboard-form .appointment-image {
+    display: none;
+    /* Hide large image to save vertical space */
+}
+
+.dashboard-form .appointment-form-content {
+    background: transparent;
+    padding: 0;
+    flex: 1;
+}
+
+.dashboard-form .appointment-form-content h3,
+.dashboard-form .appointment-form-content p {
+    display: none;
+    /* Hide redundant headers already in modal */
+}
+
+.dashboard-form .appt-request-form {
+    gap: 0.8rem;
+    /* Tighten inputs */
+}
+
+.dashboard-form .input-group input,
+.dashboard-form .input-group select,
+.dashboard-form .input-group textarea {
+    padding: 0.7rem 0.9rem;
+    /* Slightly smaller inputs */
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .appointment-card {
@@ -161,7 +203,8 @@
     }
 
     .appointment-image {
-        min-height: 200px;
+        min-height: 250px;
+        min-width: 100%;
     }
 
     .appointment-form-content {

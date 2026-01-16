@@ -18,7 +18,6 @@ import Tourism from "../components/Tourism";
 import "../styles/global.css";
 import "../styles/hero.css";
 import "../styles/about.css";
-import VoiceChat from "../components/VoiceChat";
 
 import { Meteors } from "../components/ui/Meteors";
 import { ThreeDCard } from "../components/ui/ThreeDCard";
@@ -30,7 +29,6 @@ export default function Home() {
         document.title = "Smile Artists Dental Studio | Best Dental Clinic in Gurugram";
     }, []);
     const servicesRef = useRef(null);
-    const [isCallOpen, setIsCallOpen] = useState(false);
 
     return (
         <motion.div
@@ -242,34 +240,6 @@ export default function Home() {
             </div>
 
             <Footer />
-
-            {/* VOICE CALL MODAL & TRIGGER */}
-            {isCallOpen && (
-                <VoiceChat onClose={() => setIsCallOpen(false)} />
-            )}
-            <button
-                style={{
-                    position: "fixed",
-                    bottom: "20px",
-                    left: "20px",
-                    zIndex: 999,
-                    background: "#f0b800",
-                    border: "none",
-                    borderRadius: "50px",
-                    padding: "15px 25px",
-                    fontSize: "16px",
-                    fontWeight: "bold",
-                    color: "#000",
-                    boxShadow: "0 4px 15px rgba(240, 184, 0, 0.4)",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px"
-                }}
-                onClick={() => setIsCallOpen(true)}
-            >
-                <i className="fas fa-phone-volume"></i> Talk to AI
-            </button>
         </motion.div>
     );
 }

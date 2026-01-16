@@ -1,7 +1,7 @@
 from fastapi import Request, HTTPException, Depends
 from sqlalchemy.orm import Session
-from core.database import get_db
-from models import User
+from app.core.database import get_db
+from app.models import User
 
 def require_role(expected_role):
     def _require_role(request: Request, db: Session = Depends(get_db)):

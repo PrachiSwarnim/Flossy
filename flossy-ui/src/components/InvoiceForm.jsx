@@ -418,7 +418,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                                 onMouseLeave={(e) => e.currentTarget.style.background = item.treatment_name === cat.name ? "#2a2a2a" : "transparent"}
                                             >
                                                 <div style={{ fontWeight: "600", color: "#fff" }}>{cat.name}</div>
-                                                <div style={{ fontSize: "0.75rem", color: "#f0b800" }}>{currency} {convertPrice(cat.cost, 'INR', currency)}</div>
+                                                <div style={{ fontSize: "0.75rem", color: "#f0b800" }}>{currency === 'INR' ? '₹' : '$'} {convertPrice(cat.cost, 'INR', currency)}</div>
                                             </div>
                                         ))}
                                     <div
@@ -490,7 +490,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                     textAlign: 'center'
                                 }}
                             >
-                                <option value="flat">{currency}</option>
+                                <option value="flat">{currency === 'INR' ? '₹' : '$'}</option>
                                 <option value="percent">%</option>
                             </select>
                         </div>
@@ -542,7 +542,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                 onChange={(e) => updatePayment(pIdx, 'amount', e.target.value)}
                                 className="dashboard-input"
                             />
-                            <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.8rem' }}>{currency}</span>
+                            <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.8rem' }}>{currency === 'INR' ? '₹' : '$'}</span>
                         </div>
                         <input
                             type="date"
@@ -562,13 +562,13 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                 <div className="invoice-summary" style={{ marginTop: '1.5rem', padding: '15px', background: '#1a1a1a', borderRadius: '10px', border: '1px solid #333' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span>Subtotal (Gross):</span>
-                        <span style={{ fontWeight: 'bold' }}>{currency} {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span style={{ fontWeight: 'bold' }}>{currency === 'INR' ? '₹' : '$'} {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
 
                     {totalItemDiscount > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#f0b800' }}>
                             <span>Total Item Discounts:</span>
-                            <span style={{ fontWeight: 'bold' }}>- {currency} {totalItemDiscount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span style={{ fontWeight: 'bold' }}>- {currency === 'INR' ? '₹' : '$'} {totalItemDiscount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     )}
 
@@ -576,17 +576,17 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.1rem', color: '#f0b800', marginTop: '5px' }}>
                         <span>Total Payable:</span>
-                        <span>{currency} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span>{currency === 'INR' ? '₹' : '$'} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#2ecc71', marginTop: '5px', fontSize: '0.9rem' }}>
                         <span>Total Paid:</span>
-                        <span>{currency} {totalPaid.toLocaleString()}</span>
+                        <span>{currency === 'INR' ? '₹' : '$'} {totalPaid.toLocaleString()}</span>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: amountDue > 0 ? '#ff4444' : '#2ecc71', fontWeight: 'bold', marginTop: '5px' }}>
                         <span>{amountDue > 0 ? "Amount Due:" : "Balance Cleared"}</span>
-                        <span>{currency} {Math.abs(amountDue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span>{currency === 'INR' ? '₹' : '$'} {Math.abs(amountDue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                 </div>
 

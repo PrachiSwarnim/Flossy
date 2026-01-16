@@ -3,8 +3,8 @@ from google.genai.types import GenerationConfig
 import numpy as np
 import itertools
 import os
-from .config import GOOGLE_API_KEY
-from services.llm_client import groq_client
+from app.core.config import GOOGLE_API_KEY
+from app.services.llm_client import groq_client
 
 # Models mapping
 GROQ_MODEL = "llama-3.3-70b-versatile" # Current supported model
@@ -32,7 +32,8 @@ def ai_generate(prompt, temperature=0.7, model="gemini-2.0-flash", client_overri
     try:
         res = c.models.generate_content(
             model=model,
-            contents=prompt
+            contents=prompt,
+            config=GenerationConfig(temperature=temperature)
         )
         return res.text.strip()
     except Exception as e:

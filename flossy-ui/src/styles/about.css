@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Raleway&display=swap');
+
 .about-section {
   background-color: var(--bg-dark);
   /* Dark BG */
@@ -20,10 +22,16 @@
   flex: 1;
   text-align: left;
   z-index: 2;
+  padding-left: 1rem;
+  font-family: "Raleway", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
 }
 
 .about-text h2 {
-  font-family: var(--font-heading);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  /* Changed from var(--font-heading) */
   font-size: 3.5rem;
   font-weight: 700;
   color: var(--text-light);
@@ -32,18 +40,24 @@
   line-height: 1.1;
 }
 
-.about-text span {
+
+/* .about-text span {
   color: var(--primary-gold);
+} REMOVED: Caused all text in TextGenerateEffect to be gold */
+
+.about-text .lead-text,
+.about-text .lead-text span {
+  font-size: 1.25rem;
+  color: #e0e0e0 !important;
+  /* Force off-white */
+  font-weight: 500;
+  margin-bottom: 1.5rem;
 }
 
 .about-text .lead-text {
-  font-size: 1.25rem;
-  color: #e0e0e0;
-  /* Off-white */
-  font-weight: 500;
-  margin-bottom: 1.5rem;
   border-left: 4px solid var(--primary-gold);
-  padding-left: 1rem;
+  padding-left: 2rem;
+  /* Increased padding */
 }
 
 .about-text p {

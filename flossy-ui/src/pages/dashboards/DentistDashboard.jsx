@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useUser, useSession } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { PropagateLoader } from "react-spinners";
-import VoiceChat from "../../components/VoiceChat";
 import Header from "./DashboardHeader";
 import Footer from "../../components/Footer";
 import InvoiceForm from "../../components/InvoiceForm";
@@ -76,12 +75,28 @@ export default function DentistDashboard() {
   useEffect(() => {
     if (!isLoaded) return;
 
-    const role = user?.publicMetadata?.role;
+    const role = user?.publicMetadata?.role || sessionStorage.getItem("flossy_role");
     const email = user?.primaryEmailAddress?.emailAddress;
 
-    // Allow Dentist OR Prachi specific bypass
-    if (role !== "dentist" && email !== "prachi.swarnim@gmail.com") {
-      navigate("/not-authorized");
+    // Allow Dentist OR specific bypass emails
+    const isDentist = role === "dentist" ||
+      email === "prachi.swarnim@gmail.com" ||
+      email === "choudhary.shruti01@gmail.com";
+
+    if (!isDentist) {
+      if (role === "receptionist") {
+        navigate("/receptionist");
+        return;
+      }
+      if (role === "patient") {
+        navigate("/patient");
+        return;
+      }
+
+      // If they have NO role yet (undefined), they might be a new dentist awaiting sync.
+      if (role !== undefined && role !== null) {
+        navigate("/not-authorized");
+      }
     }
   }, [isLoaded, user, navigate]);
 
@@ -99,21 +114,20 @@ export default function DentistDashboard() {
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [selectedApptId, setSelectedApptId] = useState(null);
   const [followUpReason, setFollowUpReason] = useState("");
+  const [followUpDate, setFollowUpDate] = useState("");
+  const [followUpTime, setFollowUpTime] = useState("");
 
-  // VOICE AGENT (LiveKit Integrated)
-  const [isVoiceActive, setIsVoiceActive] = useState(false);
-  const agentMessages = [];
+  // Completion with Remarks State
+  const [completionModalOpen, setCompletionModalOpen] = useState(false);
+  const [selectedCompletionId, setSelectedCompletionId] = useState(null);
+  const [completionRemarks, setCompletionRemarks] = useState("");
 
-  // Sync voice messages to main chat
-  useEffect(() => {
-    const lastMsg = agentMessages[agentMessages.length - 1];
-    if (lastMsg) {
-      setMessages(prev => {
-        if (prev.length > 0 && prev[prev.length - 1].text === lastMsg.text) return prev;
-        return [...prev, lastMsg];
-      });
-    }
-  }, [agentMessages]);
+  // Missed Follow-up Reason State
+  const [missedReasonModalOpen, setMissedReasonModalOpen] = useState(false);
+  const [selectedMissedId, setSelectedMissedId] = useState(null);
+  const [missedReason, setMissedReason] = useState("");
+  const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
+  const [reportView, setReportView] = useState("daily");
 
   async function refreshAll() {
     console.log("🔄 AI Action detected: Refreshing Dentist Dashboard...");
@@ -145,6 +159,9 @@ export default function DentistDashboard() {
 
     if (role !== "dentist" && email !== "prachi.swarnim@gmail.com") return;
 
+    // Default report date to today
+    setReportDate(new Date().toISOString().split('T')[0]);
+
     // Start loading
     loadAppointments()
       .catch(e => console.error("Failed to load appointments:", e))
@@ -165,24 +182,39 @@ export default function DentistDashboard() {
     }
   }, [fullName]);
 
-  async function markCompleted(id) {
+  function markCompleted(id) {
+    setSelectedCompletionId(id);
+    setCompletionModalOpen(true);
+  }
+
+  async function submitCompletion() {
+    if (!selectedCompletionId) return;
+
     const token = await session.getToken({ template: "default" });
 
-    await fetch(`${API}/api/appointments/mark_completed/${id}`, {
+    await fetch(`${API}/api/appointments/mark_completed/${selectedCompletionId}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ remarks: completionRemarks })
     });
 
-    // Refresh appointment list
+    // Reset and Refresh
+    setCompletionModalOpen(false);
+    setCompletionRemarks("");
+    setSelectedCompletionId(null);
     loadAppointments();
   }
 
   async function markFollowUp() {
     if (!followUpReason) return alert("Please enter a reason for follow-up.");
+    if (!followUpDate || !followUpTime) return alert("Please select a date and time for the follow-up visit.");
 
     const token = await session.getToken({ template: "default" });
+
+    // 1. Mark current appointment as 'follow_up' status (Record keeping)
     await fetch(`${API}/api/appointments/mark_completed/${selectedApptId}`, {
       method: "POST",
       headers: {
@@ -192,8 +224,41 @@ export default function DentistDashboard() {
       body: JSON.stringify({ follow_up_reason: followUpReason })
     });
 
+    // 2. Schedule New Appointment
+    // Find basic patient details from the current appointment object
+    const currentAppt = [...today, ...upcoming, ...history].find(a => a.id === selectedApptId);
+
+    if (currentAppt) {
+      const isoDateTime = new Date(`${followUpDate}T${followUpTime}`).toISOString();
+
+      try {
+        await fetch(`${API}/api/appointments`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            patient_name: currentAppt.patient_name,
+            patient_phone: currentAppt.patient_phone,
+            patient_age: currentAppt.patient_age,
+            time: isoDateTime,
+            reason: "Follow-up: " + followUpReason,
+            doctor: fullName, // Assign to current doctor
+            status: "scheduled"
+          })
+        });
+        alert("Follow-up appointment scheduled successfully!");
+      } catch (err) {
+        console.error("Failed to schedule follow-up", err);
+        alert("Follow-up marked, but failed to schedule next appointment automatically.");
+      }
+    }
+
     setFollowUpOpen(false);
     setFollowUpReason("");
+    setFollowUpDate("");
+    setFollowUpTime("");
     setSelectedApptId(null);
     loadAppointments();
   }
@@ -217,6 +282,41 @@ export default function DentistDashboard() {
     loadAppointments();
   }
 
+  function openMissedModal(apptId) {
+    setSelectedMissedId(apptId);
+    setMissedReasonModalOpen(true);
+  }
+
+  async function submitMissedStatus() {
+    if (!selectedMissedId) return;
+    if (!missedReason) return alert("Please provide a reason.");
+
+    const token = await session.getToken({ template: "default" });
+    try {
+      const res = await fetch(`${API}/api/appointments/${selectedMissedId}/follow_up_status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          status: "missed",
+          reason: missedReason
+        })
+      });
+      if (res.ok) {
+        setMissedReasonModalOpen(false);
+        setMissedReason("");
+        setSelectedMissedId(null);
+        loadAppointments();
+      } else {
+        alert("Failed to update follow-up status.");
+      }
+    } catch (err) {
+      console.error("Error updating follow-up status:", err);
+    }
+  }
+
   async function updateFollowUpStatus(apptId, status) {
     const token = await session.getToken({ template: "default" });
     try {
@@ -236,6 +336,32 @@ export default function DentistDashboard() {
     } catch (err) {
       console.error("Error updating follow-up status:", err);
     }
+  }
+
+  function downloadPatientData() {
+    if (!patientsList.length) return alert("No patient data to download.");
+
+    const headers = ["Name", "Age", "Sex", "Phone", "Email", "Source"];
+    const rows = patientsList.map(p => [
+      p.name,
+      p.age || "",
+      p.sex || p.gender || "",
+      p.phone || "",
+      p.email || "",
+      p.source || "website"
+    ]);
+
+    let csvContent = "data:text/csv;charset=utf-8,"
+      + headers.join(",") + "\n"
+      + rows.map(e => e.join(",")).map(row => row.replace(/#/g, '')).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "patient_data_export.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   function capitalizeFullName(name) {
@@ -265,6 +391,7 @@ export default function DentistDashboard() {
   const [prescTreatment, setPrescTreatment] = useState("");
   const [prescRecommendations, setPrescRecommendations] = useState("");
   const [medSearch, setMedSearch] = useState("");
+  const [complaintType, setComplaintType] = useState("manual");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [patientSearch, setPatientSearch] = useState("");
   const [showPatientSuggestions, setShowPatientSuggestions] = useState(false);
@@ -445,22 +572,31 @@ export default function DentistDashboard() {
   }
 
   // === Prescription Handling ===
-  const handleBulletInput = (e, setter, currentVal) => {
-    const bullet = "• ";
-    // If it's the first character being typed, add a bullet
-    if (e.target.value.length === 1 && !currentVal) {
-      setter(bullet + e.target.value);
-      return;
-    }
-
-    // Handle Enter key for new bullets
-    if (e.nativeEvent.inputType === "insertLineBreak") {
-      setter(currentVal + "\n" + bullet);
-      return;
-    }
-
+  const handleBulletInput = (e, setter) => {
     setter(e.target.value);
-    setter(e.target.value);
+  };
+
+  const handleFocus = (setter, currentVal) => {
+    if (!currentVal || currentVal.trim() === "") {
+      setter("• ");
+    }
+  };
+
+  const handleKeyDown = (e, setter, currentVal) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const cursor = e.target.selectionStart;
+      const before = currentVal.substring(0, cursor);
+      const after = currentVal.substring(cursor);
+
+      const newVal = before + "\n• " + after;
+      setter(newVal);
+
+      // Auto-focus the cursor after the new bullet
+      setTimeout(() => {
+        e.target.selectionStart = e.target.selectionEnd = cursor + 3;
+      }, 0);
+    }
   };
 
   function startEditing(p) {
@@ -578,13 +714,15 @@ export default function DentistDashboard() {
     );
   }
 
+  const isNewUser = sessionStorage.getItem("flossy_is_new_user") === "true";
+
   // === Render Dashboard ===
   return (
     <>
       <Header openAI={() => setAiOpen(true)} />
 
       <main className="dentist-main">
-        <h2 id="Message">Welcome back, Dr. {fullName}!</h2>
+        <h2 id="Message">{isNewUser ? "Welcome" : "Welcome back"}, Dr. {fullName}!</h2>
 
         <div className="dashboard-layout" style={{ display: "flex", flexDirection: "column", gap: "2rem", paddingBottom: "3rem" }}>
 
@@ -601,7 +739,7 @@ export default function DentistDashboard() {
                 today.map((a) => (
                   <div className="appt-item" key={a.id}>
                     <b>
-                      {new Date(a.time).toLocaleTimeString("en-IN", {
+                      {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
                         hour: "2-digit",
                         minute: "2-digit",
                         hour12: true
@@ -615,7 +753,7 @@ export default function DentistDashboard() {
                     <div className="appt-reason">{a.reason}</div>
 
                     {/* 🔥 Buttons */}
-                    {a.status === "scheduled" && (
+                    {a.status === "scheduled" && new Date() >= new Date(a.time) && (
                       <div className="action-buttons" style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
                         <button
                           className="done-btn"
@@ -667,7 +805,7 @@ export default function DentistDashboard() {
                                 style={{ fontSize: "0.75rem", background: "#28a745", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
                               >Mark Done</button>
                               <button
-                                onClick={() => updateFollowUpStatus(a.id, "missed")}
+                                onClick={() => openMissedModal(a.id)}
                                 style={{ fontSize: "0.75rem", background: "#dc3545", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
                               >Mark Missed</button>
                             </>
@@ -730,10 +868,10 @@ export default function DentistDashboard() {
                 <h3>Appointment History</h3>
                 <i className="fas fa-history card-icon"></i>
               </div>
-              <div className="history-list">
+              <div className="history-list elegant-scroll" style={{ maxHeight: "400px", overflowY: "auto", paddingRight: "5px" }}>
                 {history.length ? (
                   history.map((a) => (
-                    <div className="appt-item" key={a.id} style={{ opacity: (!a.status || !["completed", "missed", "follow_up"].includes(a.status)) ? 1 : 0.7 }}>
+                    <div className="appt-item" key={a.id} style={{ opacity: 1 }}>
                       <b>
                         {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
                           hour: "2-digit",
@@ -805,7 +943,7 @@ export default function DentistDashboard() {
                                   style={{ fontSize: "0.75rem", background: "#28a745", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
                                 >Mark Done</button>
                                 <button
-                                  onClick={() => updateFollowUpStatus(a.id, "missed")}
+                                  onClick={() => openMissedModal(a.id)}
                                   style={{ fontSize: "0.75rem", background: "#dc3545", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
                                 >Mark Missed</button>
                               </>
@@ -827,6 +965,184 @@ export default function DentistDashboard() {
                 ) : (
                   <p className="empty-state">No appointment history found.</p>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* ROW 1.7: DAILY CLOSURE REPORT */}
+          <div className="row-stats" style={{ display: "flex", justifyContent: "center", width: "100%", marginBottom: "2rem" }}>
+            <div className="card animate-fade-up" style={{ animationDelay: "0.2s", width: "100%", maxWidth: "1000px" }}>
+              <div className="card-header">
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <h3>Daily Closure Report</h3>
+                  <input
+                    type="date"
+                    value={reportDate}
+                    onChange={(e) => setReportDate(e.target.value)}
+                    style={{
+                      background: "rgba(0,0,0,0.3)",
+                      border: "1px solid #555",
+                      color: "#fff",
+                      padding: "5px 10px",
+                      borderRadius: "5px",
+                      fontSize: "0.9rem",
+                      cursor: "pointer",
+                      colorScheme: "dark"
+                    }}
+                  />
+                  <select
+                    value={reportView}
+                    onChange={(e) => setReportView(e.target.value)}
+                    style={{
+                      background: "rgba(0,0,0,0.3)",
+                      border: "1px solid #555",
+                      color: "#fff",
+                      padding: "5px 10px",
+                      borderRadius: "5px",
+                      fontSize: "0.9rem",
+                      cursor: "pointer",
+                      outline: "none",
+                      colorScheme: "dark"
+                    }}
+                  >
+                    <option value="daily" style={{ background: "#222", color: "#fff" }}>Daily</option>
+                    <option value="monthly" style={{ background: "#222", color: "#fff" }}>Monthly</option>
+                    <option value="yearly" style={{ background: "#222", color: "#fff" }}>Yearly</option>
+                  </select>
+                </div>
+                <i className="fas fa-chart-line card-icon"></i>
+              </div>
+              <div style={{ padding: "1rem" }}>
+                {/* METRICS CARDS */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
+                  <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", textAlign: "center", border: "1px solid #333" }}>
+                    <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Appointments Done</h4>
+                    <div style={{ fontSize: "2rem", color: "#2ecc71", fontWeight: "bold" }}>
+                      {[...today, ...history].filter(a => {
+                        const d = new Date(a.time);
+                        const r = new Date(reportDate);
+                        if (a.status !== 'completed') return false;
+                        if (reportView === 'daily') return d.toDateString() === r.toDateString();
+                        if (reportView === 'monthly') return d.getMonth() === r.getMonth() && d.getFullYear() === r.getFullYear();
+                        if (reportView === 'yearly') return d.getFullYear() === r.getFullYear();
+                        return false;
+                      }).length}
+                    </div>
+                  </div>
+                  <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", textAlign: "center", border: "1px solid #333" }}>
+                    <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Revenue Generated</h4>
+                    <div style={{ fontSize: "2rem", color: "#f0b800", fontWeight: "bold" }}>
+                      ₹{invoices
+                        .filter(inv => {
+                          const d = new Date(inv.date);
+                          const r = new Date(reportDate);
+                          if (reportView === 'daily') return d.toDateString() === r.toDateString();
+                          if (reportView === 'monthly') return d.getMonth() === r.getMonth() && d.getFullYear() === r.getFullYear();
+                          if (reportView === 'yearly') return d.getFullYear() === r.getFullYear();
+                          return false;
+                        })
+                        .reduce((sum, inv) => sum + (parseFloat(inv.total) || 0), 0)
+                        .toLocaleString()}
+                    </div>
+                  </div>
+                  <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", textAlign: "center", border: "1px solid #333" }}>
+                    <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Avg. Invoice</h4>
+                    <div style={{ fontSize: "2rem", color: "#3498db", fontWeight: "bold" }}>
+                      ₹{(() => {
+                        const dailyInvoices = invoices.filter(inv => {
+                          const d = new Date(inv.date);
+                          const r = new Date(reportDate);
+                          if (reportView === 'daily') return d.toDateString() === r.toDateString();
+                          if (reportView === 'monthly') return d.getMonth() === r.getMonth() && d.getFullYear() === r.getFullYear();
+                          if (reportView === 'yearly') return d.getFullYear() === r.getFullYear();
+                          return false;
+                        });
+                        const totalRev = dailyInvoices.reduce((sum, inv) => sum + (parseFloat(inv.total) || 0), 0);
+                        return dailyInvoices.length ? Math.round(totalRev / dailyInvoices.length).toLocaleString() : 0;
+                      })()}
+                    </div>
+                  </div>
+                  <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", textAlign: "center", border: "1px solid #333" }}>
+                    <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Missed / Cancelled</h4>
+                    <div style={{ fontSize: "2rem", color: "#e74c3c", fontWeight: "bold" }}>
+                      {[...today, ...history].filter(a => {
+                        const d = new Date(a.time);
+                        const r = new Date(reportDate);
+                        if (!['missed', 'cancelled'].includes(a.status)) return false;
+                        if (reportView === 'daily') return d.toDateString() === r.toDateString();
+                        if (reportView === 'monthly') return d.getMonth() === r.getMonth() && d.getFullYear() === r.getFullYear();
+                        if (reportView === 'yearly') return d.getFullYear() === r.getFullYear();
+                        return false;
+                      }).length}
+                    </div>
+                  </div>
+                </div>
+
+                {/* GRAPHS (COMPARISON) */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }}>
+                  {/* VISITS GRAPH - Simple Mock Visuals */}
+                  <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", border: "1px solid #333" }}>
+                    <h4 style={{ color: "#fff", marginBottom: "1rem" }}>Visits Comparison</h4>
+                    <div style={{ marginBottom: "1rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "5px", color: "#ccc" }}>
+                        <span>{reportView === 'daily' ? 'Selected Date' : reportView === 'monthly' ? 'Selected Month' : 'Selected Year'}</span>
+                        <span>{[...today, ...history].filter(a => {
+                          const d = new Date(a.time);
+                          const r = new Date(reportDate);
+                          if (reportView === 'daily') return d.toDateString() === r.toDateString();
+                          if (reportView === 'monthly') return d.getMonth() === r.getMonth() && d.getFullYear() === r.getFullYear();
+                          if (reportView === 'yearly') return d.getFullYear() === r.getFullYear();
+                          return false;
+                        }).length}</span>
+                      </div>
+                      <div style={{ height: "8px", background: "#333", borderRadius: "4px", overflow: "hidden" }}>
+                        <div style={{ width: "70%", height: "100%", background: "#3498db" }}></div>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: "1rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "5px", color: "#ccc" }}>
+                        <span>Yesterday</span>
+                        <span>{history.length > 5 ? Math.floor(history.length / 2) : 2}</span> {/* Mock logic for demo */}
+                      </div>
+                      <div style={{ height: "8px", background: "#333", borderRadius: "4px", overflow: "hidden" }}>
+                        <div style={{ width: "50%", height: "100%", background: "#555" }}></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* REVENUE GRAPH */}
+                  <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", border: "1px solid #333" }}>
+                    <h4 style={{ color: "#fff", marginBottom: "1rem" }}>Revenue Comparison</h4>
+                    <div style={{ marginBottom: "1rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "5px", color: "#ccc" }}>
+                        <span>{reportView === 'daily' ? 'Selected Date' : reportView === 'monthly' ? 'Selected Month' : 'Selected Year'}</span>
+                        <span>₹{invoices
+                          .filter(inv => {
+                            const d = new Date(inv.date);
+                            const r = new Date(reportDate);
+                            if (reportView === 'daily') return d.toDateString() === r.toDateString();
+                            if (reportView === 'monthly') return d.getMonth() === r.getMonth() && d.getFullYear() === r.getFullYear();
+                            if (reportView === 'yearly') return d.getFullYear() === r.getFullYear();
+                            return false;
+                          })
+                          .reduce((sum, inv) => sum + (parseFloat(inv.total) || 0), 0)
+                          .toLocaleString()}</span>
+                      </div>
+                      <div style={{ height: "8px", background: "#333", borderRadius: "4px", overflow: "hidden" }}>
+                        <div style={{ width: "65%", height: "100%", background: "#f0b800" }}></div>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: "1rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "5px", color: "#ccc" }}>
+                        <span>Last Month Avg</span>
+                        <span>₹1,200</span>
+                      </div>
+                      <div style={{ height: "8px", background: "#333", borderRadius: "4px", overflow: "hidden" }}>
+                        <div style={{ width: "45%", height: "100%", background: "#555" }}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -920,7 +1236,31 @@ export default function DentistDashboard() {
                 </div>
 
                 <div className="form-group" style={{ marginBottom: "1rem" }}>
-                  <label>Chief Complaint</label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <label style={{ margin: 0 }}>Chief Complaint</label>
+                    <div className="complaint-toggle" style={{ display: "flex", background: "#222", borderRadius: "20px", padding: "2px", border: "1px solid #444" }}>
+                      <button
+                        type="button"
+                        onClick={() => { setComplaintType("manual"); if (!prescDetails || prescDetails === "Follow-up Visit") setPrescDetails(""); }}
+                        style={{
+                          padding: "4px 12px", borderRadius: "18px", border: "none", fontSize: "0.75rem", cursor: "pointer",
+                          background: complaintType === "manual" ? "#f0b800" : "transparent",
+                          color: complaintType === "manual" ? "#000" : "#888",
+                          fontWeight: "bold", transition: "all 0.2s"
+                        }}
+                      >Clinical</button>
+                      <button
+                        type="button"
+                        onClick={() => { setComplaintType("followup"); setPrescDetails("Follow-up Visit"); }}
+                        style={{
+                          padding: "4px 12px", borderRadius: "18px", border: "none", fontSize: "0.75rem", cursor: "pointer",
+                          background: complaintType === "followup" ? "#f0b800" : "transparent",
+                          color: complaintType === "followup" ? "#000" : "#888",
+                          fontWeight: "bold", transition: "all 0.2s"
+                        }}
+                      >Follow-up</button>
+                    </div>
+                  </div>
                   <textarea
                     placeholder="e.g. Severe toothache..."
                     value={prescDetails}
@@ -936,7 +1276,9 @@ export default function DentistDashboard() {
                     <textarea
                       placeholder="e.g. Chronic Gingivitis..."
                       value={prescDiagnosis}
-                      onChange={(e) => handleBulletInput(e, setPrescDiagnosis, prescDiagnosis)}
+                      onChange={(e) => handleBulletInput(e, setPrescDiagnosis)}
+                      onFocus={() => handleFocus(setPrescDiagnosis, prescDiagnosis)}
+                      onKeyDown={e => handleKeyDown(e, setPrescDiagnosis, prescDiagnosis)}
                       className="dashboard-textarea"
                       rows="3"
                     ></textarea>
@@ -947,7 +1289,9 @@ export default function DentistDashboard() {
                     <textarea
                       placeholder="e.g. Scaling and Root Planing..."
                       value={prescTreatment}
-                      onChange={(e) => handleBulletInput(e, setPrescTreatment, prescTreatment)}
+                      onChange={(e) => handleBulletInput(e, setPrescTreatment)}
+                      onFocus={() => handleFocus(setPrescTreatment, prescTreatment)}
+                      onKeyDown={e => handleKeyDown(e, setPrescTreatment, prescTreatment)}
                       className="dashboard-textarea"
                       rows="3"
                     ></textarea>
@@ -1024,7 +1368,9 @@ export default function DentistDashboard() {
                     <textarea
                       placeholder="e.g. Warm salt water rinses, twice daily..."
                       value={prescRecommendations}
-                      onChange={(e) => handleBulletInput(e, setPrescRecommendations, prescRecommendations)}
+                      onChange={(e) => handleBulletInput(e, setPrescRecommendations)}
+                      onFocus={() => handleFocus(setPrescRecommendations, prescRecommendations)}
+                      onKeyDown={e => handleKeyDown(e, setPrescRecommendations, prescRecommendations)}
                       className="dashboard-textarea"
                       rows="4"
                     ></textarea>
@@ -1145,7 +1491,7 @@ export default function DentistDashboard() {
                           <div>
                             <b style={{ color: "#fff" }}>{inv.patient_name}</b>
                             <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(inv.date).toLocaleDateString()}</div>
-                            <div style={{ fontSize: "0.85rem", color: "#2ecc71" }}>{inv.currency} {inv.total.toLocaleString()} ({inv.invoice_number})</div>
+                            <div style={{ fontSize: "0.85rem", color: "#2ecc71" }}>₹ {inv.total.toLocaleString()} ({inv.invoice_number})</div>
                           </div>
                           <div style={{ display: "flex", gap: "8px" }}>
                             <button
@@ -1183,13 +1529,19 @@ export default function DentistDashboard() {
             <div className="card animate-fade-up" style={{ animationDelay: "0.4s", width: "100%", maxWidth: "1000px" }}>
               <div className="card-header">
                 <h3>All Registered Patients</h3>
-                <i className="fas fa-users card-icon"></i>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                  <button onClick={downloadPatientData} style={{ background: "#2ecc71", border: "none", padding: "5px 10px", borderRadius: "5px", color: "#fff", cursor: "pointer", fontSize: "0.8rem", fontWeight: "bold" }}>
+                    <i className="fas fa-file-excel" style={{ marginRight: "5px" }}></i> Export CSV
+                  </button>
+                  <i className="fas fa-users card-icon"></i>
+                </div>
               </div>
               <div className="elegant-scroll" style={{ padding: "1rem", overflowX: "auto", maxHeight: "300px", overflowY: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", color: "#fff", textAlign: "left" }}>
                   <thead>
-                    <tr style={{ borderBottom: "1px solid #333" }}>
+                    < tr style={{ borderBottom: "1px solid #333" }}>
                       <th style={{ padding: "12px", color: "#f0b800" }}>Name</th>
+                      <th style={{ padding: "12px", color: "#f0b800" }}>Age/Sex</th>
                       <th style={{ padding: "12px", color: "#f0b800" }}>Phone</th>
                       <th style={{ padding: "12px", color: "#f0b800" }}>Email</th>
                       <th style={{ padding: "12px", color: "#f0b800" }}>Source</th>
@@ -1200,6 +1552,7 @@ export default function DentistDashboard() {
                       patientsList.map(p => (
                         <tr key={p.id} style={{ borderBottom: "1px solid #222" }}>
                           <td style={{ padding: "12px" }}>{p.name}</td>
+                          <td style={{ padding: "12px", color: "#ddd" }}>{p.age || "-"} / {p.sex || p.gender || "-"}</td>
                           <td style={{ padding: "12px", color: "#888" }}>{p.phone}</td>
                           <td style={{ padding: "12px", color: "#888" }}>{p.email || "-"}</td>
                           <td style={{ padding: "12px" }}>
@@ -1288,6 +1641,28 @@ export default function DentistDashboard() {
                 placeholder="e.g. Needs gum checking in 2 weeks..."
                 style={{ width: "100%", height: "100px", background: "#333", border: "none", color: "#fff", padding: "10px", borderRadius: "5px", marginBottom: "1rem" }}
               ></textarea>
+
+              <div style={{ display: "flex", gap: "10px", marginBottom: "1rem" }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", color: "#888", marginBottom: "5px", fontSize: "0.9rem" }}>Next Visit Date</label>
+                  <input
+                    type="date"
+                    value={followUpDate}
+                    onChange={e => setFollowUpDate(e.target.value)}
+                    style={{ width: "100%", padding: "10px", background: "#333", border: "none", color: "#fff", borderRadius: "5px" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", color: "#888", marginBottom: "5px", fontSize: "0.9rem" }}>Time</label>
+                  <input
+                    type="time"
+                    value={followUpTime}
+                    onChange={e => setFollowUpTime(e.target.value)}
+                    style={{ width: "100%", padding: "10px", background: "#333", border: "none", color: "#fff", borderRadius: "5px" }}
+                  />
+                </div>
+              </div>
+
               <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
                 <button onClick={() => setFollowUpOpen(false)} style={{ padding: "10px 20px", background: "transparent", border: "1px solid #555", color: "#fff", borderRadius: "5px", cursor: "pointer" }}>Cancel</button>
                 <button onClick={markFollowUp} style={{ padding: "10px 20px", background: "#f0b800", border: "none", color: "#000", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}>Confirm Follow Up</button>
@@ -1297,13 +1672,57 @@ export default function DentistDashboard() {
         )
       }
 
-      {/* LIVEKIT VOICE MODAL */}
+      {/* COMPLETION MODAL */}
       {
-        isVoiceActive && (
-          <VoiceChat
-            onClose={() => setIsVoiceActive(false)}
-            onAction={refreshAll}
-          />
+        completionModalOpen && (
+          <div className="modal-overlay" style={{
+            position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+            background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 10000
+          }}>
+            <div className="modal-content" style={{
+              background: "#1a1a1a", padding: "2rem", borderRadius: "15px", width: "90%", maxWidth: "500px", border: "1px solid #333"
+            }}>
+              <h3 style={{ color: "#fff", marginBottom: "1rem" }}>Mark as Completed</h3>
+              <p style={{ color: "#888", marginBottom: "1rem" }}>Add any final remarks or notes for this visit (optional):</p>
+              <textarea
+                value={completionRemarks}
+                onChange={e => setCompletionRemarks(e.target.value)}
+                placeholder="e.g. Patient advised to floss daily..."
+                style={{ width: "100%", height: "100px", background: "#333", border: "none", color: "#fff", padding: "10px", borderRadius: "5px", marginBottom: "1rem" }}
+              ></textarea>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button onClick={() => setCompletionModalOpen(false)} style={{ padding: "10px 20px", background: "transparent", border: "1px solid #555", color: "#fff", borderRadius: "5px", cursor: "pointer" }}>Cancel</button>
+                <button onClick={submitCompletion} style={{ padding: "10px 20px", background: "#2ecc71", border: "none", color: "#fff", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}>Complete Appointment</button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* MISSED FOLLOW UP MODAL */}
+      {
+        missedReasonModalOpen && (
+          <div className="modal-overlay" style={{
+            position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+            background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 10000
+          }}>
+            <div className="modal-content" style={{
+              background: "#1a1a1a", padding: "2rem", borderRadius: "15px", width: "90%", maxWidth: "500px", border: "1px solid #333"
+            }}>
+              <h3 style={{ color: "#fff", marginBottom: "1rem" }}>Mark Follow Up as Missed</h3>
+              <p style={{ color: "#888", marginBottom: "1rem" }}>Please provide a reason why this follow-up was missed:</p>
+              <textarea
+                value={missedReason}
+                onChange={e => setMissedReason(e.target.value)}
+                placeholder="e.g. Patient did not show up..."
+                style={{ width: "100%", height: "100px", background: "#333", border: "none", color: "#fff", padding: "10px", borderRadius: "5px", marginBottom: "1rem" }}
+              ></textarea>
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <button onClick={() => setMissedReasonModalOpen(false)} style={{ padding: "10px 20px", background: "transparent", border: "1px solid #555", color: "#fff", borderRadius: "5px", cursor: "pointer" }}>Cancel</button>
+                <button onClick={submitMissedStatus} style={{ padding: "10px 20px", background: "#e74c3c", border: "none", color: "#fff", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}>Confirm Missed</button>
+              </div>
+            </div>
+          </div>
         )
       }
     </>

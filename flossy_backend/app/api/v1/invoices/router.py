@@ -4,11 +4,11 @@ import io
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlalchemy.orm import Session
-from core.database import get_db
-from core.dependencies import require_role
-from models import Invoice, InvoiceItem, PaymentRecord, Patient, User
-from .schemas import InvoiceCreate
-from services.pdf import FlossyPDF
+from app.core.database import get_db
+from app.core.dependencies import require_role
+from app.models import Invoice, InvoiceItem, PaymentRecord, Patient, User
+from app.api.v1.invoices.schemas import InvoiceCreate
+from app.services.pdf import FlossyPDF
 
 router = APIRouter()
 

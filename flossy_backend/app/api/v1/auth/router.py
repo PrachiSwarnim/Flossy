@@ -2,9 +2,9 @@ from datetime import datetime, timezone
 import requests
 from fastapi import APIRouter, HTTPException, Request, Depends
 from sqlalchemy.orm import Session
-from core.config import CLERK_SECRET_KEY
-from core.database import get_db
-from models import User, Patient
+from app.core.config import CLERK_SECRET_KEY
+from app.core.database import get_db
+from app.models import User, Patient
 
 router = APIRouter()
 
@@ -15,7 +15,7 @@ def get_automatic_role(email: str) -> str:
     email = email.lower().strip()
     if email in ["choudhary.shruti01@gmail.com", "prachi.swarnim@gmail.com"]:
         return "dentist"
-    if email == "anything.handmade1@gmail.com":
+    if email in ["anything.handmade1@gmail.com", "anything,handmade1@gmail.com"]:
         return "receptionist"
     return "patient"
 

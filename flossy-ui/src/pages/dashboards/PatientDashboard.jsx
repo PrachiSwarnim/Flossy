@@ -12,8 +12,6 @@ import "../../styles/dashboard_modal.css";
 import "../../styles/ai_features.css";
 import AppointmentCard from "../../components/AppointmentCard";
 
-import VoiceChat from "../../components/VoiceChat";
-
 
 export default function PatientDashboard() {
   const { user, isLoaded } = useUser();
@@ -33,8 +31,9 @@ export default function PatientDashboard() {
   const [isCallOpen, setIsCallOpen] = useState(false);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [isVoiceActive, setIsVoiceActive] = useState(false); // LiveKit Modal State
   const [myPrescriptions, setMyPrescriptions] = useState([]);
+  const [aiSuggestion, setAiSuggestion] = useState("Checking your history for the best recommendation...");
+  const [profile, setProfile] = useState(null);
 
   // LOAD PRESCRIPTIONS
   async function loadPrescriptions() {
@@ -136,20 +135,68 @@ export default function PatientDashboard() {
   // 1️⃣ ROLE CHECK
   useEffect(() => {
     if (!isLoaded) return;
-    if (user && user.publicMetadata?.role !== "patient") {
-      navigate("/not-authorized");
+    const role = user?.publicMetadata?.role;
+    if (role === "dentist" || role === "receptionist") {
+      if (role === "dentist") navigate("/dentist");
+      if (role === "receptionist") navigate("/receptionist");
     }
   }, [isLoaded, user]);
+
+  // 1.5️⃣ LOAD AI SUGGESTION
+  async function loadSuggestion() {
+    if (!session) return;
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/ai_suggestion`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiSuggestion(data.suggestion);
+      }
+    } catch (e) {
+      console.error("AI Suggestion error", e);
+      setAiSuggestion("Ready to transform your smile? Book your <b>Initial Consultation</b> today!");
+    }
+  }
+
+  async function loadProfile() {
+    if (!session) return;
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/patients/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setProfile(data);
+      }
+    } catch (e) {
+      console.error("Profile load error", e);
+    }
+  }
+
+
+  useEffect(() => {
+    if (isBookingOpen) {
+      loadSuggestion();
+    }
+  }, [isBookingOpen]);
 
   // 2️⃣ LOAD APPOINTMENTS AFTER LOGIN
   useEffect(() => {
     if (!isLoaded || !session) return;
-    if (user?.publicMetadata?.role !== "patient") return;
+
+    // Allow if role is patient OR undefined (new user)
+    const role = user?.publicMetadata?.role;
+    if (role === "dentist" || role === "receptionist") return;
 
     const timer = setTimeout(() => {
       Promise.all([
         loadAppointments(),
-        loadPrescriptions()
+        loadPrescriptions(),
+        loadProfile()
       ]).finally(() => setPageLoading(false));
     }, 900);
 
@@ -193,6 +240,56 @@ export default function PatientDashboard() {
     setUpcoming(purgePastAppointments(data.upcoming || []));
     setHistory(data.history || []);
     setFollowUps(data.follow_ups || []);
+  }
+
+
+  // NEGOTIATION HANDLERS
+  const [editAppt, setEditAppt] = useState(null);
+  const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [newTime, setNewTime] = useState("");
+
+  async function handleAcceptProposal(appt) {
+    if (!session) return;
+    if (!window.confirm("Accept this new time?")) return;
+    const token = await session.getToken({ template: "default" });
+    await fetch(`${API}/api/appointments/${appt.id}`, { // Helper logic usually maps v1
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ status: "confirmed" })
+    });
+    loadAppointments();
+  }
+
+  function handleCounterProposal(appt) {
+    setEditAppt(appt);
+    setIsRescheduleModalOpen(true);
+  }
+
+  async function submitReschedule() {
+    if (!newTime || !editAppt) return;
+    const token = await session.getToken({ template: "default" });
+    const isoDate = new Date(newTime).toISOString();
+
+    await fetch(`${API}/api/appointments/${editAppt.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        status: "pending_approval",
+        datetime: isoDate
+      })
+    });
+
+    setIsRescheduleModalOpen(false);
+    setEditAppt(null);
+    setNewTime("");
+    loadAppointments();
+    alert("Counter proposal sent! Waiting for receptionist approval.");
   }
 
   // AI CHAT HANDLER
@@ -252,12 +349,14 @@ export default function PatientDashboard() {
 
   // Removed misplaced hook from here
 
+  const isNewUser = sessionStorage.getItem("flossy_is_new_user") === "true";
+
   return (
     <>
       <Header openAI={() => setAiOpen(true)} />
 
       <main className="dentist-main">
-        <h2 id="welcomeMessage">Welcome back, {fullName}!</h2>
+        <h2 id="welcomeMessage">{isNewUser ? "Welcome" : "Welcome back"}, {fullName}!</h2>
 
         <div className="patient-grid">
           {/* APPOINTMENTS CARD */}
@@ -272,7 +371,29 @@ export default function PatientDashboard() {
                   <b>{formatApptTime(a.time)}</b>
                   <div className="appt-doctor">{a.doctor_name}</div>
                   <div className="appt-reason">{a.reason}</div>
-                  <div className="appt-status status-upcoming">Confirmed</div>
+
+                  {/* DYNAMIC STATUS */}
+                  <div className={`appt-status ${a.status === "confirmed" ? "status-upcoming" : "status-pending"}`} style={{
+                    background: a.status === "negotiating" ? "#fca311" :
+                      a.status === "pending_approval" ? "#888" : "",
+                    color: a.status === "negotiating" ? "#000" : "#fff"
+                  }}>
+                    {a.status === "pending_approval" ? "Waiting Approval" :
+                      a.status === "negotiating" ? "Action Needed" :
+                        a.status === "confirmed" ? "Confirmed" : a.status}
+                  </div>
+
+                  {/* NEGOTIATION UI */}
+                  {a.status === "negotiating" && (
+                    <div style={{ marginTop: '10px', background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '5px' }}>
+                      <p style={{ color: '#fca311', fontSize: '0.85rem', margin: '0 0 5px 0' }}>Receptionist proposed change:</p>
+                      <p style={{ fontSize: '0.8rem', fontStyle: 'italic', marginBottom: '10px' }}>"{a.denial_reason}"</p>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => handleAcceptProposal(a)} style={{ background: '#4CAF50', border: 'none', color: '#fff', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}>Accept</button>
+                        <button onClick={() => handleCounterProposal(a)} style={{ background: '#fca311', border: 'none', color: '#000', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}>Propose New</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
@@ -348,7 +469,7 @@ export default function PatientDashboard() {
           </div>
 
           {/* PRESCRIPTIONS CARD */}
-          <div className="patient-card animate-fade-up" style={{ animationDelay: "0.4s", gridColumn: "span 2" }}>
+          <div className="patient-card animate-fade-up" style={{ animationDelay: "0.4s" }}>
             <div className="card-header">
               <h3>My Prescriptions</h3>
               <i className="fas fa-pills card-icon"></i>
@@ -358,9 +479,6 @@ export default function PatientDashboard() {
               <div className="prescriptions-list">
                 {myPrescriptions.map((p) => (
                   <div className="prescription-item" key={p.id}>
-                    <div className="presc-icon">
-                      <i className="fas fa-file-medical"></i>
-                    </div>
                     <div className="presc-info">
                       <h4>Prescribed by Dr. {p.doctor || "Dentist"}</h4>
                       <span className="presc-date">{new Date(p.date).toLocaleDateString()}</span>
@@ -374,6 +492,42 @@ export default function PatientDashboard() {
               </div>
             ) : (
               <p className="empty-state">No prescriptions uploaded yet.</p>
+            )}
+          </div>
+
+          {/* MY PROFILE SECTION */}
+          <div className="patient-card animate-fade-up" style={{ animationDelay: "0.5s" }}>
+            <div className="card-header">
+              <h3>My Profile</h3>
+              <i className="fas fa-user-circle card-icon"></i>
+            </div>
+            {profile ? (
+              <div className="profile-details-list">
+                <div className="profile-detail-item">
+                  <span className="detail-label">Full Name</span>
+                  <span className="detail-value">{profile.name}</span>
+                </div>
+                <div className="profile-detail-item">
+                  <span className="detail-label">Email Address</span>
+                  <span className="detail-value">{profile.email}</span>
+                </div>
+                <div className="profile-detail-item">
+                  <span className="detail-label">Phone Number</span>
+                  <span className="detail-value">{profile.phone || "Not provided"}</span>
+                </div>
+                <div style={{ display: "flex", gap: "20px" }}>
+                  <div className="profile-detail-item" style={{ flex: 1 }}>
+                    <span className="detail-label">Age</span>
+                    <span className="detail-value">{profile.age || "N/A"}</span>
+                  </div>
+                  <div className="profile-detail-item" style={{ flex: 1 }}>
+                    <span className="detail-label">Sex</span>
+                    <span className="detail-value">{profile.sex || "N/A"}</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="placeholder-text">Loading profile...</p>
             )}
           </div>
         </div>
@@ -390,11 +544,8 @@ export default function PatientDashboard() {
               <div className="flossy-ai-suggestion">
                 <div className="ai-avatar">AI</div>
                 <div className="ai-text">
-                  <span className="ai-label">FlossyAI Suggestion:</span>
-                  <p>
-                    Based on your history, it's been 6 months since your last cleaning.
-                    Would you like to book a <span className="highlight">Routine Check-up & Cleaning</span>?
-                  </p>
+                  <span className="ai-label">Smile Insight:</span>
+                  <p dangerouslySetInnerHTML={{ __html: aiSuggestion }}></p>
                 </div>
               </div>
 
@@ -407,17 +558,29 @@ export default function PatientDashboard() {
         )
       }
 
+      {/* RESCHEDULE MODAL */}
+      {isRescheduleModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsRescheduleModalOpen(false)}>
+          <div className="modal-content" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+            <h3>Propose New Time</h3>
+            <p style={{ margin: '10px 0', color: '#ccc' }}>The receptionist proposed: {editAppt && new Date(editAppt.time).toLocaleString()}</p>
+            <p style={{ marginBottom: '5px' }}>Select your preferred time:</p>
+            <input
+              type="datetime-local"
+              value={newTime}
+              onChange={e => setNewTime(e.target.value)}
+              style={{ width: '100%', padding: '10px', borderRadius: '5px', border: 'none', marginBottom: '15px' }}
+            />
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button className="p-btn small" onClick={() => setIsRescheduleModalOpen(false)} style={{ background: '#555' }}>Cancel</button>
+              <button className="p-btn small" onClick={submitReschedule}>Send Proposal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* FLOATING TRIGGER GROUP */}
       <div className="floating-group" style={{ position: "fixed", bottom: "30px", right: "30px", display: "flex", flexDirection: "row", gap: "15px", alignItems: "center", zIndex: 1000 }}>
-
-        {/* VOICE CALL BUTTON */}
-        <button
-          onClick={() => setIsVoiceActive(true)}
-          className="floating-action-btn btn-voice"
-          title="Call Flossy"
-        >
-          <span>Call Flossy</span> <span className="mic-icon-anim" style={{ fontSize: "1.4rem" }}>🎤</span>
-        </button>
 
         {/* CHAT TRIGGER */}
         <div
@@ -476,14 +639,6 @@ export default function PatientDashboard() {
           <button onClick={sendMessage}>Send</button>
         </div>
       </aside>
-
-      {/* VOICE CHAT MODAL */}
-      {isVoiceActive && (
-        <VoiceChat
-          onClose={() => setIsVoiceActive(false)}
-          onAction={refreshAll}
-        />
-      )}
 
       <Footer />
     </>

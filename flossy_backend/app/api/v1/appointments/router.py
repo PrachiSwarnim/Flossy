@@ -4,12 +4,60 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
-from core.database import get_db
-from core.dependencies import require_role
-from models import Appointment, User, Patient
-from .schemas import AppointmentUpdate
+from app.core.database import get_db
+from app.core.dependencies import require_role
+from app.models import Appointment, User, Patient
+from app.api.v1.appointments.schemas import AppointmentUpdate, AppointmentCreate
 
 router = APIRouter()
+
+@router.post("/", status_code=201)
+def create_appointment(
+    appt: AppointmentCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    user_data = Depends(require_role(["patient"])) # Only patients book for themselves generally
+):
+    # 1. Identify Patient
+    email = (user_data.get("email") or user_data.get("email_address") or "").lower()
+    user = db.query(User).filter(User.email.ilike(email)).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="User profile not found")
+        
+    patient = db.query(Patient).filter(Patient.user_id == user.id).first()
+    if not patient:
+        patient = Patient(
+            name=f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or "New Patient",
+            phone=appt.phone or "0000000000",
+            user_id=user.id,
+            age=appt.age,
+            sex=appt.sex
+        )
+        db.add(patient)
+        db.commit()
+        db.refresh(patient)
+    else:
+        # Update existing patient if info provided
+        if appt.phone and (not patient.phone or patient.phone == "0000000000"):
+            patient.phone = appt.phone
+        if appt.age:
+            patient.age = appt.age
+        if appt.sex:
+            patient.sex = appt.sex
+        db.commit()
+
+    # 2. Create Appointment
+    new_appt = Appointment(
+        patient_id=patient.id,
+        doctor_id=appt.doctor_id,
+        datetime=appt.datetime,
+        reason=appt.reason,
+        status="pending_approval" # Default for new bookings
+    )
+    db.add(new_appt)
+    db.commit()
+    db.refresh(new_appt)
+    return {"message": "Appointment requested", "id": new_appt.id, "status": new_appt.status}
 
 @router.put("/{id}")
 def update_appointment(id: int, appointment_update: AppointmentUpdate, db: Session = Depends(get_db)):
@@ -21,12 +69,20 @@ def update_appointment(id: int, appointment_update: AppointmentUpdate, db: Sessi
     # 2. Update fields if provided
     if appointment_update.datetime:
         db_appointment.datetime = appointment_update.datetime
+    
     if appointment_update.status:
         db_appointment.status = appointment_update.status
-    
-    # 3. Explicitly update the reason
+        
+        # Logic: If status becomes "pending_approval" (re-negotiation by patient), clear previous denial
+        if appointment_update.status == "pending_approval":
+            db_appointment.denial_reason = None
+            
+    # 3. Explicitly update the reason and denial_reason
     if appointment_update.reason:
         db_appointment.reason = appointment_update.reason 
+        
+    if appointment_update.denial_reason is not None: # Allow clearing it if needed, or setting it
+        db_appointment.denial_reason = appointment_update.denial_reason
 
     # 4. Commit changes
     db.commit()
@@ -36,7 +92,8 @@ def update_appointment(id: int, appointment_update: AppointmentUpdate, db: Sessi
         "id": db_appointment.id,
         "reason": db_appointment.reason,
         "status": db_appointment.status,
-        "time": db_appointment.datetime.isoformat()
+        "time": db_appointment.datetime.isoformat(),
+        "denial_reason": db_appointment.denial_reason
     }}
 
 @router.get("/today")
@@ -273,6 +330,7 @@ def patient_upcoming(request: Request,
             "status": a.status,
             "follow_up_reason": a.follow_up_reason,
             "follow_up_status": a.follow_up_status,
+            "denial_reason": a.denial_reason,
         }
 
     return {

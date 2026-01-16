@@ -1,0 +1,4 @@
+websockets
+sounddevice
+soundfile
+playsound==1.2.2

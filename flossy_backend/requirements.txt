@@ -1,24 +1,49 @@
 clerk-backend-api
-fastapi
-firebase_admin
-livekit-agents[openai]~=1.2
-livekit-plugins-deepgram
-livekit-plugins-elevenlabs
-elevenlabs
-livekit-plugins-google
-livekit-plugins-noise-cancellation~=0.2
-livekit-plugins-silero
-# livekit-sdk  <-- DELETED THIS LINE (It was the cause of the error)
-livekit        # <-- Added the correct name (optional, as agents installs it automatically)
+# --- Google / Firebase (PINNED to avoid conflicts) ---
+firebase-admin==6.4.0
+google-cloud-firestore==2.16.0
+grpcio==1.62.1
+protobuf<5
+google-genai==0.3.0
+google-cloud-speech
+google-auth
+
+# --- Core Web & DB ---
+fastapi==0.110.0
+uvicorn==0.30.6
+gunicorn==21.2.0
 psycopg2-binary
+sqlalchemy>=2.0.0
 pydantic
 PyJWT
-python-dateutil
 python-dotenv
 python-multipart
+python-dateutil
 requests
-sqlalchemy
-uvicorn
-requests
+
+# --- AI & ML ---
+groq
+faiss-cpu
+numpy
+scikit-learn
+PyPDF2
+
+# --- LiveKit & Voice ---
+livekit-agents
+livekit-plugins-openai
+livekit-plugins-deepgram
+livekit-plugins-silero
+livekit-plugins-turn-detector
+huggingface-hub[hf-xet]
+
+# --- PDF & Communication ---
 fpdf2
 twilio
+
+# --- Local Client Dependencies (DO NOT INSTALL IN DOCKER) ---
+# These are only needed for running agent_client.py locally.
+# They often require OS-level audio libraries and may break headless builds.
+# websockets
+# sounddevice
+# soundfile
+# playsound

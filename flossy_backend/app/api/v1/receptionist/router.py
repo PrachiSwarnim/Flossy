@@ -1,15 +1,15 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from core.database import get_db
-from core.dependencies import require_role
-from models import Patient, Appointment
-from api.v1.patients.schemas import ReceptionistPatientAdd
+from app.core.database import get_db
+from app.core.dependencies import require_role
+from app.models import Patient, Appointment
+from app.api.v1.patients.schemas import ReceptionistPatientAdd
 
 router = APIRouter()
 
 @router.post("/add_patient")
-def add_receptionist_patient(data: ReceptionistPatientAdd, db: Session = Depends(get_db), user = Depends(require_role("receptionist"))):
+def add_receptionist_patient(data: ReceptionistPatientAdd, db: Session = Depends(get_db), user = Depends(require_role(["receptionist", "dentist", "admin"]))):
     # 1. Check/Create Patient
     patient = db.query(Patient).filter(Patient.phone == data.phone).first()
     if not patient:

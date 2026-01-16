@@ -12,7 +12,9 @@ EXEMPT_PATHS = {
     "/api/openapi.json",
     "/api/treatments",
     "/api/doctors",
+    "/api/v1/public",
     "/docs",
+
     "/openapi.json",
     "/redoc",
     "/static"
@@ -37,6 +39,7 @@ class ClerkAuthMiddleware(BaseHTTPMiddleware):
 
         auth = request.headers.get("Authorization")
         if not auth or not auth.startswith("Bearer "):
+            print(f"🔒 Auth failed: No Bearer token for {path}")
             return JSONResponse({"detail": "Unauthorized"}, status_code=401)
         
         try:
@@ -44,10 +47,9 @@ class ClerkAuthMiddleware(BaseHTTPMiddleware):
             request.state.user = verify_token(token)
             return await call_next(request)
         except HTTPException as e:
-            # Re-raise HTTPExceptions so FastAPI can handle them correctly
-            # Note: Middleware handling of HTTPException is tricky, often better to return JSONResponse directly
+            print(f"🔒 Auth HTTP error: {e.detail}")
             return JSONResponse({"detail": e.detail}, status_code=e.status_code)
         except Exception as e:
-            # Log specific error to console and return it for debugging
-            print(f"❌ Middleware error: {str(e)}")
+            print(f"❌ Middleware error on {path}: {str(e)}")
             return JSONResponse({"detail": "Invalid Token or Server Error"}, status_code=401)
+

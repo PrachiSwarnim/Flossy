@@ -1,43 +1,110 @@
 .tourism-gallery {
-  padding: 1rem 8%;
+  padding: 3rem 5%;
   background: var(--bg-dark);
+  /* Ensure this var exists, else #111 */
   text-align: center;
+  position: relative;
 }
 
 .tourism-gallery h2 {
   font-family: var(--font-heading);
   font-size: 2.6rem;
   color: var(--primary-gold);
+  margin-bottom: 0.5rem;
 }
 
-.gallery-container img {
+/* CONTAINER */
+.gallery-container {
   width: 100%;
   max-width: 900px;
-  height: 550px;
-  object-fit: cover;
-  border-radius: 4px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  /* Constrain width */
+  height: 500px;
+  /* Fixed height */
+  margin: 2rem auto;
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.dots {
-  margin-top: 1.5rem;
   display: flex;
   justify-content: center;
-  gap: 10px;
+  align-items: center;
+  background: #000;
 }
 
-.dot {
-  width: 12px;
-  height: 12px;
+/* BACKDROP BLUR */
+.gallery-backdrop {
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(25px) brightness(0.6);
+  z-index: 1;
+}
+
+/* IMAGE */
+.gallery-image-main {
+  position: absolute;
+  z-index: 1;
+  /* Sit above backdrop */
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  animation: fadeIn 0.8s ease-in-out forwards;
+  /* border-radius: 8px; */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
+}
+
+/* ARROWS */
+.gallery-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
   cursor: pointer;
-  border: 1px solid transparent;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(5px);
 }
 
-.dot.active {
+.gallery-arrow:hover {
   background: var(--primary-gold);
-  transform: scale(1.2);
-  box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+  color: #000;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.gallery-arrow.left {
+  left: 20px;
+}
+
+.gallery-arrow.right {
+  right: 20px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .gallery-container {
+    height: 350px;
+  }
 }

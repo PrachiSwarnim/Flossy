@@ -15,9 +15,24 @@
 
 .process-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
+  /* Force 4 columns */
   gap: 2rem;
   margin-top: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .process-grid {
+    grid-template-columns: repeat(2, 1fr);
+    /* 2x2 on tablets */
+  }
+}
+
+@media (max-width: 600px) {
+  .process-grid {
+    grid-template-columns: 1fr;
+    /* Stack on mobile */
+  }
 }
 
 .step {

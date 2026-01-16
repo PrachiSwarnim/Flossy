@@ -3,10 +3,11 @@ import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.v1.api_router import api_router
-from core.middleware import ClerkAuthMiddleware
-from core.database import init_db
-from reminders import reminder_daemon
+from app.api.v1.api_router import api_router
+from app.core.middleware import ClerkAuthMiddleware
+from app.core.database import init_db
+from app.reminders import reminder_daemon
+
 import uvicorn
 
 app = FastAPI(

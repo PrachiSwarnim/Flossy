@@ -11,12 +11,9 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.58.1",
-    "@livekit/components-react": "^2.9.17",
-    "@livekit/components-styles": "^1.2.0",
     "@tabler/icons-react": "^3.35.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "livekit-client": "^2.16.1",
     "lucide-react": "^0.556.0",
     "motion": "^12.23.25",
     "react": "^19.2.0",

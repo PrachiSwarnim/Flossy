@@ -7,13 +7,13 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from core.database import get_db, SessionLocal
-from core.dependencies import require_role
-from core.security import verify_token
-from core.config import CLERK_SECRET_KEY
-from models import LLMInteraction, User
-from core.utils import ai_generate, embed_with_client, cos_sim
-from services.ai_service import load_faiss_index, get_genai_client, get_bandit_and_meta
+from app.core.database import get_db, SessionLocal
+from app.core.dependencies import require_role
+from app.core.security import verify_token
+from app.core.config import CLERK_SECRET_KEY
+from app.models import LLMInteraction, User
+from app.core.utils import ai_generate, embed_with_client, cos_sim
+from app.services.ai_service import load_faiss_index, get_genai_client, get_bandit_and_meta
 
 router = APIRouter()
 
@@ -166,7 +166,7 @@ async def ai_response(request: Request, user=Depends(require_role("patient"))):
     **Your Goal:**
     1. Greet the patient warmly.
     2. Answer questions about pricing or symptoms using your Knowledge Base.
-    3. Determine if the patient wants to book an appointment (Note: In this text chat, please ask them to call us or use the booking form above as I cannot check the calendar directly here).
+    3. Determine if the patient wants to book an appointment.
     
     **Tone:**
     - Professional, empathetic, and concise (1-2 sentences).
@@ -183,6 +183,51 @@ async def ai_response(request: Request, user=Depends(require_role("patient"))):
         reply = "I'm having trouble connecting. Please try again or call our front desk."
 
     return {"answer": reply}
+
+@router.get("/ai_suggestion")
+async def ai_suggestion(request: Request, db: Session = Depends(get_db)):
+    # This requires a patient role
+    user_payload = getattr(request.state, "user", None)
+    if not user_payload:
+         return {"suggestion": "Welcome to Smile Artists! Since it's your first time here, how about a <b>Routine Check-up</b> to get started?"}
+    
+    email = (user_payload.get("email") or user_payload.get("email_address") or "").lower()
+    user = db.query(User).filter(User.email.ilike(email)).first()
+    if not user:
+         return {"suggestion": "Welcome! We're glad to have you. Book a consultation today to begin your smile journey."}
+
+    from models import Patient, Appointment
+    patient = db.query(Patient).filter(Patient.user_id == user.id).first()
+    
+    # Check if new user
+    is_new = False
+    if patient:
+        appts_count = db.query(Appointment).filter(Appointment.patient_id == patient.id).count()
+        if appts_count == 0:
+            is_new = True
+    else:
+        is_new = True
+
+    import random
+    styles = [
+        "quirky and fun",
+        "surprising and witty",
+        "mind-blowing",
+        "winking and energetic",
+        "super interesting"
+    ]
+    chosen_style = random.choice(styles)
+
+    # Instead of suggestions, we now provide "Smile Insights" (Facts)
+    prompt = f"Provide one {chosen_style} dental fact that is actually fun to read (max 18 words). Use a witty tone. Format as a single sentence. Return as plain text only, no HTML tags."
+
+    try:
+        # High temperature for variety in facts
+        fact = ai_generate(f"You are a fun dental historian and health expert with a sparkling personality. {prompt}", temperature=1.0)
+    except:
+        fact = "Your Tooth Enamel is the hardest substance in your body—even tougher than bone! ✨"
+
+    return {"suggestion": fact}
 
 @router.get("/metrics/llm")
 def llm_metrics(db: Session = Depends(get_db)):

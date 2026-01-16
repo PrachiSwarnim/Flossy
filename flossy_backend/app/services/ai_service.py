@@ -2,8 +2,8 @@ import os
 import json
 
 from typing import Optional, Tuple, List
-from core.config import GOOGLE_API_KEY
-from services.llm_client import genai_client as _static_genai_client
+from app.core.config import GOOGLE_API_KEY
+from app.services.llm_client import genai_client as _static_genai_client
 
 # Globals for Lazy Loading
 _faiss_index = None

@@ -12,10 +12,10 @@ export default function NotAuthorized() {
                 <i className="fas fa-lock" style={{ fontSize: "4rem", color: "#dc3545", marginBottom: "2rem" }}></i>
                 <h1 style={{ fontSize: "2.5rem", marginBottom: "1rem", color: "#f0b800" }}>Access Denied</h1>
                 <p style={{ fontSize: "1.2rem", color: "#888", maxWidth: "500px", marginBottom: "2.5rem" }}>
-                    You don't have the required permissions to access this page. If you believe this is an error, please try selecting your role again.
+                    You don't have the required permissions to access this page.
                 </p>
                 <button
-                    onClick={() => navigate("/role_selection")}
+                    onClick={() => navigate("/")}
                     style={{
                         padding: "15px 40px",
                         background: "#f0b800",
@@ -28,7 +28,7 @@ export default function NotAuthorized() {
                         boxShadow: "0 10px 20px rgba(0,0,0,0.3)"
                     }}
                 >
-                    Go Back to Role Selection
+                    Return Home
                 </button>
             </main>
             <Footer />

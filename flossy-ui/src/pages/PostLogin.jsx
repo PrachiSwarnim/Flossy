@@ -18,36 +18,19 @@ export default function PostLogin() {
       sessionStorage.setItem("flossy_token", token);
       sessionStorage.setItem("flossy_user", JSON.stringify(user));
 
-      // 🚨 URGENT FIX: Restore Dentist Role for Prachi
-      const email = user.primaryEmailAddress?.emailAddress;
-      if (email === "prachi.swarnim@gmail.com") {
-        // Force backend fix
-        // await fetch("http://localhost:8000/api/debug/fix_my_role");
-        navigate("/dentist");
-        return;
-      }
+      // 0️⃣ Determine if First Login or Return Login
+      // If lastSignInAt is very close to createdAt, it's likely a fresh signup.
+      const createdAt = new Date(user.createdAt).getTime();
+      const lastSignInAt = new Date(user.lastSignInAt).getTime();
+      const isNewUser = !user.lastSignInAt || (Math.abs(lastSignInAt - createdAt) < 30000); // 30 sec threshold
+      sessionStorage.setItem("flossy_is_new_user", isNewUser ? "true" : "false");
 
-      // 1️⃣ Clerk metadata role
-      const clerkRole = user.publicMetadata?.role;
+      const API = import.meta.env.VITE_API_BASE_URL;
 
-      if (clerkRole === "patient") {
-        navigate("/patient");
-        return;
-      }
-
-      if (clerkRole === "dentist") {
-        navigate("/dentist");
-        return;
-      }
-
-      if (clerkRole === "receptionist") {
-        navigate("/receptionist");
-        return;
-      }
-
-      // 2️⃣ Backend role fallback
+      // 1️⃣ Backend Role Sync & Check
+      // We prioritize the backend response because it contains the authoritative role logic and ensures the DB is synced.
       try {
-        const res = await fetch("http://localhost:8000/api/auth/post_login", {
+        const res = await fetch(`${API}/api/auth/post_login`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -55,29 +38,28 @@ export default function PostLogin() {
           },
         });
 
-        const data = await res.json();
-        const backendRole = data?.user?.role;
+        if (res.ok) {
+          const data = await res.json();
+          const role = data?.user?.role;
+          if (role) sessionStorage.setItem("flossy_role", role);
 
-        if (backendRole === "patient") {
-          navigate("/patient");
-          return;
-        }
-
-        if (backendRole === "dentist") {
-          navigate("/dentist");
-          return;
-        }
-
-        if (backendRole === "receptionist") {
-          navigate("/receptionist");
-          return;
+          if (role === "dentist") {
+            navigate("/dentist");
+            return;
+          }
+          if (role === "receptionist") {
+            navigate("/receptionist");
+            return;
+          }
         }
       } catch (err) {
         console.error("Backend post_login error:", err);
       }
 
-      // 3️⃣ No role → go to role selection
-      navigate("/role_selection");
+      // 2️⃣ Default Fallback: Patient
+      // If backend didn't specify Dentist/Receptionist, or if it failed, assume Patient.
+      sessionStorage.setItem("flossy_role", "patient");
+      navigate("/patient");
     };
 
     setup();

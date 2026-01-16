@@ -42,7 +42,8 @@ def init_db():
     """
     try:
         # Import models here to ensure they are registered with Base
-        import models as _ # Trigger registration
+        from app import models as _ # Trigger registration
+
         
         Base.metadata.create_all(bind=engine)
         
@@ -73,6 +74,8 @@ def init_db():
                         conn.execute(text("ALTER TABLE appointments ADD COLUMN follow_up_reason TEXT;"))
                     if "follow_up_status" not in columns:
                         conn.execute(text("ALTER TABLE appointments ADD COLUMN follow_up_status VARCHAR(50);"))
+                    if "denial_reason" not in columns:
+                        conn.execute(text("ALTER TABLE appointments ADD COLUMN denial_reason TEXT;"))
             except Exception as e: print(f"Migration error (appointments): {e}")
 
             # 3. Check 'prescriptions' table
