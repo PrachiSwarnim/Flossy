@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -15,6 +16,7 @@
       height: 100vh;
       margin: 0;
     }
+
     .login-container {
       text-align: center;
       background: rgba(255, 255, 255, 0.85);
@@ -25,6 +27,7 @@
       box-shadow: 0 10px 40px rgba(252, 163, 17, 0.25);
       animation: fadeIn 1s ease forwards;
     }
+
     h1 {
       font-size: 2rem;
       font-weight: 700;
@@ -32,20 +35,45 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    p { color: #444; }
-    #sign-in { min-height: 350px; }
+
+    p {
+      color: #444;
+    }
+
+    #sign-in {
+      min-height: 350px;
+    }
+
     .loading {
-      width: 40px; height: 40px;
+      width: 40px;
+      height: 40px;
       border: 4px solid #ffd166;
       border-top-color: #fca311;
       border-radius: 50%;
       margin: 2rem auto;
       animation: spin 1s linear infinite;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
   </style>
 </head>
+
 <body>
 
   <div class="login-container">
@@ -55,12 +83,10 @@
     <div id="sign-in" style="display:none;"></div>
   </div>
 
-  <script
-    async
-    crossorigin="anonymous"
-    data-clerk-publishable-key="pk_test_bWVldC1ncm91c2UtMzMuY2xlcmsuYWNjb3VudHMuZGV2JA"
+  <script async crossorigin="anonymous"
+    data-clerk-publishable-key="pk_live_Y2xlcmsuc21pbGVhcnRpc3RzZGVudGFsc3R1ZGlvLmNvbSQ"
     src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js">
-  </script>
+    </script>
 
   <script>
     async function init() {
@@ -79,4 +105,5 @@
   </script>
 
 </body>
+
 </html>

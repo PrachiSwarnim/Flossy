@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,6 +17,7 @@
       color: #333;
       text-align: center;
     }
+
     .loading-spin {
       width: 40px;
       height: 40px;
@@ -25,8 +27,11 @@
       margin: 2rem auto;
       animation: spin 1s linear infinite;
     }
+
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
   </style>
 </head>
@@ -35,11 +40,9 @@
   <h2>🔄 Redirecting and verifying your role...</h2>
   <div class="loading-spin"></div>
 
-  <script
-    crossorigin="anonymous"
-    data-clerk-publishable-key="pk_test_bWVldC1ncm91c2UtMzMuY2xlcmsuYWNjb3VudHMuZGV2JA"
+  <script crossorigin="anonymous" data-clerk-publishable-key="pk_live_Y2xlcmsuc21pbGVhcnRpc3RzZGVudGFsc3R1ZGlvLmNvbSQ"
     src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js">
-  </script>
+    </script>
 
 
   <script>
@@ -60,7 +63,7 @@
 
         // IMPORTANT: your REAL publishable key must be here
         await Clerk.load({
-          publishableKey: "pk_test_bWVldC1ncm91c2UtMzMuY2xlcmsuYWNjb3VudHMuZGV2JA"
+          publishableKey: "pk_live_Y2xlcmsuc21pbGVhcnRpc3RzZGVudGFsc3R1ZGlvLmNvbSQ"
         });
 
         // Check session
@@ -101,4 +104,5 @@
     })();
   </script>
 </body>
+
 </html>

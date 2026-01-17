@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dentist Dashboard — Smile Artist Studio</title>
 
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600&family=Playfair+Display:wght@600&display=swap"
+    rel="stylesheet" />
 
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
       font-family: "Sora", sans-serif;
@@ -24,11 +30,11 @@
       align-items: center;
       justify-content: space-between;
       padding: 0.5rem 2.5rem;
-      border-bottom: 2px solid rgba(255,203,5,0.5);
+      border-bottom: 2px solid rgba(255, 203, 5, 0.5);
       position: sticky;
       top: 0;
       z-index: 100;
-      color:#fcb911;
+      color: #fcb911;
     }
 
     .logo {
@@ -44,12 +50,12 @@
       height: 55px;
       border-radius: 50%;
       transition: 0.35s ease;
-      box-shadow: 0 0 0 rgba(255,203,5,0.0);
+      box-shadow: 0 0 0 rgba(255, 203, 5, 0.0);
     }
 
     .logo img:hover {
       transform: scale(1.08) rotate(0deg);
-      box-shadow: 0 8px 25px rgba(255,203,5,0.45);
+      box-shadow: 0 8px 25px rgba(255, 203, 5, 0.45);
     }
 
 
@@ -84,7 +90,9 @@
       transition: 0.25s ease;
     }
 
-    .logout-btn:hover { background: #f0b800; }
+    .logout-btn:hover {
+      background: #f0b800;
+    }
 
     /* ---------------- MAIN CONTENT ---------------- */
     main {
@@ -113,12 +121,14 @@
       background: white;
       border-radius: 1.2rem;
       padding: 2rem;
-      box-shadow: 0 6px 30px rgba(255,203,5,0.15);
+      box-shadow: 0 6px 30px rgba(255, 203, 5, 0.15);
       transition: 0.3s ease;
       border-left: 6px solid #ffcb05;
     }
 
-    .card:hover { transform: translateY(-6px); }
+    .card:hover {
+      transform: translateY(-6px);
+    }
 
     .card h3 {
       font-family: "Playfair Display", serif;
@@ -141,7 +151,7 @@
       cursor: pointer;
       writing-mode: vertical-rl;
       text-orientation: mixed;
-      box-shadow: -4px 0 15px rgba(0,0,0,0.15);
+      box-shadow: -4px 0 15px rgba(0, 0, 0, 0.15);
       z-index: 3000;
     }
 
@@ -152,7 +162,7 @@
       width: 380px;
       height: 100vh;
       background: white;
-      box-shadow: -4px 0 25px rgba(0,0,0,0.15);
+      box-shadow: -4px 0 25px rgba(0, 0, 0, 0.15);
       transition: 0.4s ease;
       display: flex;
       flex-direction: column;
@@ -160,7 +170,9 @@
       border-left: 4px solid #ffcb05;
     }
 
-    #ai-panel.open { right: 0; }
+    #ai-panel.open {
+      right: 0;
+    }
 
     #ai-panel-header {
       background: linear-gradient(90deg, #ffcb05, #f0b800);
@@ -182,7 +194,7 @@
       padding: 1rem;
       display: flex;
       gap: 0.8rem;
-      border-top: 2px solid rgba(255,203,5,0.3);
+      border-top: 2px solid rgba(255, 203, 5, 0.3);
     }
 
     #ai-input {
@@ -193,7 +205,8 @@
       font-size: 0.9rem;
     }
 
-    #ai-send, #ai-mic {
+    #ai-send,
+    #ai-mic {
       background: #ffcb05;
       border: none;
       padding: 0.6rem 0.9rem;
@@ -202,117 +215,117 @@
       font-weight: 600;
     }
 
-    #ai-mic.active { background: red; }
+    #ai-mic.active {
+      background: red;
+    }
   </style>
 </head>
 
 <body>
 
-<header>
-  <div class="logo">
-    <img src="/static/assets/logo.png" />
-    <span>Smile Artists</span>
-  </div>
+  <header>
+    <div class="logo">
+      <img src="/static/assets/logo.png" />
+      <span>Smile Artists</span>
+    </div>
 
-  <nav>
-    <a href="/">Home</a>
-    <a href="/patient">Patients</a>
-    <button id="logout" class="logout-btn">Logout</button>
-  </nav>
-</header>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/patient">Patients</a>
+      <button id="logout" class="logout-btn">Logout</button>
+    </nav>
+  </header>
 
-<main>
-  <h2 id="welcomeMessage"></h2>
+  <main>
+    <h2 id="welcomeMessage"></h2>
 
-  <div class="grid">
-    <div class="card">
-      <h3>Today’s Appointments</h3>
-      <div id="todayAppointmentsList">
-        <p>Loading appointments...</p>
+    <div class="grid">
+      <div class="card">
+        <h3>Today’s Appointments</h3>
+        <div id="todayAppointmentsList">
+          <p>Loading appointments...</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Recent Interactions</h3>
+        <p id="interaction-summary">Loading...</p>
+      </div>
+
+      <div class="card">
+        <h3>AI Insights</h3>
+        <p>FlossyAI detected 3 gum disease risk cases this week.</p>
+        <p><a style="color: #f0b800; font-weight: 600;" href="#">View Report</a></p>
+      </div>
+
+      <div class="card">
+        <h3>Notifications</h3>
+        <p>2 new appointment requests pending approval.</p>
+        <p><a style="color: #f0b800; font-weight: 600;" href="#">Review Now</a></p>
       </div>
     </div>
+  </main>
 
-    <div class="card">
-      <h3>Recent Interactions</h3>
-      <p id="interaction-summary">Loading...</p>
+  <!-- AI PANEL BUTTON -->
+  <div id="open-ai-panel">FlossyAI</div>
+
+  <!-- AI PANEL -->
+  <div id="ai-panel">
+    <div id="ai-panel-header">🦷 FlossyAI Assistant
+      <span id="close-ai-panel" style="float:right; cursor:pointer;">✖</span>
     </div>
+    <div id="ai-panel-content"></div>
 
-    <div class="card">
-      <h3>AI Insights</h3>
-      <p>FlossyAI detected 3 gum disease risk cases this week.</p>
-      <p><a style="color: #f0b800; font-weight: 600;" href="#">View Report</a></p>
-    </div>
-
-    <div class="card">
-      <h3>Notifications</h3>
-      <p>2 new appointment requests pending approval.</p>
-      <p><a style="color: #f0b800; font-weight: 600;" href="#">Review Now</a></p>
+    <div id="ai-input-area">
+      <input id="ai-input" placeholder="Ask FlossyAI..." />
+      <button id="ai-mic">🎤</button>
+      <button id="ai-send">Send</button>
     </div>
   </div>
-</main>
 
-<!-- AI PANEL BUTTON -->
-<div id="open-ai-panel">FlossyAI</div>
+  <!-- Clerk -->
+  <script async crossorigin="anonymous"
+    data-clerk-publishable-key="pk_live_Y2xlcmsuc21pbGVhcnRpc3RzZGVudGFsc3R1ZGlvLmNvbSQ"
+    src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js">
+    </script>
 
-<!-- AI PANEL -->
-<div id="ai-panel">
-  <div id="ai-panel-header">🦷 FlossyAI Assistant
-    <span id="close-ai-panel" style="float:right; cursor:pointer;">✖</span>
-  </div>
-  <div id="ai-panel-content"></div>
+  <script>
+    /* ---------------- UTIL ---------------- */
+    function formatTime(utcDateString) {
+      const date = new Date(utcDateString);
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    }
 
-  <div id="ai-input-area">
-    <input id="ai-input" placeholder="Ask FlossyAI..." />
-    <button id="ai-mic">🎤</button>
-    <button id="ai-send">Send</button>
-  </div>
-</div>
+    async function fetchUpcomingAppointments() {
+      const token = new URLSearchParams(window.location.search).get("token");
 
-<!-- Clerk -->
-<script
-  async
-  crossorigin="anonymous"
-  data-clerk-publishable-key="pk_test_bWVldC1ncm91c2UtMzMuY2xlcmsuYWNjb3VudHMuZGV2JA"
-  src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js">
-</script>
+      const res = await fetch(`/appointments/dentist_upcoming?token=${token}`);
+      const data = await res.json();
 
-<script>
-/* ---------------- UTIL ---------------- */
-function formatTime(utcDateString) {
-  const date = new Date(utcDateString);
-  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-}
+      return data.appointments || [];
+    }
 
-async function fetchUpcomingAppointments() {
-  const token = new URLSearchParams(window.location.search).get("token");
+    /* ---------------- DASHBOARD ---------------- */
+    async function renderDentistDashboard() {
+      await Clerk.load();
+      const user = Clerk.user;
 
-  const res = await fetch(`/appointments/dentist_upcoming?token=${token}`);
-  const data = await res.json();
+      const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+      const dentistDisplayName = `Dr. ${fullName}`;
 
-  return data.appointments || [];
-}
+      document.getElementById("welcomeMessage").textContent =
+        `Welcome back, ${dentistDisplayName}!`;
 
-/* ---------------- DASHBOARD ---------------- */
-async function renderDentistDashboard() {
-  await Clerk.load();
-  const user = Clerk.user;
+      const listDiv = document.getElementById("todayAppointmentsList");
 
-  const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
-  const dentistDisplayName = `Dr. ${fullName}`;
+      const token = new URLSearchParams(window.location.search).get("token");
+      const res = await fetch(`/appointments/dentist_upcoming?token=${token}`);
+      const data = await res.json();
 
-  document.getElementById("welcomeMessage").textContent =
-    `Welcome back, ${dentistDisplayName}!`;
+      const today = data.today || [];
+      const upcoming = data.upcoming || [];
 
-  const listDiv = document.getElementById("todayAppointmentsList");
-
-  const token = new URLSearchParams(window.location.search).get("token");
-  const res = await fetch(`/appointments/dentist_upcoming?token=${token}`);
-  const data = await res.json();
-
-  const today = data.today || [];
-  const upcoming = data.upcoming || [];
-
-  const format = (a) => `
+      const format = (a) => `
     <div style="
       margin-bottom: 1rem;
       padding: 1rem;
@@ -340,88 +353,89 @@ async function renderDentistDashboard() {
     </div>
   `;
 
-  listDiv.innerHTML = `
+      listDiv.innerHTML = `
     <h4 style="margin-bottom:10px;color:#f0b800;">Today</h4>
     ${today.length ? today.map(format).join("") : "<p>No appointments today.</p>"}
 
     <h4 style="margin-top:20px;margin-bottom:10px;color:#f0b800;">Upcoming</h4>
     ${upcoming.length ? upcoming.map(format).join("") : "<p>No upcoming appointments.</p>"}
   `;
-}
+    }
 
-window.addEventListener("load", renderDentistDashboard);
+    window.addEventListener("load", renderDentistDashboard);
 
-/* ---------------- AI PANEL ---------------- */
-const aiPanel = document.getElementById("ai-panel");
+    /* ---------------- AI PANEL ---------------- */
+    const aiPanel = document.getElementById("ai-panel");
 
-document.getElementById("open-ai-panel").onclick = () => {
-  aiPanel.classList.toggle("open");
-};
+    document.getElementById("open-ai-panel").onclick = () => {
+      aiPanel.classList.toggle("open");
+    };
 
-document.getElementById("close-ai-panel").onclick = () => {
-  aiPanel.classList.remove("open");
-};
+    document.getElementById("close-ai-panel").onclick = () => {
+      aiPanel.classList.remove("open");
+    };
 
-async function markCompleted(id) {
-  const res = await fetch(`/appointments/mark_completed/${id}`, {
-    method: "POST"
-  });
+    async function markCompleted(id) {
+      const res = await fetch(`/appointments/mark_completed/${id}`, {
+        method: "POST"
+      });
 
-  if (res.ok) {
-    alert("Appointment marked as completed");
-    renderDentistDashboard();
-  }
-}
+      if (res.ok) {
+        alert("Appointment marked as completed");
+        renderDentistDashboard();
+      }
+    }
 
-/* --- CLOSE CHATBOX WHEN CLICKING OUTSIDE OR PRESSING CLOSE BUTTON --- */
-document.addEventListener("click", (e) => {
-  if (!aiPanel.contains(e.target) && e.target.id !== "open-ai-panel") {
-    aiPanel.classList.remove("open");
-  }
-});
+    /* --- CLOSE CHATBOX WHEN CLICKING OUTSIDE OR PRESSING CLOSE BUTTON --- */
+    document.addEventListener("click", (e) => {
+      if (!aiPanel.contains(e.target) && e.target.id !== "open-ai-panel") {
+        aiPanel.classList.remove("open");
+      }
+    });
 
-/* ---------------- TEXT CHAT ---------------- */
-async function sendText() {
-  const input = document.getElementById("ai-input");
-  const msg = input.value.trim();
-  if (!msg) return;
+    /* ---------------- TEXT CHAT ---------------- */
+    async function sendText() {
+      const input = document.getElementById("ai-input");
+      const msg = input.value.trim();
+      if (!msg) return;
 
-  const content = document.getElementById("ai-panel-content");
-  content.innerHTML += `<div><b>You:</b> ${msg}</div>`;
-  input.value = "";
+      const content = document.getElementById("ai-panel-content");
+      content.innerHTML += `<div><b>You:</b> ${msg}</div>`;
+      input.value = "";
 
-  const token = new URLSearchParams(window.location.search).get("token");
+      const token = new URLSearchParams(window.location.search).get("token");
 
-const res = await fetch("/doctor_ai/query", {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify({ query: msg })
-});
+      const res = await fetch("/doctor_ai/query", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ query: msg })
+      });
 
-  const data = await res.json();
+      const data = await res.json();
 
-  content.innerHTML += `<div style="color:#e3aa00;"><b>FlossyAI:</b> ${data.answer}</div>`;
-  content.scrollTop = content.scrollHeight;
-}
+      content.innerHTML += `<div style="color:#e3aa00;"><b>FlossyAI:</b> ${data.answer}</div>`;
+      content.scrollTop = content.scrollHeight;
+    }
 
-document.getElementById("ai-send").onclick = sendText;
+    document.getElementById("ai-send").onclick = sendText;
 
-/* ---------------- SEND MESSAGE ON ENTER KEY ---------------- */
-document.getElementById("ai-input").addEventListener("keydown", function(e) {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    sendText();
-  }
-});
+    /* ---------------- SEND MESSAGE ON ENTER KEY ---------------- */
+    document.getElementById("ai-input").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendText();
+      }
+    });
 
-/* ---------------- LOGOUT ---------------- */
-document.getElementById("logout").onclick = () => {
-  Clerk.signOut().then(() => window.location.href = "/");
-};
-</script>
+    /* ---------------- LOGOUT ---------------- */
+    document.getElementById("logout").onclick = () => {
+      Clerk.signOut().then(() => window.location.href = "/");
+    };
+  </script>
 
 </body>
+
 </html>

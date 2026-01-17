@@ -5,7 +5,7 @@ import App from "./App.jsx";
 import "./index.css";
 import "./styles/global.css";
 
-const PUBLISHABLE_KEY = "pk_test_bWVldC1ncm91c2UtMzMuY2xlcmsuYWNjb3VudHMuZGV2JA";
+const PUBLISHABLE_KEY = "pk_live_Y2xlcmsuc21pbGVhcnRpc3RzZGVudGFsc3R1ZGlvLmNvbSQ";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
