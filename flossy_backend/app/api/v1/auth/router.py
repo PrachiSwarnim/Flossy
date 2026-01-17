@@ -40,12 +40,16 @@ def select_role(payload: dict, request: Request, db: Session = Depends(get_db)):
 def post_login(request: Request, db: Session = Depends(get_db)):
     user_payload = getattr(request.state, "user", None)
     if not user_payload:
+        print("❌ post_login: No user in request.state")
         raise HTTPException(status_code=401, detail="Authentication required")
 
+    print(f"🔄 post_login: Syncing user {user_payload.get('sub')}")
     user = sync_user_to_db(db, user_payload)
     if not user:
+         print("❌ post_login: Sync failed")
          raise HTTPException(status_code=400, detail="Sync failed")
 
+    print(f"✅ post_login: Success for {user.email} (role: {user.role})")
     return {"user": {"id": user.id, "email": user.email, "role": user.role}}
 
 

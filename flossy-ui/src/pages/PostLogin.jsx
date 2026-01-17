@@ -54,8 +54,9 @@ export default function PostLogin() {
 
         if (res.ok) {
           const data = await res.json();
-          const role = data?.user?.role;
-          if (role) sessionStorage.setItem("flossy_role", role);
+          const role = data?.user?.role || "patient";
+          console.log(`🎯 Backend confirmed role: ${role}`);
+          sessionStorage.setItem("flossy_role", role);
 
           if (role === "dentist") {
             navigate("/dentist");
@@ -65,19 +66,24 @@ export default function PostLogin() {
             navigate("/receptionist");
             return;
           }
+
+          // If it's patient, go to patient
+          navigate("/patient");
+          return;
         } else {
           console.error("post_login failed with status:", res.status);
           const errorData = await res.text();
           console.error("Error details:", errorData);
+          // Fallback to patient if sync failed but user is authenticated in Clerk
+          sessionStorage.setItem("flossy_role", "patient");
+          navigate("/patient");
+          return;
         }
       } catch (err) {
         console.error("Backend post_login error:", err);
+        sessionStorage.setItem("flossy_role", "patient");
+        navigate("/patient");
       }
-
-      // 2️⃣ Default Fallback: Patient
-      // If backend didn't specify Dentist/Receptionist, or if it failed, assume Patient.
-      sessionStorage.setItem("flossy_role", "patient");
-      navigate("/patient");
     };
 
     setup();

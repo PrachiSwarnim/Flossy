@@ -9,7 +9,8 @@ def require_role(expected_role):
         if not payload:
             raise HTTPException(status_code=401, detail="Not authenticated")
 
-        email = (payload.get("email") or payload.get("email_address") or "").lower()
+        from app.core.auth_utils import fetch_clerk_email
+        email = fetch_clerk_email(payload)
         user = db.query(User).filter(User.email.ilike(email)).first()
 
         if not user:

@@ -220,7 +220,7 @@ export default function ReceptionistDashboard() {
         // Allow if role is "receptionist" OR email is the specific receptionist email
         const isReceptionist = role === "receptionist" ||
             email === "anything.handmade1@gmail.com" ||
-            email === "anything,handmade1@gmail.com";
+            email === "anyhting.handmade1@gmail.com";
 
         if (!isReceptionist && role !== undefined && role !== null) {
             navigate("/not-authorized");

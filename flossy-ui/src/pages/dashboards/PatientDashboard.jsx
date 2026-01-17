@@ -147,7 +147,7 @@ export default function PatientDashboard() {
   // 1️⃣ ROLE CHECK
   useEffect(() => {
     if (!isLoaded) return;
-    const role = user?.publicMetadata?.role;
+    const role = user?.publicMetadata?.role || sessionStorage.getItem("flossy_role");
     if (role === "dentist" || role === "receptionist") {
       if (role === "dentist") navigate("/dentist");
       if (role === "receptionist") navigate("/receptionist");

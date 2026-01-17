@@ -40,11 +40,12 @@ def fetch_clerk_email(user_payload: dict) -> str:
     Fallback to get email from Clerk API using the user ID (sub) 
     if it's missing from the JWT token claims.
     """
-    # 1. Try common JWT claims
-    email = (user_payload.get("email") or user_payload.get("email_address") or user_payload.get("primary_email_address") or "").lower().strip()
+    email = (user_payload.get("email") or \
+             user_payload.get("email_address") or \
+             user_payload.get("primary_email_address") or \
+             user_payload.get("preferred_username") or "").lower().strip()
     
-    if email:
-        # print(f"✅ Found email in JWT: {email}")
+    if email and "@" in email:
         return email
         
     # 2. Fallback: Fetch from Clerk API (Requires CLERK_SECRET_KEY)
@@ -90,10 +91,11 @@ def sync_user_to_db(db: Session, user_payload: dict) -> User:
     """
     email = fetch_clerk_email(user_payload)
     if not email:
-        print("❌ sync_user_to_db aborted: No email found")
+        print(f"❌ sync_user_to_db aborted: No email found in payload {user_payload.get('sub')}")
         return None
 
     role = get_automatic_role(email)
+    print(f"🔍 Syncing user {email}. Automatic role: {role}")
     
     user = db.query(User).filter(User.email.ilike(email)).first()
     if not user:
