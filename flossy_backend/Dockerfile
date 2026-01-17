@@ -20,5 +20,5 @@ COPY . .
 ENV PORT=8080
 EXPOSE 8080
 
-# ✅ CORRECT, CLOUD-RUN-SAFE ENTRYPOINT
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", ":8080", "--workers", "1", "--timeout", "0"]
+# ✅ ULTRA-RESILLIENT CLOUD RUN ENTRYPOINT
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--log-level", "info"]

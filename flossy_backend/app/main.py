@@ -41,8 +41,8 @@ app.include_router(api_router, prefix="/api")
 # CORS must be OUTERMOST (added last in FastAPI)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"https?://(localhost|([a-z0-9-]+\.)?smileartistsdentalstudio\.com|([a-z0-9-]+\.)?vercel\.app|([a-z0-9-]+\.)?run\.app)(:\d+)?",
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "https://smileartistsdentalstudio.com", "https://www.smileartistsdentalstudio.com", "https://smile-artists-dental-studio.vercel.app"],
+    allow_origin_regex=r"https?://.*smileartistsdentalstudio\.com|https?://.*vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
