@@ -26,7 +26,7 @@ export default function AppointmentRequestForm({ className }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        const API = import.meta.env.VITE_API_BASE_URL?.replace("http://", "https://");
+        const API = import.meta.env.VITE_API_BASE_URL;
 
         if (isSignedIn && session) {
             try {
