@@ -34,8 +34,7 @@ body {
 .patient-main {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 8rem 1.5rem 4rem;
-  /* Top padding for fixed header */
+  padding: 100px 2rem 4rem;
 }
 
 /* ===============  Title =============== */
@@ -589,48 +588,168 @@ body {
   transform: translateY(-4px) scale(1.05);
 }
 
-/* =============== Dashboard Layout with Profile Sidebar =============== */
-.dashboard-layout {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 2rem;
-  align-items: start;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+/* =============== Dashboard Layout with FIXED Left Sidebar =============== */
+.dashboard-shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-dark);
+  overflow-x: hidden;
 }
 
-.dashboard-layout.sidebar-hidden {
-  grid-template-columns: 0px 1fr;
-  gap: 0;
-}
-
-.dashboard-layout.sidebar-hidden .profile-sidebar {
-  opacity: 0;
-  visibility: hidden;
-  transform: translateX(-50px);
-  pointer-events: none;
-  width: 0;
-  padding: 0;
-  margin: 0;
-  border: none;
-}
-
-/* Profile Sidebar Styles */
 .profile-sidebar {
-  background: linear-gradient(180deg, #1f1f1f 0%, #181818 100%);
-  border: 1px solid #333;
-  border-radius: 20px;
-  padding: 2.5rem 1.5rem;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 320px;
+  background: linear-gradient(180deg, #1a1a1a 0%, #121212 100%);
+  border-right: 1px solid rgba(212, 175, 55, 0.2);
+  z-index: 1500;
+  padding: 6rem 1rem 2rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  position: sticky;
-  top: 100px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-  min-height: 500px;
+  box-shadow: 4px 0 25px rgba(0, 0, 0, 0.5);
+}
+
+.sidebar-collapsed .profile-sidebar {
+  width: 80px;
+  padding: 6rem 0.5rem 2rem;
+}
+
+.dashboard-main-content {
+  flex: 1;
+  margin-left: 320px;
+  min-width: 0;
+  /* Prevents overflow-x */
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-  z-index: 10;
+  background: var(--bg-dark);
+}
+
+.sidebar-collapsed .dashboard-main-content {
+  margin-left: 80px;
+}
+
+.sidebar-expand-toggle {
+  position: absolute;
+  right: -12px;
+  top: 110px;
+  width: 24px;
+  height: 24px;
+  background: var(--primary-gold);
+  color: #1a1a1a;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1600;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+  font-size: 0.7rem;
+  transition: transform 0.3s ease;
+}
+
+.sidebar-expand-toggle:hover {
+  transform: scale(1.1);
+}
+
+.profile-sidebar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+}
+
+.profile-header-text {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+/* Sidebar Actions */
+.sidebar-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding-bottom: 2rem;
+}
+
+.sidebar-book-btn {
+  width: 100%;
+  background: var(--primary-gold) !important;
+  color: #1a1a1a !important;
+  font-weight: 700 !important;
+}
+
+/* Hide elements in collapsed mode */
+.sidebar-collapsed .profile-header-text,
+.sidebar-collapsed .profile-info-grid,
+.sidebar-collapsed .profile-details-compact span,
+.sidebar-collapsed .sidebar-actions span,
+.sidebar-collapsed .profile-name,
+.sidebar-collapsed .profile-role {
+  display: none;
+}
+
+.sidebar-collapsed .profile-avatar {
+  width: 50px;
+  height: 50px;
+  margin: 0 auto;
+}
+
+.sidebar-collapsed .detail-row {
+  justify-content: center;
+}
+
+.sidebar-collapsed .edit-profile-btn,
+.sidebar-collapsed .sidebar-book-btn {
+  width: 50px;
+  height: 50px;
+  padding: 0;
+  border-radius: 50%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-collapsed .profile-sidebar-content {
+  opacity: 0.9;
+}
+
+/* Hide text in collapsed mode */
+.sidebar-collapsed .profile-header-text,
+.sidebar-collapsed .profile-info-grid,
+.sidebar-collapsed .profile-details-compact span,
+.sidebar-collapsed .sidebar-actions span {
+  display: none;
+}
+
+.sidebar-collapsed .profile-details-compact {
+  align-items: center;
+}
+
+.sidebar-collapsed .detail-row {
+  justify-content: center;
+  padding: 0.8rem;
+}
+
+.sidebar-collapsed .profile-avatar {
+  width: 45px;
+  height: 45px;
+}
+
+.sidebar-collapsed .sidebar-actions {
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sidebar-collapsed .edit-profile-btn,
+.sidebar-collapsed .sidebar-book-btn {
+  width: 45px;
+  height: 45px;
+  padding: 0;
+  border-radius: 50%;
 }
 
 .profile-sidebar::before {
