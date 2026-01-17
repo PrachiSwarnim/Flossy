@@ -15,15 +15,29 @@ if not DATABASE_URL:
     DATABASE_URL = "sqlite:///./sql_app.db"
 
 # Required fix for PostgreSQL SSL on Render
-if DATABASE_URL.startswith("postgres://"):
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://")
 
-connect_args = {"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+def create_resilient_engine(url):
+    try:
+        # Test connection for Postgres/MySQL to avoid startup crash
+        if "sqlite" not in url:
+            temp_engine = create_engine(url, connect_args={"connect_timeout": 5})
+            with temp_engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            return temp_engine
+    except Exception as e:
+        print(f"⚠️ Warning: Could not connect to {url.split('@')[-1] if '@' in url else url}")
+        print(f"Error: {e}")
+        print("💡 Falling back to SQLite for stability.")
+        return create_engine("sqlite:///./sql_app.db", connect_args={"check_same_thread": False})
+    
+    # If already sqlite or fallback
+    connect_args = {"check_same_thread": False} if "sqlite" in url else {}
+    return create_engine(url, connect_args=connect_args)
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args=connect_args,
-)
+engine = create_resilient_engine(DATABASE_URL)
+
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

@@ -7,7 +7,7 @@ import Footer from "../../components/Footer";
 import InvoiceForm from "../../components/InvoiceForm";
 import "../../styles/dentist_dashboard.css";
 
-const API = import.meta.env.VITE_API_BASE_URL;
+const API = import.meta.env.VITE_API_BASE_URL?.replace("http://", "https://");
 
 export default function ReceptionistDashboard() {
     const { user, isLoaded } = useUser();
@@ -235,7 +235,7 @@ export default function ReceptionistDashboard() {
 
     async function fetchPatients() {
         const token = await session.getToken({ template: "default" });
-        const res = await fetch(`${API}/api/patients`, {
+        const res = await fetch(`${API}/api/patients/`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
@@ -252,7 +252,7 @@ export default function ReceptionistDashboard() {
     async function fetchDoctors() {
         // Need token for /api/doctors if not exempt
         const token = await session.getToken({ template: "default" });
-        const res = await fetch(`${API}/api/doctors`, {
+        const res = await fetch(`${API}/api/doctors/`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
@@ -263,7 +263,7 @@ export default function ReceptionistDashboard() {
 
     async function fetchInvoices() {
         const token = await session.getToken({ template: "default" });
-        const res = await fetch(`${API}/api/invoices/history`, {
+        const res = await fetch(`${API}/api/invoices/history/`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
@@ -274,7 +274,7 @@ export default function ReceptionistDashboard() {
 
     async function loadAppointments() {
         const token = await session.getToken({ template: "default" });
-        const res = await fetch(`${API}/api/appointments/receptionist_upcoming`, {
+        const res = await fetch(`${API}/api/appointments/receptionist_upcoming/`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {

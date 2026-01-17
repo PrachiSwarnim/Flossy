@@ -8,7 +8,7 @@ import InvoiceForm from "../../components/InvoiceForm";
 import "../../styles/dentist_dashboard.css";
 import "../../styles/dashboard_extras.css";
 
-const API = import.meta.env.VITE_API_BASE_URL;
+const API = import.meta.env.VITE_API_BASE_URL?.replace("http://", "https://");
 
 const DENTAL_MEDICATIONS = [
   // Antibiotics
@@ -139,7 +139,7 @@ export default function DentistDashboard() {
   // === Fetch Appointments ===
   async function loadAppointments() {
     const token = await session.getToken({ template: "default" });
-    const res = await fetch(`${API}/api/appointments/dentist_upcoming`, {
+    const res = await fetch(`${API}/api/appointments/dentist_upcoming/`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -429,7 +429,7 @@ export default function DentistDashboard() {
     async function fetchPatients() {
       try {
         const token = await session.getToken({ template: "default" });
-        const res = await fetch(`${API}/api/patients`, {
+        const res = await fetch(`${API}/api/patients/`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -455,7 +455,7 @@ export default function DentistDashboard() {
     if (!session) return;
     try {
       const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/invoices/history`, {
+      const res = await fetch(`${API}/api/invoices/history/`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {

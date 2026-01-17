@@ -25,12 +25,12 @@ export default function PostLogin() {
       const isNewUser = !user.lastSignInAt || (Math.abs(lastSignInAt - createdAt) < 30000); // 30 sec threshold
       sessionStorage.setItem("flossy_is_new_user", isNewUser ? "true" : "false");
 
-      const API = import.meta.env.VITE_API_BASE_URL;
+      const API = import.meta.env.VITE_API_BASE_URL?.replace("http://", "https://");
 
       // 1️⃣ Backend Role Sync & Check
       // We prioritize the backend response because it contains the authoritative role logic and ensures the DB is synced.
       try {
-        const res = await fetch(`${API}/api/auth/post_login`, {
+        const res = await fetch(`${API}/api/auth/post_login/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

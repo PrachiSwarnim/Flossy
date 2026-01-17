@@ -16,15 +16,27 @@ app = FastAPI(
 )
 
 # Middleware
+# Middleware
+# Note: CORSMiddleware should be added AFTER AuthMiddleware so it wraps it
 app.add_middleware(ClerkAuthMiddleware)
+
+# Specific origins for production
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "https://smileartistsdentalstudio.com",
+    "https://www.smileartistsdentalstudio.com",
+    "https://smile-artists-dental-studio.vercel.app",
+    "https://flossy-ui.vercel.app"
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Routers
 app.include_router(api_router, prefix="/api")

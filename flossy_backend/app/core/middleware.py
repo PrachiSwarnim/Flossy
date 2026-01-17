@@ -39,8 +39,11 @@ class ClerkAuthMiddleware(BaseHTTPMiddleware):
 
         auth = request.headers.get("Authorization")
         if not auth or not auth.startswith("Bearer "):
-            print(f"🔒 Auth failed: No Bearer token for {path}")
+            print(f"🔒 Auth blocked: {request.method} {path} - Missing/invalid Header")
             return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+        
+        print(f"🔑 Auth attempting: {request.method} {path}")
+
         
         try:
             token = auth.split(" ")[1]

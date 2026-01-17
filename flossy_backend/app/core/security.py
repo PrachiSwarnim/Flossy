@@ -25,14 +25,16 @@ def verify_token(token: str) -> dict:
             leeway=60
         )
         return payload
-    except jwt.ExpiredSignatureError:
-        print("🔒 JWT Error: Token expired")
-        raise
-    except jwt.InvalidTokenError as e:
-        print(f"🔒 JWT Error: Invalid token - {str(e)}")
-        raise
     except Exception as e:
+        # Debug: Log the token metadata without verifying to see why it's failing
+        try:
+            unverified_header = jwt.get_unverified_header(token)
+            unverified_payload = jwt.decode(token, options={"verify_signature": False})
+            print(f"�️ Token Metadata - ID: {unverified_header.get('kid')}, ISS: {unverified_payload.get('iss')}")
+        except:
+            pass
         print(f"❌ JWT Verification failed: {str(e)}")
         raise
+
 
 

@@ -5,8 +5,9 @@ load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
-CLERK_ISSUER = os.getenv("CLERK_ISSUER", "https://meet-grouse-33.clerk.accounts.dev")
+CLERK_ISSUER = os.getenv("CLERK_ISSUER", "https://clerk.smileartistsdentalstudio.com")
 JWKS_URL = f"{CLERK_ISSUER}/.well-known/jwks.json"
+
 
 print(f"🔧 Config: CLERK_ISSUER={CLERK_ISSUER}")
 print(f"🔧 Config: JWKS_URL={JWKS_URL}")
