@@ -49,29 +49,11 @@ jobs:
           flags: '--allow-unauthenticated'
 
   deploy-frontend:
-    name: Build & Deploy Frontend to Vercel
+    name: Trigger Render Deployment (Frontend)
     runs-on: ubuntu-latest
-    needs: deploy-backend # Ensure backend is ready if URL is needed
+    needs: deploy-backend
     
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      - name: Build and Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./flossy-ui
-          vercel-args: '--prod'
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_URL }}
-          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
-          VITE_LIVEKIT_URL: ${{ secrets.VITE_LIVEKIT_URL }}
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+      - name: Deploy to Render
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
