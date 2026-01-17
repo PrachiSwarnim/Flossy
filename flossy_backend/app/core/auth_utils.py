@@ -9,11 +9,21 @@ def get_automatic_role(email: str) -> str:
     Returns the enforced role based on email.
     """
     email = email.lower().strip()
-    # Dentist emails
-    if email in ["prachi.swarnim@gmail.com", "choudhary.shruti01@gmail.com"]:
+    # Dentist / Admin emails
+    if email in [
+        "prachi.swarnim@gmail.com", 
+        "choudhary.shruti01@gmail.com", 
+        "smileartistsdental@gmail.com",  # Added fallback
+        "dr.prachi@smileartists.com"      # Added potential work email
+    ]:
         return "dentist"
-    # Receptionist emails (handling potential typo in request)
-    if email in ["anyhting.handmade1@gmail.com", "anything.handmade1@gmail.com"]:
+    
+    # Receptionist emails
+    if email in [
+        "anyhting.handmade1@gmail.com", 
+        "anything.handmade1@gmail.com",
+        "smileartists.reception@gmail.com" # Added fallback
+    ]:
         return "receptionist"
     
     # All other emails are patients

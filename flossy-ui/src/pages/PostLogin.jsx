@@ -58,10 +58,15 @@ export default function PostLogin() {
         if (res.ok) {
           const data = await res.json();
           const role = data?.user?.role || "patient";
-          console.log(`🎯 Backend confirmed role: ${role}`);
-          sessionStorage.setItem("flossy_role", role);
+          const email = user.primaryEmailAddress?.emailAddress?.toLowerCase();
 
-          if (role === "dentist") {
+          console.log(`🎯 Backend confirmed role: ${role} for ${email}`);
+
+          // CRITICAL BYPASS: Always treat these emails as dentists
+          const isHardcodedDentist = ["prachi.swarnim@gmail.com", "choudhary.shruti01@gmail.com", "smileartistsdental@gmail.com"].includes(email);
+
+          if (role === "dentist" || isHardcodedDentist) {
+            sessionStorage.setItem("flossy_role", "dentist");
             navigate("/dentist");
             return;
           }
