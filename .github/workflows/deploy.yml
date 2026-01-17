@@ -46,7 +46,7 @@ jobs:
           service: 'flossy-backend'
           image: 'asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flossy-repo/flossy-backend:${{ github.sha }}'
           region: 'asia-south1'
-          flags: '--allow-unauthenticated'
+          flags: '--allow-unauthenticated --memory=1Gi --cpu=1 --timeout=300'
 
   deploy-frontend:
     name: Trigger Render Deployment (Frontend)

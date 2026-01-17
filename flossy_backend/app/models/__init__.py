@@ -207,3 +207,11 @@ class TriageResult(Base):
 
     def __repr__(self):
         return f"<TriageResult(patient_id={self.patient_id}, urgency={self.urgency})>"
+
+class TreatmentCatalog(Base):
+    __tablename__ = "treatment_catalog"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), unique=True, nullable=False)
+    default_cost = Column(Float, nullable=False)
+    category = Column(String(100), nullable=True)
