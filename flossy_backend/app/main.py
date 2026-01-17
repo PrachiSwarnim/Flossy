@@ -51,9 +51,8 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    print("🚀 App starting up...")
-    # Initialize DB in background to avoid blocking Cloud Run startup check
-    asyncio.create_task(asyncio.to_thread(init_db))
+    print("🚀 FLOSSY BACKEND IS LIVE AND LISTENING ON PORT 8080")
+    # We do NOT run init_db here anymore to prevent startup timeouts
     asyncio.create_task(reminder_daemon())
 
 if __name__ == "__main__":

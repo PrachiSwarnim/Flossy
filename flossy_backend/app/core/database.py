@@ -39,10 +39,18 @@ def create_resilient_engine(url):
 engine = create_resilient_engine(DATABASE_URL)
 
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+# Global flag to ensure we only init once per container life
+_DB_INITIALIZED = False
 
 def get_db():
+    global _DB_INITIALIZED
+    if not _DB_INITIALIZED:
+        try:
+            init_db()
+            _DB_INITIALIZED = True
+        except Exception as e:
+            print(f"⚠️ Lazy DB init error: {e}")
+            
     db = SessionLocal()
     try:
         yield db
