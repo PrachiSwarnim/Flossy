@@ -36,11 +36,24 @@ def create_resilient_engine(url):
     connect_args = {"check_same_thread": False} if "sqlite" in url else {}
     return create_engine(url, connect_args=connect_args, pool_pre_ping=True)
 
-engine = create_resilient_engine(DATABASE_URL)
-
-
-# Global flag to ensure we only init once per container life
+# Global session and engine holders
+_engine = None
+_SessionLocal = None
 _DB_INITIALIZED = False
+
+def get_engine():
+    global _engine
+    if _engine is None:
+        _engine = create_resilient_engine(DATABASE_URL)
+    return _engine
+
+def get_session_local():
+    global _SessionLocal
+    if _SessionLocal is None:
+        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
+    return _SessionLocal
+
+Base = declarative_base()
 
 def get_db():
     global _DB_INITIALIZED
@@ -51,19 +64,21 @@ def get_db():
         except Exception as e:
             print(f"⚠️ Lazy DB init error: {e}")
             
-    db = SessionLocal()
+    db = get_session_local()()
     try:
         yield db
     finally:
         db.close()
 
 def init_db():
+    global _DB_INITIALIZED
     """
     Lightweight DB initialization with auto-migrations.
     """
     print("🛠️ Starting DB initialization and migrations...")
     try:
         from app import models as _ 
+        engine = get_engine()
         Base.metadata.create_all(bind=engine)
         
         inspector = inspect(engine)
@@ -155,8 +170,3 @@ def init_db():
             
     except Exception as e:
         print(f"(!) init_db migration error: {e}")
-        # At minimum ensure tables exist
-        try:
-             Base.metadata.create_all(bind=engine)
-             print("DB tables ensured (basic init_db).")
-        except: pass
