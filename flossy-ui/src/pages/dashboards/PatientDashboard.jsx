@@ -358,180 +358,202 @@ export default function PatientDashboard() {
       <main className="dentist-main">
         <h2 id="welcomeMessage">{isNewUser ? "Welcome" : "Welcome back"}, {fullName}!</h2>
 
-        <div className="patient-grid">
-          {/* APPOINTMENTS CARD */}
-          <div className="patient-card animate-fade-up" style={{ animationDelay: "0.1s" }}>
-            <div className="card-header">
-              <h3>Upcoming Appointments</h3>
-              <i className="fas fa-calendar-alt card-icon"></i>
-            </div>
-            {upcoming.length > 0 ? (
-              upcoming.map((a) => (
-                <div key={a.id} className="appt-item">
-                  <b>{formatApptTime(a.time)}</b>
-                  <div className="appt-doctor">{a.doctor_name}</div>
-                  <div className="appt-reason">{a.reason}</div>
-
-                  {/* DYNAMIC STATUS */}
-                  <div className={`appt-status ${a.status === "confirmed" ? "status-upcoming" : "status-pending"}`} style={{
-                    background: a.status === "negotiating" ? "#fca311" :
-                      a.status === "pending_approval" ? "#888" : "",
-                    color: a.status === "negotiating" ? "#000" : "#fff"
-                  }}>
-                    {a.status === "pending_approval" ? "Waiting Approval" :
-                      a.status === "negotiating" ? "Action Needed" :
-                        a.status === "confirmed" ? "Confirmed" : a.status}
-                  </div>
-
-                  {/* NEGOTIATION UI */}
-                  {a.status === "negotiating" && (
-                    <div style={{ marginTop: '10px', background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '5px' }}>
-                      <p style={{ color: '#fca311', fontSize: '0.85rem', margin: '0 0 5px 0' }}>Receptionist proposed change:</p>
-                      <p style={{ fontSize: '0.8rem', fontStyle: 'italic', marginBottom: '10px' }}>"{a.denial_reason}"</p>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => handleAcceptProposal(a)} style={{ background: '#4CAF50', border: 'none', color: '#fff', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}>Accept</button>
-                        <button onClick={() => handleCounterProposal(a)} style={{ background: '#fca311', border: 'none', color: '#000', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}>Propose New</button>
-                      </div>
-                    </div>
-                  )}
+        {/* PATIENT DASHBOARD LAYOUT - Profile Sidebar + Main Grid */}
+        <div className="dashboard-layout">
+          {/* PATIENT PROFILE SIDEBAR */}
+          <aside className="profile-sidebar animate-fade-up">
+            <div className="profile-avatar">
+              {user?.imageUrl ? (
+                <img src={user.imageUrl} alt="Profile" />
+              ) : (
+                <div className="avatar-placeholder">
+                  <i className="fas fa-user"></i>
                 </div>
-              ))
-            ) : (
-              <div className="empty-state">
-                <p>No upcoming appointments.</p>
-                {/* Voice Assistant Modal */}
-                <button className="p-btn" onClick={() => setIsBookingOpen(true)}>
-                  Book Now <i className="fas fa-arrow-right"></i>
-                </button>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+            <h3 className="profile-name">{profile?.name || fullName}</h3>
+            <span className="profile-role">Patient</span>
 
-          {/* FOLLOW UP REQUIRED CARD */}
-          {followUps.length > 0 && (
-            <div className="patient-card animate-fade-up" style={{ animationDelay: "0.15s", border: "1px solid #f0b800" }}>
+            <div className="profile-info-grid">
+              <div className="profile-stat">
+                <span className="stat-value">{upcoming.length}</span>
+                <span className="stat-label">Upcoming</span>
+              </div>
+              <div className="profile-stat">
+                <span className="stat-value">{history.length}</span>
+                <span className="stat-label">Past Visits</span>
+              </div>
+              <div className="profile-stat">
+                <span className="stat-value">{myPrescriptions.length}</span>
+                <span className="stat-label">Prescriptions</span>
+              </div>
+            </div>
+
+            <div className="profile-details-compact">
+              <div className="detail-row">
+                <i className="fas fa-envelope"></i>
+                <span>{profile?.email || user?.primaryEmailAddress?.emailAddress || "No email"}</span>
+              </div>
+              <div className="detail-row">
+                <i className="fas fa-phone"></i>
+                <span>{profile?.phone || "Not provided"}</span>
+              </div>
+              <div className="detail-row">
+                <i className="fas fa-birthday-cake"></i>
+                <span>{profile?.age ? `${profile.age} years old` : "Age N/A"}</span>
+              </div>
+              <div className="detail-row">
+                <i className="fas fa-venus-mars"></i>
+                <span>{profile?.sex || "N/A"}</span>
+              </div>
+            </div>
+
+            <button className="p-btn" onClick={() => setIsBookingOpen(true)} style={{ marginTop: 'auto' }}>
+              <i className="fas fa-calendar-plus"></i> Book Appointment
+            </button>
+          </aside>
+
+          {/* MAIN CONTENT GRID */}
+          <div className="patient-grid">
+            {/* APPOINTMENTS CARD */}
+            <div className="patient-card animate-fade-up" style={{ animationDelay: "0.1s" }}>
               <div className="card-header">
-                <h3 style={{ color: "#f0b800" }}>Follow Up Required</h3>
-                <i className="fas fa-exclamation-circle card-icon" style={{ color: "#f0b800" }}></i>
+                <h3>Upcoming Appointments</h3>
+                <i className="fas fa-calendar-alt card-icon"></i>
               </div>
-              {followUps.map(a => (
-                <div key={a.id} className="appt-item" style={{ borderLeft: "3px solid #f0b800", background: "rgba(240, 184, 0, 0.05)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <b>{new Date(a.time).toLocaleDateString()}</b>
-                    <span style={{ fontSize: "0.8rem", color: "#f0b800", fontWeight: "bold" }}>ACTION NEEDED</span>
-                  </div>
-                  <div className="appt-doctor">{a.doctor_name}</div>
-                  <div className="appt-reason" style={{ marginTop: "5px" }}>
-                    <i className="fas fa-info-circle"></i> Reason: <span style={{ color: "#fff" }}>{a.follow_up_reason}</span>
-                  </div>
-                  <div style={{ marginTop: "10px" }}>
-                    <button className="p-btn small" onClick={() => setIsBookingOpen(true)} style={{ width: "100%" }}>
-                      Book Follow Up
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+              {upcoming.length > 0 ? (
+                upcoming.map((a) => (
+                  <div key={a.id} className="appt-item">
+                    <b>{formatApptTime(a.time)}</b>
+                    <div className="appt-doctor">{a.doctor_name}</div>
+                    <div className="appt-reason">{a.reason}</div>
 
-          {/* MEDICAL HISTORY CARD */}
-          <div className="patient-card animate-fade-up" style={{ animationDelay: "0.2s" }}>
-            <div className="card-header">
-              <h3>Health History</h3>
-              <i className="fas fa-file-medical-alt card-icon"></i>
-            </div>
-            {history.length > 0 ? (
-              <div className="history-list" style={{ maxHeight: "250px", overflowY: "auto", paddingRight: "5px" }}>
-                {history.map((a) => (
-                  <div key={a.id} className="appt-item history-item" style={{ opacity: 0.7, borderLeft: "3px solid #666" }}>
-                    <b>{new Date(a.time).toLocaleDateString()}</b>
-                    <div className="appt-doctor" style={{ fontSize: "0.9rem" }}>{a.doctor_name}</div>
-                    <div className="appt-reason" style={{ fontSize: "0.85rem" }}>{a.reason}</div>
-                    <span className="history-status" style={{ fontSize: "0.75rem", color: "#aaa", textTransform: "uppercase" }}>{a.status}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="placeholder-text">No past medical history found.</p>
-            )}
-          </div>
-
-          {/* AI INSIGHTS CARD */}
-          <div className="patient-card animate-fade-up" style={{ animationDelay: "0.3s", gridColumn: "1 / -1" }}>
-            <div className="card-header">
-              <h3>My Oral Health</h3>
-              <i className="fas fa-smile-beam card-icon"></i>
-            </div>
-            <div className="info-box success">
-              <i className="fas fa-check-circle"></i>
-              <span>Your gum health score is excellent! Keep flossing.</span>
-            </div>
-          </div>
-
-          {/* PRESCRIPTIONS CARD */}
-          <div className="patient-card animate-fade-up" style={{ animationDelay: "0.4s" }}>
-            <div className="card-header">
-              <h3>My Prescriptions</h3>
-              <i className="fas fa-pills card-icon"></i>
-            </div>
-
-            {myPrescriptions.length > 0 ? (
-              <div className="prescriptions-list">
-                {myPrescriptions.map((p) => (
-                  <div className="prescription-item" key={p.id}>
-                    <div className="presc-info">
-                      <h4>Prescribed by Dr. {p.doctor || "Dentist"}</h4>
-                      <span className="presc-date">{new Date(p.date).toLocaleDateString()}</span>
-                      <p className="presc-details">{p.details}</p>
+                    {/* DYNAMIC STATUS */}
+                    <div className={`appt-status ${a.status === "confirmed" ? "status-upcoming" : "status-pending"}`} style={{
+                      background: a.status === "negotiating" ? "#fca311" :
+                        a.status === "pending_approval" ? "#888" : "",
+                      color: a.status === "negotiating" ? "#000" : "#fff"
+                    }}>
+                      {a.status === "pending_approval" ? "Waiting Approval" :
+                        a.status === "negotiating" ? "Action Needed" :
+                          a.status === "confirmed" ? "Confirmed" : a.status}
                     </div>
-                    <button className="download-btn" onClick={() => downloadPrescription(p.id, p.isLegacy, p.patient || fullName)}>
-                      <i className="fas fa-download"></i> {p.isLegacy ? "Legacy" : "Download"}
-                    </button>
+
+                    {/* NEGOTIATION UI */}
+                    {a.status === "negotiating" && (
+                      <div style={{ marginTop: '10px', background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '5px' }}>
+                        <p style={{ color: '#fca311', fontSize: '0.85rem', margin: '0 0 5px 0' }}>Receptionist proposed change:</p>
+                        <p style={{ fontSize: '0.8rem', fontStyle: 'italic', marginBottom: '10px' }}>"{a.denial_reason}"</p>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button onClick={() => handleAcceptProposal(a)} style={{ background: '#4CAF50', border: 'none', color: '#fff', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}>Accept</button>
+                          <button onClick={() => handleCounterProposal(a)} style={{ background: '#fca311', border: 'none', color: '#000', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}>Propose New</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state">
+                  <p>No upcoming appointments.</p>
+                  {/* Voice Assistant Modal */}
+                  <button className="p-btn" onClick={() => setIsBookingOpen(true)}>
+                    Book Now <i className="fas fa-arrow-right"></i>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* FOLLOW UP REQUIRED CARD */}
+            {followUps.length > 0 && (
+              <div className="patient-card animate-fade-up" style={{ animationDelay: "0.15s", border: "1px solid #f0b800" }}>
+                <div className="card-header">
+                  <h3 style={{ color: "#f0b800" }}>Follow Up Required</h3>
+                  <i className="fas fa-exclamation-circle card-icon" style={{ color: "#f0b800" }}></i>
+                </div>
+                {followUps.map(a => (
+                  <div key={a.id} className="appt-item" style={{ borderLeft: "3px solid #f0b800", background: "rgba(240, 184, 0, 0.05)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <b>{new Date(a.time).toLocaleDateString()}</b>
+                      <span style={{ fontSize: "0.8rem", color: "#f0b800", fontWeight: "bold" }}>ACTION NEEDED</span>
+                    </div>
+                    <div className="appt-doctor">{a.doctor_name}</div>
+                    <div className="appt-reason" style={{ marginTop: "5px" }}>
+                      <i className="fas fa-info-circle"></i> Reason: <span style={{ color: "#fff" }}>{a.follow_up_reason}</span>
+                    </div>
+                    <div style={{ marginTop: "10px" }}>
+                      <button className="p-btn small" onClick={() => setIsBookingOpen(true)} style={{ width: "100%" }}>
+                        Book Follow Up
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="empty-state">No prescriptions uploaded yet.</p>
             )}
-          </div>
 
-          {/* MY PROFILE SECTION */}
-          <div className="patient-card animate-fade-up" style={{ animationDelay: "0.5s" }}>
-            <div className="card-header">
-              <h3>My Profile</h3>
-              <i className="fas fa-user-circle card-icon"></i>
-            </div>
-            {profile ? (
-              <div className="profile-details-list">
-                <div className="profile-detail-item">
-                  <span className="detail-label">Full Name</span>
-                  <span className="detail-value">{profile.name}</span>
-                </div>
-                <div className="profile-detail-item">
-                  <span className="detail-label">Email Address</span>
-                  <span className="detail-value">{profile.email}</span>
-                </div>
-                <div className="profile-detail-item">
-                  <span className="detail-label">Phone Number</span>
-                  <span className="detail-value">{profile.phone || "Not provided"}</span>
-                </div>
-                <div style={{ display: "flex", gap: "20px" }}>
-                  <div className="profile-detail-item" style={{ flex: 1 }}>
-                    <span className="detail-label">Age</span>
-                    <span className="detail-value">{profile.age || "N/A"}</span>
-                  </div>
-                  <div className="profile-detail-item" style={{ flex: 1 }}>
-                    <span className="detail-label">Sex</span>
-                    <span className="detail-value">{profile.sex || "N/A"}</span>
-                  </div>
-                </div>
+            {/* MEDICAL HISTORY CARD */}
+            <div className="patient-card animate-fade-up" style={{ animationDelay: "0.2s" }}>
+              <div className="card-header">
+                <h3>Health History</h3>
+                <i className="fas fa-file-medical-alt card-icon"></i>
               </div>
-            ) : (
-              <p className="placeholder-text">Loading profile...</p>
-            )}
+              {history.length > 0 ? (
+                <div className="history-list" style={{ maxHeight: "250px", overflowY: "auto", paddingRight: "5px" }}>
+                  {history.map((a) => (
+                    <div key={a.id} className="appt-item history-item" style={{ opacity: 0.7, borderLeft: "3px solid #666" }}>
+                      <b>{new Date(a.time).toLocaleDateString()}</b>
+                      <div className="appt-doctor" style={{ fontSize: "0.9rem" }}>{a.doctor_name}</div>
+                      <div className="appt-reason" style={{ fontSize: "0.85rem" }}>{a.reason}</div>
+                      <span className="history-status" style={{ fontSize: "0.75rem", color: "#aaa", textTransform: "uppercase" }}>{a.status}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="placeholder-text">No past medical history found.</p>
+              )}
+            </div>
+
+            {/* AI INSIGHTS CARD */}
+            <div className="patient-card animate-fade-up" style={{ animationDelay: "0.3s", gridColumn: "1 / -1" }}>
+              <div className="card-header">
+                <h3>My Oral Health</h3>
+                <i className="fas fa-smile-beam card-icon"></i>
+              </div>
+              <div className="info-box success">
+                <i className="fas fa-check-circle"></i>
+                <span>Your gum health score is excellent! Keep flossing.</span>
+              </div>
+            </div>
+
+            {/* PRESCRIPTIONS CARD */}
+            <div className="patient-card animate-fade-up" style={{ animationDelay: "0.4s" }}>
+              <div className="card-header">
+                <h3>My Prescriptions</h3>
+                <i className="fas fa-pills card-icon"></i>
+              </div>
+
+              {myPrescriptions.length > 0 ? (
+                <div className="prescriptions-list">
+                  {myPrescriptions.map((p) => (
+                    <div className="prescription-item" key={p.id}>
+                      <div className="presc-info">
+                        <h4>Prescribed by Dr. {p.doctor || "Dentist"}</h4>
+                        <span className="presc-date">{new Date(p.date).toLocaleDateString()}</span>
+                        <p className="presc-details">{p.details}</p>
+                      </div>
+                      <button className="download-btn" onClick={() => downloadPrescription(p.id, p.isLegacy, p.patient || fullName)}>
+                        <i className="fas fa-download"></i> {p.isLegacy ? "Legacy" : "Download"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-state">No prescriptions uploaded yet.</p>
+              )}
+            </div>
+
           </div>
         </div>
-      </main >
+      </main>
 
       {/* BOOKING MODAL */}
       {
