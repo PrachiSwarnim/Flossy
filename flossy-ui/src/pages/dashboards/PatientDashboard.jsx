@@ -34,6 +34,14 @@ export default function PatientDashboard() {
   const [myPrescriptions, setMyPrescriptions] = useState([]);
   const [aiSuggestion, setAiSuggestion] = useState("Checking your history for the best recommendation...");
   const [profile, setProfile] = useState(null);
+  const [profileVisible, setProfileVisible] = useState(true);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [editProfileData, setEditProfileData] = useState({
+    name: "",
+    phone: "",
+    age: "",
+    sex: "M"
+  });
 
   // LOAD PRESCRIPTIONS
   async function loadPrescriptions() {
@@ -175,9 +183,41 @@ export default function PatientDashboard() {
       if (res.ok) {
         const data = await res.json();
         setProfile(data);
+        setEditProfileData({
+          name: data.name || "",
+          phone: data.phone || "",
+          age: data.age || "",
+          sex: data.sex || "M"
+        });
       }
     } catch (e) {
       console.error("Profile load error", e);
+    }
+  }
+
+  async function updateProfile() {
+    if (!session) return;
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/patients/me`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...editProfileData,
+          age: editProfileData.age ? parseInt(editProfileData.age) : null
+        })
+      });
+      if (res.ok) {
+        setIsEditProfileOpen(false);
+        loadProfile();
+      } else {
+        alert("Failed to update profile.");
+      }
+    } catch (err) {
+      console.error("Update profile error", err);
     }
   }
 
@@ -378,10 +418,21 @@ export default function PatientDashboard() {
       <main className="patient-main">
         <h2 id="welcomeMessage">{isNewUser ? "Welcome" : "Welcome back"}, {fullName}!</h2>
 
+        {/* Floating Toggle (visible when sidebar hidden) */}
+        {!profileVisible && (
+          <button className="floating-sidebar-toggle" onClick={() => setProfileVisible(true)} title="Show Profile">
+            <i className="fas fa-user"></i>
+          </button>
+        )}
+
         {/* PATIENT DASHBOARD LAYOUT - Profile Sidebar + Main Grid */}
-        <div className="dashboard-layout">
+        <div className={`dashboard-layout ${!profileVisible ? "sidebar-hidden" : ""}`}>
           {/* PATIENT PROFILE SIDEBAR */}
           <aside className="profile-sidebar animate-fade-up">
+            <button className="sidebar-toggle-btn" onClick={() => setProfileVisible(false)} title="Hide Profile">
+              <i className="fas fa-chevron-left"></i>
+            </button>
+
             <div className="profile-avatar">
               {user?.imageUrl ? (
                 <img src={user.imageUrl} alt="Profile" />
@@ -430,6 +481,10 @@ export default function PatientDashboard() {
                 <span>{profile?.sex || "N/A"}</span>
               </div>
             </div>
+
+            <button className="edit-profile-btn" onClick={() => setIsEditProfileOpen(true)}>
+              <i className="fas fa-edit"></i> Edit Profile
+            </button>
 
             <button className="p-btn" onClick={() => setIsBookingOpen(true)} style={{ marginTop: 'auto' }}>
               <i className="fas fa-calendar-plus"></i> Book Appointment
@@ -684,6 +739,68 @@ export default function PatientDashboard() {
           <button onClick={sendMessage}>Send</button>
         </div>
       </aside>
+
+      {/* EDIT PROFILE MODAL */}
+      {isEditProfileOpen && (
+        <div className="modal-overlay" onClick={() => setIsEditProfileOpen(false)}>
+          <div className="modal-content" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Your Profile</h3>
+              <button className="close-btn" onClick={() => setIsEditProfileOpen(false)}>&times;</button>
+            </div>
+
+            <div className="profile-edit-form">
+              <div className="form-group">
+                <label>Full Name</label>
+                <input
+                  type="text"
+                  value={editProfileData.name}
+                  onChange={e => setEditProfileData({ ...editProfileData, name: e.target.value })}
+                  placeholder="Your full name"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Phone Number</label>
+                <input
+                  type="text"
+                  value={editProfileData.phone}
+                  onChange={e => setEditProfileData({ ...editProfileData, phone: e.target.value })}
+                  placeholder="Contact number"
+                />
+              </div>
+
+              <div className="form-row-group">
+                <div className="form-group">
+                  <label>Age</label>
+                  <input
+                    type="number"
+                    value={editProfileData.age}
+                    onChange={e => setEditProfileData({ ...editProfileData, age: e.target.value })}
+                    placeholder="e.g. 25"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Sex</label>
+                  <select
+                    value={editProfileData.sex}
+                    onChange={e => setEditProfileData({ ...editProfileData, sex: e.target.value })}
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="modal-actions" style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button className="p-btn small" onClick={() => setIsEditProfileOpen(false)} style={{ background: '#333' }}>Cancel</button>
+                <button className="p-btn small" onClick={updateProfile}>Save Changes</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </>

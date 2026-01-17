@@ -105,3 +105,32 @@ def get_my_profile(db: Session = Depends(get_db), user = Depends(require_role("p
         "email": user.email,
         "sex": patient.sex
     }
+@router.patch("/me")
+def update_my_profile(data: PatientUpdate, db: Session = Depends(get_db), user = Depends(require_role("patient"))):
+    """
+    Allow a patient to update their own profile.
+    """
+    patient = db.query(Patient).filter(Patient.user_id == user.id).first()
+    
+    if not patient:
+        # Create a basic patient profile if it doesn't exist yet
+        # (This can happen if they logged in but haven't booked an appointment yet)
+        patient = Patient(
+            user_id=user.id,
+            name=data.name or (user.email.split("@")[0] if user.email else "New Patient"),
+            email=user.email
+        )
+        db.add(patient)
+        db.flush()
+
+    if data.name:
+        patient.name = data.name
+    if data.phone:
+        patient.phone = data.phone
+    if data.age is not None:
+        patient.age = data.age
+    if data.sex:
+        patient.sex = data.sex
+        
+    db.commit()
+    return {"success": True}

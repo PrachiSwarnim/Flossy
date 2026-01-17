@@ -592,9 +592,26 @@ body {
 /* =============== Dashboard Layout with Profile Sidebar =============== */
 .dashboard-layout {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 320px 1fr;
   gap: 2rem;
   align-items: start;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dashboard-layout.sidebar-hidden {
+  grid-template-columns: 0px 1fr;
+  gap: 0;
+}
+
+.dashboard-layout.sidebar-hidden .profile-sidebar {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50px);
+  pointer-events: none;
+  width: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
 }
 
 /* Profile Sidebar Styles */
@@ -602,7 +619,7 @@ body {
   background: linear-gradient(180deg, #1f1f1f 0%, #181818 100%);
   border: 1px solid #333;
   border-radius: 20px;
-  padding: 2rem 1.5rem;
+  padding: 2.5rem 1.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -611,6 +628,9 @@ body {
   top: 100px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   min-height: 500px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  z-index: 10;
 }
 
 .profile-sidebar::before {
@@ -832,4 +852,99 @@ body {
   .detail-row {
     min-width: 140px;
   }
+}
+
+/* Sidebar Toggle Button */
+.sidebar-toggle-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: var(--primary-gold);
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  margin-bottom: 2rem;
+  align-self: flex-start;
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--primary-gold);
+  color: #1a1a1a;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+  transform: translateY(-2px);
+}
+
+.sidebar-toggle-btn i {
+  transition: transform 0.4s ease;
+}
+
+.sidebar-hidden .sidebar-toggle-btn i {
+  transform: rotate(180deg);
+}
+
+.edit-profile-btn {
+  margin-top: 1.5rem;
+  width: 100%;
+  padding: 0.8rem;
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  color: var(--primary-gold);
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+}
+
+.edit-profile-btn:hover {
+  background: rgba(212, 175, 55, 0.1);
+  border-color: var(--primary-gold);
+  transform: translateY(-2px);
+}
+
+/* Edit Modal Specifics */
+.profile-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+.form-row-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.floating-sidebar-toggle {
+  position: fixed;
+  left: 20px;
+  top: 100px;
+  background: var(--primary-gold);
+  color: #1a1a1a;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2000;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+  transition: all 0.3s ease;
+}
+
+.floating-sidebar-toggle:hover {
+  transform: scale(1.1);
 }
