@@ -13,7 +13,20 @@ export default function PostLogin() {
     if (!isLoaded || !session || !user) return;
 
     const setup = async () => {
-      const token = await session.getToken({ template: "default" });
+      // Get token - try with template first, fallback to without template
+      let token;
+      try {
+        token = await session.getToken({ template: "default" });
+      } catch (templateErr) {
+        console.warn("Token template 'default' failed, trying without template:", templateErr);
+        token = await session.getToken();
+      }
+
+      if (!token) {
+        console.error("Failed to get authentication token");
+        navigate("/patient"); // Fallback
+        return;
+      }
 
       sessionStorage.setItem("flossy_token", token);
       sessionStorage.setItem("flossy_user", JSON.stringify(user));
@@ -30,6 +43,7 @@ export default function PostLogin() {
       // 1️⃣ Backend Role Sync & Check
       // We prioritize the backend response because it contains the authoritative role logic and ensures the DB is synced.
       try {
+        console.log("Calling post_login with token:", token.substring(0, 30) + "...");
         const res = await fetch(`${API}/api/auth/post_login`, {
           method: "POST",
           headers: {
@@ -51,6 +65,10 @@ export default function PostLogin() {
             navigate("/receptionist");
             return;
           }
+        } else {
+          console.error("post_login failed with status:", res.status);
+          const errorData = await res.text();
+          console.error("Error details:", errorData);
         }
       } catch (err) {
         console.error("Backend post_login error:", err);

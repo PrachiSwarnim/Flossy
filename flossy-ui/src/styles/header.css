@@ -71,8 +71,8 @@
 .header-outline-btn {
   text-decoration: none;
   font-family: "Inter", sans-serif;
-  background: #e6be8a;
-  /* Nude/Gold color */
+  background: linear-gradient(135deg, #d4af37 0%, #f0c455 100%);
+  /* Rich Gold gradient */
   color: #1a1a1a;
   font-weight: 700;
   font-size: 0.9rem;
@@ -84,11 +84,14 @@
   border-radius: 2px;
   /* Slight geometric radius, almost square */
   transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
 }
 
 .header-outline-btn:hover {
-  background: #fff;
+  background: linear-gradient(135deg, #f0c455 0%, #fff 100%);
   color: #1a1a1a;
+  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5);
+  transform: translateY(-2px);
 }
 
 /* HAMBURGER */

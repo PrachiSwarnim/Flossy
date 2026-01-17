@@ -20,7 +20,7 @@ import "../styles/hero.css";
 import "../styles/about.css";
 
 import { Meteors } from "../components/ui/Meteors";
-import { ThreeDCard } from "../components/ui/ThreeDCard";
+import { GlassCard } from "../components/ui/GlassCard";
 import { TextGenerateEffect } from "../components/ui/TextGenerateEffect";
 import { useState } from "react";
 
@@ -45,42 +45,27 @@ export default function Home() {
                 {/* Floating Appointment Form - Centered via Wrapper */}
                 <div className="hero-form-container">
 
-                    <motion.div
+                    <div
                         id="appointment"
-                        style={{ scrollMarginTop: "120px", perspective: "1000px" }}
-                        initial={{ y: 50, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ delay: 0.5, duration: 0.8 }}
+                        style={{ scrollMarginTop: "120px" }}
                     >
-                        <ThreeDCard
-                            className="booking-card-3d"
+                        <GlassCard
+                            className="booking-card-glass"
                             containerStyle={{
-                                background: "url('/static/assets/image.jpg') center/cover no-repeat",
+                                background: "linear-gradient(145deg, #0891b2 0%, #0e7490 50%, #164e63 100%)",
                                 position: "relative",
                                 padding: "3rem",
                                 borderRadius: "20px",
-                                border: "1px solid rgba(255, 255, 255, 0.2)",
+                                border: "1px solid rgba(255, 255, 255, 0.15)",
                                 maxWidth: "500px",
                                 width: "100%",
-                                boxShadow: "0 20px 50px rgba(0,0,0,0.5), 0 0 30px rgba(212, 175, 55, 0.2)",
+                                boxShadow: "0 25px 60px rgba(0,0,0,0.5), 0 0 40px rgba(8, 145, 178, 0.3), inset 0 1px 0 rgba(255,255,255,0.1)",
                                 textAlign: "center",
-                                margin: "0 auto"
+                                margin: "0 auto",
+                                overflow: "hidden"
                             }}
                         >
                             <Meteors number={20} />
-
-                            {/* Dark Overlay for readability */}
-                            <div style={{
-                                position: "absolute",
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                background: "rgba(0, 0, 0, 0.6)",
-                                backdropFilter: "blur(2px)",
-                                zIndex: 1,
-                                borderRadius: "20px"
-                            }}></div>
 
                             {/* Content */}
                             <div style={{ position: "relative", zIndex: 2 }}>
@@ -89,16 +74,18 @@ export default function Home() {
                                     fontSize: "2.2rem",
                                     marginBottom: "1.2rem",
                                     fontFamily: "var(--font-heading)",
-                                    textShadow: "0 2px 4px rgba(0,0,0,0.8)"
-                                }}>Book Your Visit</h3>
+                                    textShadow: "0 2px 8px rgba(0,0,0,0.4)"
+                                }}>Ready to Smile?</h3>
 
                                 <p style={{
-                                    color: "#ddd",
+                                    color: "#ffffff",
                                     marginBottom: "2.5rem",
-                                    lineHeight: "1.6",
-                                    fontSize: "1.1rem"
+                                    lineHeight: "1.7",
+                                    fontSize: "1.1rem",
+                                    fontWeight: "500",
+                                    textShadow: "0 1px 3px rgba(0,0,0,0.3)"
                                 }}>
-                                    To provide you with personalized care, please create a patient account to schedule your appointment instantly.
+                                    Join us in 30 seconds — create your account and book your dream smile appointment.
                                 </p>
 
                                 <Link to="/signup" style={{
@@ -112,17 +99,17 @@ export default function Home() {
                                     borderRadius: "12px",
                                     textDecoration: "none",
                                     marginBottom: "1.5rem",
-                                    boxShadow: "0 5px 15px rgba(0,0,0,0.3)"
+                                    boxShadow: "0 8px 25px rgba(0,0,0,0.3)"
                                 }}>
-                                    Create Patient Account
+                                    Let's Get Started
                                 </Link>
 
-                                <div style={{ color: "#aaa", fontSize: "0.95rem", textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}>
-                                    Already have an account? <Link to="/login" style={{ color: "var(--primary-gold)", textDecoration: "none", fontWeight: "bold" }}>Log In</Link>
+                                <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.95rem" }}>
+                                    Been here before? <Link to="/login" style={{ color: "var(--primary-gold)", textDecoration: "none", fontWeight: "bold" }}>Welcome back! →</Link>
                                 </div>
                             </div>
-                        </ThreeDCard>
-                    </motion.div>
+                        </GlassCard>
+                    </div>
                 </div>
             </section>
 

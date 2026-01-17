@@ -140,6 +140,15 @@ async def ai_response(request: Request, user=Depends(require_role("patient"))):
     if not user_msg:
         return {"answer": "I didn't receive any message. Could you please repeat that?"}
 
+    # Get user's name - first from request body, then from auth state
+    user_payload = getattr(request.state, "user", {})
+    user_name = (
+        payload.get("user_name") or  # From frontend request body
+        user_payload.get("first_name") or  # From auth token
+        (user_payload.get("name", "").split()[0] if user_payload.get("name") else None) or
+        "there"  # Fallback
+    )
+    
     # Simplified Text Chat Handler (No function calling tools for now)
     # We load the Knowledge Base text if possible, or use a default one.
     
@@ -161,26 +170,33 @@ async def ai_response(request: Request, user=Depends(require_role("patient"))):
     """
 
     SYSTEM_PROMPT = f"""
-    You are Flossy, the intelligent frontdesk receptionist, for Smile Artists Dental Studio.
+    You are Flossy, the intelligent frontdesk receptionist for Smile Artists Dental Studio.
+    You are chatting with a patient named {user_name}.
     
     **Your Goal:**
-    1. Greet the patient warmly.
+    1. Be warm and friendly - address the patient by their name ({user_name}) when appropriate.
     2. Answer questions about pricing or symptoms using your Knowledge Base.
-    3. Determine if the patient wants to book an appointment.
+    3. If patient mentions booking, tell them you can help them book an appointment.
+    4. Keep responses concise (2-3 sentences max).
     
     **Tone:**
-    - Professional, empathetic, and concise (1-2 sentences).
+    - Professional, empathetic, and friendly.
+    - Use the patient's name naturally in conversation.
     
     [KNOWLEDGE BASE]
     {KNOWLEDGE_BASE}
     """
     
-    prompt = f"{SYSTEM_PROMPT}\n\nUSER: {user_msg}\n\nFLOSSY:"
+    prompt = f"{SYSTEM_PROMPT}\n\nUSER ({user_name}): {user_msg}\n\nFLOSSY:"
     try:
         reply = ai_generate(prompt)
+        # Clean up any potential formatting issues
+        reply = reply.strip()
+        if not reply:
+            reply = f"I'm here to help, {user_name}! Could you please tell me more about what you need?"
     except Exception as e:
         print(f"AI Response Error: {e}")
-        reply = "I'm having trouble connecting. Please try again or call our front desk."
+        reply = f"I'm having trouble connecting right now, {user_name}. Please try again in a moment or call our front desk."
 
     return {"answer": reply}
 

@@ -293,18 +293,18 @@ export default function PatientDashboard() {
   }
 
   // AI CHAT HANDLER
-  async function sendMessage() {
-    if (!input.trim()) return;
+  async function sendMessage(customMsg = null) {
+    const msg = customMsg || input;
+    if (!msg || !msg.trim()) return;
     if (!session) return;
 
-    const msg = input;
-    setInput("");
+    if (!customMsg) setInput("");
 
     // INTERCEPT: If user asks to book a cleaning via chip
     if (msg === "Book a cleaning") {
       setMessages(prev => [...prev, { from: "user", text: msg }]);
       setTimeout(() => {
-        setMessages(prev => [...prev, { from: "ai", text: "I can help with that! Opening the booking form for you..." }]);
+        setMessages(prev => [...prev, { from: "ai", text: `Sure thing, ${user.firstName || "there"}! Opening the booking form for you...` }]);
         setIsBookingOpen(true); // Open the modal
       }, 500);
       return;
@@ -313,23 +313,39 @@ export default function PatientDashboard() {
     setMessages((prev) => [...prev, { from: "user", text: msg }]);
     setTyping(true);
 
-    const token = await session.getToken({ template: "default" });
+    try {
+      const token = await session.getToken({ template: "default" });
 
-    const aiRes = await fetch(`${API}/api/ai_response`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ query: msg }),
-    });
+      const aiRes = await fetch(`${API}/api/ai_response`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          query: msg,
+          user_name: user.firstName || "there" // Pass user name to backend
+        }),
+      });
 
-    const aiData = await aiRes.json();
+      if (!aiRes.ok) {
+        throw new Error(`API returned ${aiRes.status}`);
+      }
 
-    setMessages((prev) => [...prev, { from: "ai", text: aiData.answer }]);
-    setTyping(false);
+      const aiData = await aiRes.json();
+      const answer = aiData.answer || `I'm here to help, ${user.firstName || "there"}! Could you rephrase that?`;
 
-    loadAppointments();
+      setMessages((prev) => [...prev, { from: "ai", text: answer }]);
+    } catch (error) {
+      console.error("AI Response Error:", error);
+      setMessages((prev) => [...prev, {
+        from: "ai",
+        text: `Sorry ${user.firstName || "there"}, I'm having trouble connecting. Please try again in a moment.`
+      }]);
+    } finally {
+      setTyping(false);
+      loadAppointments();
+    }
   }
 
   // LOADING SCREEN
@@ -633,10 +649,10 @@ export default function PatientDashboard() {
               </p>
 
               <div className="ai-chips">
-                <button onClick={() => setInput("I have a toothache") || sendMessage()}>🦷 Toothache</button>
-                <button onClick={() => setInput("Cost of dental implants") || sendMessage()}>💰 Pricing</button>
-                <button onClick={() => setInput("Book a cleaning") || sendMessage()}>📅 Book Cleaning</button>
-                <button onClick={() => setInput("Post-op care instructions") || sendMessage()}>🩹 Post-op Care</button>
+                <button onClick={() => sendMessage("I have a toothache")}>🦷 Toothache</button>
+                <button onClick={() => sendMessage("Cost of dental implants")}>💰 Pricing</button>
+                <button onClick={() => sendMessage("Book a cleaning")}>📅 Book Cleaning</button>
+                <button onClick={() => sendMessage("Post-op care instructions")}>🩹 Post-op Care</button>
               </div>
             </div>
           )}
