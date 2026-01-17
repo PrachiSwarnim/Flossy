@@ -35,30 +35,28 @@
 /* BACKDROP BLUR */
 .gallery-backdrop {
   position: absolute;
-  top: -10%;
-  left: -10%;
-  width: 120%;
-  height: 120%;
+  top: -5%;
+  left: -5%;
+  width: 110%;
+  height: 110%;
   background-size: cover;
   background-position: center;
-  filter: blur(25px) brightness(0.6);
+  filter: blur(30px) brightness(0.4);
   z-index: 1;
+  transition: background-image 0.6s ease-in-out;
 }
 
 /* IMAGE */
 .gallery-image-main {
   position: absolute;
-  z-index: 1;
-  /* Sit above backdrop */
+  z-index: 5;
   width: auto;
   height: auto;
-  max-width: 100%;
-  max-height: 100%;
+  max-width: 90%;
+  max-height: 90%;
   object-fit: contain;
-  opacity: 0;
-  animation: fadeIn 0.8s ease-in-out forwards;
-  /* border-radius: 8px; */
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  border-radius: 12px;
 }
 
 @keyframes fadeIn {

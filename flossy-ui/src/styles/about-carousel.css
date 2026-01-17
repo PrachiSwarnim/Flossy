@@ -58,11 +58,12 @@
 .about-slides {
     display: flex;
     height: 100%;
-    width: 100%;
 }
 
 
 .about-slide {
+    flex: 0 0 100%;
+    /* Fix: Prevent squashing */
     min-width: 100%;
     height: 100%;
     position: relative;

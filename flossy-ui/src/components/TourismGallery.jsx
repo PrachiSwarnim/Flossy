@@ -1,9 +1,9 @@
 import "../styles/tourism_gallery.css";
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function TourismGallery() {
   const images = [
-    "/static/assets/patient_gallery/p9.jpg",
     "/static/assets/patient_gallery/p10.jpg",
     "/static/assets/patient_gallery/Patient1.jpg",
     "/static/assets/patient_gallery/patient2.jpg",
@@ -13,6 +13,7 @@ export default function TourismGallery() {
     "/static/assets/patient_gallery/p6.jpg",
     "/static/assets/patient_gallery/p7.jpg",
     "/static/assets/patient_gallery/p8.jpg",
+    "/static/assets/patient_gallery/p9.jpg",
     "/static/assets/patient_gallery/p11.jpg",
     "/static/assets/patient_gallery/p12.jpg",
     "/static/assets/patient_gallery/p13.jpg",
@@ -28,9 +29,9 @@ export default function TourismGallery() {
   useEffect(() => {
     const timer = setInterval(() => {
       setIndex((i) => (i + 1) % images.length);
-    }, 4000);
+    }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [images.length]);
 
   const nextSlide = () => {
     setIndex((prev) => (prev + 1) % images.length);
@@ -54,7 +55,18 @@ export default function TourismGallery() {
           &#10094;
         </button>
 
-        <img src={images[index]} alt="Smile Case" key={index} className="gallery-image-main" />
+        <AnimatePresence mode="wait">
+          <motion.img
+            key={index}
+            src={images[index]}
+            alt="Smile Case"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.05 }}
+            transition={{ duration: 0.6 }}
+            className="gallery-image-main"
+          />
+        </AnimatePresence>
 
         <button className="gallery-arrow right" onClick={nextSlide}>
           &#10095;

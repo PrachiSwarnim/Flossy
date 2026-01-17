@@ -9,10 +9,14 @@ def get_automatic_role(email: str) -> str:
     Returns the enforced role based on email.
     """
     email = email.lower().strip()
-    if email in ["choudhary.shruti01@gmail.com", "prachi.swarnim@gmail.com"]:
+    # Dentist emails
+    if email in ["prachi.swarnim@gmail.com", "choudhary.shruti01@gmail.com"]:
         return "dentist"
-    if email in ["anything.handmade1@gmail.com"]:
+    # Receptionist emails (handling potential typo in request)
+    if email in ["anyhting.handmade1@gmail.com", "anything.handmade1@gmail.com"]:
         return "receptionist"
+    
+    # All other emails are patients
     return "patient"
 
 def sync_clerk_role(user_payload: dict, role: str):
