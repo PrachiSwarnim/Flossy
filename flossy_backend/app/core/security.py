@@ -52,9 +52,14 @@ def verify_token(token: str) -> dict:
         expected_issuers = [
             config.CLERK_ISSUER,
             "https://clerk.smileartistsdentalstudio.com",
+            "https://clerk.accounts.dev",
+            "https://accounts.clerk.dev"
         ]
         
-        if token_issuer not in expected_issuers:
+        # Check if the issuer ends with any of the expected suffixes or matches exactly
+        is_valid_issuer = any(token_issuer == iss or token_issuer.endswith(".clerk.accounts.dev") for iss in expected_issuers if iss)
+        
+        if not is_valid_issuer:
             print(f"❌ Invalid issuer: {token_issuer}")
             raise jwt.InvalidTokenError(f"Invalid issuer: {token_issuer}")
         

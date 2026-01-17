@@ -27,7 +27,7 @@ def sync_clerk_role(user_payload: dict, role: str):
         if not clerk_user_id: return
 
         requests.patch(
-            f"https://api.clerk.dev/v1/users/{clerk_user_id}",
+            f"https://api.clerk.com/v1/users/{clerk_user_id}",
             headers=headers,
             json={"public_metadata": {"role": role}}
         )
@@ -61,7 +61,7 @@ def fetch_clerk_email(user_payload: dict) -> str:
     try:
         headers = {"Authorization": f"Bearer {CLERK_SECRET_KEY}"}
         # print(f"🔍 Fetching email from Clerk API for sub: {clerk_user_id}")
-        res = requests.get(f"https://api.clerk.dev/v1/users/{clerk_user_id}", headers=headers)
+        res = requests.get(f"https://api.clerk.com/v1/users/{clerk_user_id}", headers=headers)
         if res.status_code == 200:
             data = res.json()
             email_addresses = data.get("email_addresses", [])
@@ -85,11 +85,16 @@ def fetch_clerk_email(user_payload: dict) -> str:
         
     return ""
 
-def sync_user_to_db(db: Session, user_payload: dict) -> User:
+def sync_user_to_db(db: Session, user_payload: dict, email_hint: str = None) -> User:
     """
     Ensures a User (and Patient profile) exists in the local DB.
     """
     email = fetch_clerk_email(user_payload)
+    
+    if not email and email_hint:
+        print(f"💡 Email not in JWT, using hint: {email_hint}")
+        email = email_hint.lower().strip()
+
     if not email:
         print(f"❌ sync_user_to_db aborted: No email found in payload {user_payload.get('sub')}")
         return None

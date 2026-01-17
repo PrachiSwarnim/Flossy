@@ -50,6 +50,9 @@ export default function PostLogin() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
+          body: JSON.stringify({
+            email_hint: user.primaryEmailAddress?.emailAddress
+          })
         });
 
         if (res.ok) {

@@ -37,14 +37,16 @@ def select_role(payload: dict, request: Request, db: Session = Depends(get_db)):
     return {"success": True, "role": user.role, "email": user.email}
 
 @router.post("/post_login")
-def post_login(request: Request, db: Session = Depends(get_db)):
+def post_login(payload: dict, request: Request, db: Session = Depends(get_db)):
     user_payload = getattr(request.state, "user", None)
     if not user_payload:
         print("❌ post_login: No user in request.state")
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    print(f"🔄 post_login: Syncing user {user_payload.get('sub')}")
-    user = sync_user_to_db(db, user_payload)
+    email_hint = payload.get("email_hint")
+    print(f"🔄 post_login: Syncing user {user_payload.get('sub')} (hint: {email_hint})")
+    
+    user = sync_user_to_db(db, user_payload, email_hint=email_hint)
     if not user:
          print("❌ post_login: Sync failed")
          raise HTTPException(status_code=400, detail="Sync failed")

@@ -76,7 +76,7 @@ export default function DentistDashboard() {
     if (!isLoaded) return;
 
     const role = user?.publicMetadata?.role || sessionStorage.getItem("flossy_role");
-    const email = user?.primaryEmailAddress?.emailAddress;
+    const email = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
 
     // Allow Dentist OR specific bypass emails
     const isDentist = role === "dentist" ||
