@@ -10,15 +10,24 @@ from app.reminders import reminder_daemon
 
 import uvicorn
 
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.errors import ServerErrorMiddleware
+
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
 app = FastAPI(
     title="FlossyAI API",
-    description="AI Dental Assistant API-only backend"
+    description="AI Dental Assistant API-only backend",
 )
 
-# Middleware
-# Middleware
-# Note: CORSMiddleware should be added AFTER AuthMiddleware so it wraps it
+# 1. Handle Proxy Headers (Correct way for Cloud Run/Load Balancers)
+# This prevents scheme-switching redirects (HTTPS -> HTTP)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
+# 2. Add Auth Middleware (Clerk)
 app.add_middleware(ClerkAuthMiddleware)
+
+
 
 # Specific origins for production
 ALLOWED_ORIGINS = [

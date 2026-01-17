@@ -139,7 +139,7 @@ export default function DentistDashboard() {
   // === Fetch Appointments ===
   async function loadAppointments() {
     const token = await session.getToken({ template: "default" });
-    const res = await fetch(`${API}/api/appointments/dentist_upcoming/`, {
+    const res = await fetch(`${API}/api/appointments/dentist_upcoming`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -455,7 +455,7 @@ export default function DentistDashboard() {
     if (!session) return;
     try {
       const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/invoices/history/`, {
+      const res = await fetch(`${API}/api/invoices/history`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {

@@ -30,7 +30,7 @@ export default function PostLogin() {
       // 1️⃣ Backend Role Sync & Check
       // We prioritize the backend response because it contains the authoritative role logic and ensures the DB is synced.
       try {
-        const res = await fetch(`${API}/api/auth/post_login/`, {
+        const res = await fetch(`${API}/api/auth/post_login`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

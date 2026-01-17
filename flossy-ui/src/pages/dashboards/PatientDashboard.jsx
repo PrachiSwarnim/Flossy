@@ -40,7 +40,7 @@ export default function PatientDashboard() {
     if (!session || !user) return;
     try {
       const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/prescriptions/my/`, {
+      const res = await fetch(`${API}/api/prescriptions/my`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -147,7 +147,7 @@ export default function PatientDashboard() {
     if (!session) return;
     try {
       const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/ai_suggestion/`, {
+      const res = await fetch(`${API}/api/ai_suggestion`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -164,7 +164,7 @@ export default function PatientDashboard() {
     if (!session) return;
     try {
       const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/patients/me/`, {
+      const res = await fetch(`${API}/api/patients/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -228,7 +228,7 @@ export default function PatientDashboard() {
 
     const token = await session.getToken({ template: "default" });
 
-    const res = await fetch(`${API}/api/appointments/patient_upcoming/`, {
+    const res = await fetch(`${API}/api/appointments/patient_upcoming`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
