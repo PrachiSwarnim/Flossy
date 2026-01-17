@@ -1,0 +1,33 @@
+{
+    "clinic_info": {
+        "name": "Smile Artists Dental Studio",
+        "location": "New Delhi, India",
+        "hours": "Mon-Sat: 10:00 AM - 8:00 PM, Sun: By Appointment Only",
+        "emergency_policy": "For dental emergencies after hours, please text our emergency line at +91-9999999999."
+    },
+    "pricing": {
+        "Consultation": "₹500 (Waived if treatment starts same day)",
+        "Scaling & Cleaning": "₹1,500 - ₹3,000",
+        "Root Canal Treatment (RCT)": "₹4,500 - ₹8,500 depending on complexity",
+        "Dental Implants": "Starts at ₹25,000 per implant",
+        "Teeth Whitening": "₹6,000 - ₹12,000",
+        "Braces / Invisalign": "Starts at ₹35,000"
+    },
+    "post_op_care": {
+        "Extraction": [
+            "Keep the gauze in place for 30-45 minutes.",
+            "Do not rinse or spit forcefully for 24 hours.",
+            "Avoid straws and smoking.",
+            "Apply ice pack to the face if swelling occurs."
+        ],
+        "Root Canal": [
+            "Do not eat until the numbness wears off.",
+            "Mild sensitivity is normal for 2-3 days.",
+            "Avoid chewing hard foods on the treated tooth until your permanent crown is placed."
+        ]
+    },
+    "faq": {
+        "Does RCT hurt?": "Most patients feel immediate relief fromRCT once the infection is removed. We use local anesthesia to ensure a pain-free experience.",
+        "How often should I visit?": "We recommend a professional cleaning and check-up every 6 months to prevent major issues."
+    }
+}

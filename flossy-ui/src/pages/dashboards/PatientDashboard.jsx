@@ -34,6 +34,9 @@ export default function PatientDashboard() {
   const [myPrescriptions, setMyPrescriptions] = useState([]);
   const [aiSuggestion, setAiSuggestion] = useState("Checking your history for the best recommendation...");
   const [profile, setProfile] = useState(null);
+  const [isTriageLoading, setIsTriageLoading] = useState(false);
+  const [triageSymptom, setTriageSymptom] = useState("");
+  const [triageResult, setTriageResult] = useState(null);
   const [profileVisible, setProfileVisible] = useState(true);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [editProfileData, setEditProfileData] = useState({
@@ -218,6 +221,31 @@ export default function PatientDashboard() {
       }
     } catch (err) {
       console.error("Update profile error", err);
+    }
+  }
+
+  async function runTriage() {
+    if (!triageSymptom.trim()) return;
+    setIsTriageLoading(true);
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/ai/triage`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ symptoms: triageSymptom })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTriageResult(data.triage);
+        setTriageSymptom("");
+      }
+    } catch (err) {
+      console.error("Triage error", err);
+    } finally {
+      setIsTriageLoading(false);
     }
   }
 
@@ -583,6 +611,64 @@ export default function PatientDashboard() {
                 ) : (
                   <p className="placeholder-text">No past medical history found.</p>
                 )}
+              </div>
+
+              {/* AI TRIAGE CARD (RECRUITER FLEX 💪) */}
+              <div className="patient-card animate-fade-up" style={{ animationDelay: "0.25s", background: "linear-gradient(145deg, #1a1a1a, #2a2a2a)", border: "1px solid var(--primary-gold)" }}>
+                <div className="card-header">
+                  <h3 style={{ color: "var(--primary-gold)" }}>AI Dental Triage</h3>
+                  <i className="fas fa-robot card-icon" style={{ color: "var(--primary-gold)" }}></i>
+                </div>
+                <div style={{ padding: '15px 0' }}>
+                  <p style={{ fontSize: '0.85rem', color: '#ccc', marginBottom: '12px' }}>
+                    Describe your pain or symptoms. Our AI will assess the urgency.
+                  </p>
+                  <textarea
+                    className="p-input"
+                    placeholder="e.g. Sharp pain in lower molar when drinking cold water..."
+                    value={triageSymptom}
+                    onChange={(e) => setTriageSymptom(e.target.value)}
+                    style={{ background: '#000', border: '1px solid #444', height: '80px', paddingTop: '10px' }}
+                  />
+                  <button
+                    className="p-btn"
+                    onClick={runTriage}
+                    disabled={isTriageLoading || !triageSymptom}
+                    style={{ width: '100%', marginTop: '10px', opacity: (isTriageLoading || !triageSymptom) ? 0.6 : 1 }}
+                  >
+                    {isTriageLoading ? "Analyzing Symptoms..." : "Analyze Symptoms"}
+                  </button>
+
+                  {triageResult && (
+                    <div className="triage-result animate-fade-in" style={{ marginTop: '20px', padding: '15px', borderRadius: '10px', background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.2)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                        <div className={`urgency-badge ${triageResult.urgency}`} style={{
+                          padding: '4px 10px',
+                          borderRadius: '20px',
+                          fontSize: '0.75rem',
+                          fontWeight: 'bold',
+                          textTransform: 'uppercase',
+                          background: triageResult.urgency === 'emergency' ? '#ff3b30' : triageResult.urgency === 'soon' ? '#ffcc00' : '#4cd964',
+                          color: triageResult.urgency === 'soon' ? '#000' : '#fff'
+                        }}>
+                          {triageResult.urgency}
+                        </div>
+                        <span style={{ fontWeight: 'bold', color: '#fff' }}>{triageResult.probable_issue}</span>
+                      </div>
+                      <p style={{ fontSize: '0.85rem', color: '#ddd', marginBottom: '8px' }}>
+                        <i className="fas fa-microscope" style={{ marginRight: '5px', color: 'var(--primary-gold)' }}></i>
+                        {triageResult.ai_reasoning}
+                      </p>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--primary-gold)', fontWeight: '500' }}>
+                        <i className="fas fa-hand-holding-medical" style={{ marginRight: '5px' }}></i>
+                        {triageResult.patient_guidance}
+                      </p>
+                      <div style={{ marginTop: '12px', fontSize: '0.7rem', color: '#888', fontStyle: 'italic' }}>
+                        * This is an AI assessment. Always consult a real dentist for medical advice.
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* AI INSIGHTS CARD */}

@@ -11,7 +11,7 @@ from app.core.database import get_db, SessionLocal
 from app.core.dependencies import require_role
 from app.core.security import verify_token
 from app.core.config import CLERK_SECRET_KEY
-from app.models import LLMInteraction, User
+from app.models import LLMInteraction, User, TriageResult, Patient
 from app.core.utils import ai_generate, embed_with_client, cos_sim
 from app.services.ai_service import load_faiss_index, get_genai_client, get_bandit_and_meta
 
@@ -140,65 +140,50 @@ async def ai_response(request: Request, user=Depends(require_role("patient"))):
     if not user_msg:
         return {"answer": "I didn't receive any message. Could you please repeat that?"}
 
-    # Get user's name - first from request body, then from auth state
+    # Load Knowledge Base
+    import os
+    kb_path = os.path.join(os.path.dirname(__file__), "../../../resources/clinic_knowledge.json")
+    try:
+        with open(kb_path, "r", encoding="utf-8") as f:
+            KB_DATA = json.load(f)
+    except Exception as e:
+        print(f"KB Load Error: {e}")
+        KB_DATA = {}
+
+    # Get user's name
     user_payload = getattr(request.state, "user", {})
     user_name = (
-        payload.get("user_name") or  # From frontend request body
-        user_payload.get("first_name") or  # From auth token
-        (user_payload.get("name", "").split()[0] if user_payload.get("name") else None) or
-        "there"  # Fallback
+        payload.get("user_name") or 
+        user_payload.get("first_name") or 
+        "there"
     )
-    
-    # Simplified Text Chat Handler (No function calling tools for now)
-    # We load the Knowledge Base text if possible, or use a default one.
-    
-    KNOWLEDGE_BASE = """
-    [PRICING]
-    - Routine Check-Up: Rs. 500
-    - Scaling and Cleaning: starts at Rs. 1500
-    - Dental Implants: starts at Rs. 25000
-    - Root Canal Treatment: Rs. 4000 - Rs. 8000
-    - Braces/Invisalign: Starts at Rs. 35, 000
-
-    [SYMPTOMS]
-    - Toothache: Rinse with warm salt water, avoid sugary and acidic foods.
-    - Swollen gums: Gently brush and floss, use warm salt water rinse.
-    - Bleeding gums: Gently brush and floss, use warm salt water rinse.
-    - Bad breath: Brush and floss regularly, use mouthwash.
-    - Tooth sensitivity: Avoid sugary and acidic foods, use fluoride toothpaste.
-    - Jaw pain: Gently brush and floss, use warm salt water rinse.
-    """
 
     SYSTEM_PROMPT = f"""
-    You are Flossy, the intelligent frontdesk receptionist for Smile Artists Dental Studio.
+    You are Flossy, the intelligent RAG-powered assistant for {KB_DATA.get('clinic_info', {}).get('name', 'Smile Artists')}.
     You are chatting with a patient named {user_name}.
     
-    **Your Goal:**
-    1. Be warm and friendly - address the patient by their name ({user_name}) when appropriate.
-    2. Answer questions about pricing or symptoms using your Knowledge Base.
-    3. If patient mentions booking, tell them you can help them book an appointment.
-    4. Keep responses concise (2-3 sentences max).
+    **CRITICAL GUIDELINE:**
+    - ALWAYS base your answers on the provided [CLINIC KNOWLEDGE].
+    - If you answer based on the knowledge base, start your response with a 📚 icon.
+    - If the knowledge base doesn't have the answer, use your general dental knowledge but state it's general advice.
+    - Keep responses professional and empathetic (max 3 sentences).
     
-    **Tone:**
-    - Professional, empathetic, and friendly.
-    - Use the patient's name naturally in conversation.
-    
-    [KNOWLEDGE BASE]
-    {KNOWLEDGE_BASE}
+    [CLINIC KNOWLEDGE]
+    {json.dumps(KB_DATA, indent=2)}
     """
     
     prompt = f"{SYSTEM_PROMPT}\n\nUSER ({user_name}): {user_msg}\n\nFLOSSY:"
     try:
         reply = ai_generate(prompt)
-        # Clean up any potential formatting issues
         reply = reply.strip()
-        if not reply:
-            reply = f"I'm here to help, {user_name}! Could you please tell me more about what you need?"
     except Exception as e:
         print(f"AI Response Error: {e}")
-        reply = f"I'm having trouble connecting right now, {user_name}. Please try again in a moment or call our front desk."
+        reply = f"I'm having trouble connecting to my knowledge base right now, {user_name}. Please try again later."
 
-    return {"answer": reply}
+    return {
+        "answer": reply,
+        "is_grounded": "📚" in reply
+    }
 
 @router.get("/ai_suggestion")
 async def ai_suggestion(request: Request, db: Session = Depends(get_db)):
@@ -212,7 +197,7 @@ async def ai_suggestion(request: Request, db: Session = Depends(get_db)):
     if not user:
          return {"suggestion": "Welcome! We're glad to have you. Book a consultation today to begin your smile journey."}
 
-    from models import Patient, Appointment
+    
     patient = db.query(Patient).filter(Patient.user_id == user.id).first()
     
     # Check if new user
@@ -244,6 +229,105 @@ async def ai_suggestion(request: Request, db: Session = Depends(get_db)):
         fact = "Your Tooth Enamel is the hardest substance in your body—even tougher than bone! ✨"
 
     return {"suggestion": fact}
+
+@router.post("/triage")
+async def ai_triage(request: Request, db: Session = Depends(get_db), user=Depends(require_role("patient"))):
+    payload = await request.json()
+    symptoms = payload.get("symptoms", "").strip()
+    if not symptoms:
+        raise HTTPException(status_code=400, detail="Symptoms text is required")
+
+    patient = db.query(Patient).filter(Patient.user_id == user.id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient profile not found")
+
+    prompt = f"""
+    You are a professional dental triage assistant.
+    Analyze the following patient symptoms and categorize them strictly into the requested JSON format.
+    
+    PATIENT SYMPTOMS: "{symptoms}"
+    
+    RESPONSE FORMAT (JSON ONLY):
+    {{
+      "urgency": "emergency" | "soon" | "routine",
+      "probable_issue": "string (e.g., Abscess, Cavity, Wisdom Tooth)",
+      "recommended_dept": "string (e.g., General Dentistry, Oral Surgery, Orthodontics)",
+      "ai_reasoning": "brief clinical explanation (max 20 words)",
+      "patient_guidance": "what the patient should do now (max 15 words)"
+    }}
+    
+    URGENCY GUIDELINES:
+    - emergency: severe pain, uncontrollable bleeding, facial swelling, trauma.
+    - soon: moderate pain, loose crown, sensitive tooth.
+    - routine: cleaning, check-up, mild staining.
+    """
+
+    try:
+        raw_ai_output = ai_generate(prompt)
+        # Handle potential markdown wrapping
+        if "```json" in raw_ai_output:
+            raw_ai_output = raw_ai_output.split("```json")[1].split("```")[0].strip()
+        elif "```" in raw_ai_output:
+             raw_ai_output = raw_ai_output.split("```")[1].split("```")[0].strip()
+        
+        triage_data = json.loads(raw_ai_output)
+        
+        # Save to DB
+        triage_record = TriageResult(
+            patient_id=patient.id,
+            symptoms=symptoms,
+            urgency=triage_data.get("urgency", "routine"),
+            probable_issue=triage_data.get("probable_issue"),
+            recommended_dept=triage_data.get("recommended_dept"),
+            ai_reasoning=triage_data.get("ai_reasoning")
+        )
+        db.add(triage_record)
+        db.commit()
+        db.refresh(triage_record)
+        
+        return {
+            "success": True,
+            "triage": triage_data,
+            "id": triage_record.id
+        }
+        
+    except Exception as e:
+        print(f"Triage Error: {e}")
+        raise HTTPException(status_code=500, detail="AI Triage failed to process.")
+
+@router.post("/summarize_visit")
+async def summarize_visit(request: Request, db: Session = Depends(get_db), user=Depends(require_role("dentist"))):
+    payload = await request.json()
+    notes = payload.get("notes", "").strip()
+    if not notes:
+        raise HTTPException(status_code=400, detail="Notes are required to generate summary")
+
+    prompt = f"""
+    You are a dental clinical documentation assistant.
+    Transform the following shorthand dentist notes into two distinct summaries:
+    1. A formal, structured "Clinical Record" for the dentist's archive.
+    2. A "Patient-Friendly Summary" that explain the procedure in simple terms.
+    
+    DENTIST NOTES: "{notes}"
+    
+    RESPONSE FORMAT (JSON ONLY):
+    {{
+      "clinical": "formal clinical narrative...",
+      "patient_friendly": "warm, simple explanation...",
+      "suggested_follow_up": "brief recommendation for next visit"
+    }}
+    """
+
+    try:
+        raw_ai_output = ai_generate(prompt)
+        if "```json" in raw_ai_output:
+            raw_ai_output = raw_ai_output.split("```json")[1].split("```")[0].strip()
+        
+        summary_data = json.loads(raw_ai_output)
+        return summary_data
+    except Exception as e:
+        print(f"Summarization Error: {e}")
+        raise HTTPException(status_code=500, detail="AI Summarization failed.")
 
 @router.get("/metrics/llm")
 def llm_metrics(db: Session = Depends(get_db)):

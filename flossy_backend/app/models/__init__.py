@@ -192,10 +192,18 @@ class PaymentRecord(Base):
 
     invoice = relationship("Invoice", back_populates="payment_records")
 
-class TreatmentCatalog(Base):
-    __tablename__ = "treatment_catalog"
-
+class TriageResult(Base):
+    __tablename__ = "triage_results"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(200), unique=True, nullable=False)
-    default_cost = Column(Float, nullable=False)
-    category = Column(String(100), nullable=True)
+    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
+    symptoms = Column(Text, nullable=False)
+    urgency = Column(String(50)) # emergency, soon, routine
+    probable_issue = Column(String(255))
+    recommended_dept = Column(String(100))
+    ai_reasoning = Column(Text)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    patient = relationship("Patient")
+
+    def __repr__(self):
+        return f"<TriageResult(patient_id={self.patient_id}, urgency={self.urgency})>"

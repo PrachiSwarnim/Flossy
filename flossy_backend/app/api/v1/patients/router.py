@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import require_role
-from app.models import Patient
+from app.models import Patient, TriageResult
 from app.api.v1.patients.schemas import PatientUpdate
 from app.core.utils import clean_name
 
@@ -12,16 +12,39 @@ router = APIRouter()
 @router.get("/")
 def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(["receptionist", "dentist", "admin"]))):
     """
-    Returns all non-archived patients with optimized formatting and source info.
+    Returns all non-archived patients with AI risk profiling and triage status.
     """
-    # Relaxed filter: include 0 OR NULL
-    from sqlalchemy import or_
+    from sqlalchemy import or_, desc
+    from app.models import Appointment, TriageResult
+    
     patients = db.query(Patient).filter(or_(Patient.is_archived == 0, Patient.is_archived == None)).all()
-    print(f"DEBUG: Found {len(patients)} patients in DB query.")
     
     results = []
     for p in patients:
         display_name = p.name.strip().title() if p.name else "Unknown Patient"
+        
+        # Fetch latest triage
+        latest_triage = db.query(TriageResult).filter(TriageResult.patient_id == p.id).order_by(desc(TriageResult.created_at)).first()
+        
+        # Calculate behavioral risk (No-shows / Payment Delays)
+        missed = db.query(Appointment).filter(Appointment.patient_id == p.id, Appointment.status == "missed").count()
+        total_appt = db.query(Appointment).filter(Appointment.patient_id == p.id).count()
+        
+        risk_score = 0
+        risk_reasons = []
+        
+        if total_appt > 0 and (missed / total_appt) > 0.3:
+            risk_score += 40
+            risk_reasons.append("High cancellation rate (30%+)")
+        
+        if latest_triage and latest_triage.urgency == "emergency":
+            risk_score += 50
+            risk_reasons.append("Active clinical emergency")
+            
+        risk_level = "Low"
+        if risk_score > 70: risk_level = "Critical"
+        elif risk_score > 30: risk_level = "Moderate"
+
         results.append({
             "id": p.id,
             "name": display_name,
@@ -29,7 +52,18 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
             "age": p.age,
             "email": p.user.email if p.user else None,
             "source": p.source or "website",
-            "sex": p.sex
+            "sex": p.sex,
+            "risk_profile": {
+                "level": risk_level,
+                "score": risk_score,
+                "reasons": risk_reasons,
+                "ai_explanation": f"Patient flagged as {risk_level} risk due to {', '.join(risk_reasons) if risk_reasons else 'clean history'}."
+            },
+            "latest_triage": {
+                "urgency": latest_triage.urgency,
+                "issue": latest_triage.probable_issue,
+                "reasoning": latest_triage.ai_reasoning
+            } if latest_triage else None
         })
     
     results.sort(key=lambda x: x["name"])

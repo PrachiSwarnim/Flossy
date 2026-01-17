@@ -205,7 +205,33 @@ def dentist_upcoming(
         else:
             upcoming_appts.append(a)
 
+    from app.models import TriageResult
+    from sqlalchemy import desc
+
     def fmt(a):
+        # Fetch latest triage for this patient
+        latest_triage = db.query(TriageResult).filter(TriageResult.patient_id == a.patient_id).order_by(desc(TriageResult.created_at)).first()
+        
+        # --- NO-SHOW PREDICTION LOGIC (Recruiter Signal 🧠) ---
+        # Heuristic: Risk increases if:
+        # 1. Lead time is > 7 days (forgetfulness)
+        # 2. Patient has > 0 previous 'missed' appointments
+        lead_time_days = (a.datetime.date() - datetime.now(ist).date()).days
+        
+        missed_count = db.query(Appointment).filter(
+            Appointment.patient_id == a.patient_id,
+            Appointment.status == "missed"
+        ).count()
+        
+        risk_score = 10 # Base score
+        if lead_time_days > 7: risk_score += 30
+        if missed_count > 0: risk_score += 40
+        if lead_time_days < 2: risk_score -= 5 # Recent booking is more likely to show
+        
+        no_show_risk = "Low"
+        if risk_score > 60: no_show_risk = "High"
+        elif risk_score > 30: no_show_risk = "Medium"
+
         return {
             "id": a.id,
             "time": a.datetime.isoformat(),
@@ -216,6 +242,11 @@ def dentist_upcoming(
             "status": a.status,
             "follow_up_reason": a.follow_up_reason,
             "follow_up_status": a.follow_up_status,
+            "no_show_risk": no_show_risk,
+            "latest_triage": {
+                "urgency": latest_triage.urgency,
+                "issue": latest_triage.probable_issue
+            } if latest_triage else None
         }
 
     return {

@@ -401,7 +401,33 @@ export default function DentistDashboard() {
   const [patientsList, setPatientsList] = useState([]);
   const [historyPrescriptions, setHistoryPrescriptions] = useState([]);
   const [invoices, setInvoices] = useState([]);
-  const [editingInvoice, setEditingInvoice] = useState(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [aiSummaryResult, setAiSummaryResult] = useState(null);
+
+  async function generateAISummary() {
+    if (!prescDetails && !prescDiagnosis) return alert("Please enter some clinical notes or diagnosis first.");
+    setIsSummarizing(true);
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/ai/summarize_visit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ notes: `${prescDetails}\n${prescDiagnosis}\n${prescTreatment}` })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiSummaryResult(data);
+        // Optionally auto-inject patient record into recommendations or just show it
+      }
+    } catch (e) {
+      console.error("Summarization error", e);
+    } finally {
+      setIsSummarizing(false);
+    }
+  }
 
   async function startEditingInvoice(inv) {
     if (!inv || !inv.id) return;
@@ -751,6 +777,41 @@ export default function DentistDashboard() {
                       <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
                         {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
                       </span>
+                      {a.latest_triage && (
+                        <div className={`triage-tag ${a.latest_triage.urgency}`} style={{
+                          display: 'inline-block',
+                          marginLeft: '15px',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.7rem',
+                          fontWeight: 'bold',
+                          textTransform: 'uppercase',
+                          background: a.latest_triage.urgency === 'emergency' ? '#ff3b30' : a.latest_triage.urgency === 'soon' ? '#ffcc00' : '#4cd964',
+                          color: a.latest_triage.urgency === 'soon' ? '#000' : '#fff',
+                          boxShadow: a.latest_triage.urgency === 'emergency' ? '0 0 10px rgba(255,59,48,0.4)' : 'none'
+                        }}>
+                          <i className="fas fa-robot" style={{ marginRight: '4px' }}></i>
+                          AI: {a.latest_triage.urgency} ({a.latest_triage.issue})
+                        </div>
+                      )}
+
+                      {/* 🧠 PREDICTIVE RISK BADGE */}
+                      {a.no_show_risk && a.no_show_risk !== "Low" && (
+                        <div style={{
+                          display: 'inline-block',
+                          marginLeft: '8px',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.7rem',
+                          fontWeight: 'bold',
+                          background: 'rgba(231, 76, 60, 0.1)',
+                          border: '1px solid #e74c3c',
+                          color: '#e74c3c'
+                        }}>
+                          <i className="fas fa-user-clock" style={{ marginRight: '4px' }}></i>
+                          CANCELLATION RISK: {a.no_show_risk}
+                        </div>
+                      )}
                     </div>
                     <div className="appt-reason">{a.reason}</div>
 
@@ -851,6 +912,21 @@ export default function DentistDashboard() {
                       <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
                         {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
                       </span>
+                      {a.latest_triage && (
+                        <div className={`triage-tag ${a.latest_triage.urgency}`} style={{
+                          display: 'inline-block',
+                          marginLeft: '15px',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.7rem',
+                          fontWeight: 'bold',
+                          textTransform: 'uppercase',
+                          background: a.latest_triage.urgency === 'emergency' ? '#ff3b30' : a.latest_triage.urgency === 'soon' ? '#ffcc00' : '#4cd964',
+                          color: a.latest_triage.urgency === 'soon' ? '#000' : '#fff'
+                        }}>
+                          AI: {a.latest_triage.urgency}
+                        </div>
+                      )}
                     </div>
                     <div className="appt-reason">{a.reason}</div>
                     <div className="appt-status status-upcoming">Scheduled</div>
@@ -885,6 +961,23 @@ export default function DentistDashboard() {
                         <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
                           {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
                         </span>
+                        {a.latest_triage && (
+                          <div className={`triage-tag ${a.latest_triage.urgency}`} style={{
+                            display: 'inline-block',
+                            marginLeft: '15px',
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            fontSize: '0.7rem',
+                            fontWeight: 'bold',
+                            textTransform: 'uppercase',
+                            background: a.latest_triage.urgency === 'emergency' ? '#ff3b30' : a.latest_triage.urgency === 'soon' ? '#ffcc00' : '#4cd964',
+                            color: a.latest_triage.urgency === 'soon' ? '#000' : '#fff',
+                            boxShadow: a.latest_triage.urgency === 'emergency' ? '0 0 10px rgba(255,59,48,0.4)' : 'none'
+                          }}>
+                            <i className="fas fa-robot" style={{ marginRight: '4px' }}></i>
+                            AI: {a.latest_triage.urgency} ({a.latest_triage.issue})
+                          </div>
+                        )}
                       </div>
                       <div className="appt-reason">{a.reason}</div>
 
@@ -1212,8 +1305,22 @@ export default function DentistDashboard() {
                                 onMouseEnter={(e) => e.currentTarget.style.background = "#2a2a2a"}
                                 onMouseLeave={(e) => e.currentTarget.style.background = prescPatient === p.name ? "#2a2a2a" : "transparent"}
                               >
-                                <div style={{ fontWeight: "600", color: "#fff" }}>{p.name}</div>
-                                {p.phone && <div style={{ fontSize: "0.75rem", color: "#888" }}>{p.phone}</div>}
+                                <div style={{ fontWeight: "600", color: "#fff", display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  {p.name}
+                                  {p.risk_profile?.level && p.risk_profile?.level !== "Low" && (
+                                    <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: p.risk_profile.level === 'Critical' ? '#ff3b30' : '#ffcc00', color: p.risk_profile.level === 'Critical' ? '#fff' : '#000' }}>
+                                      {p.risk_profile.level} Risk
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  {p.phone && <div style={{ fontSize: "0.75rem", color: "#888" }}>{p.phone}</div>}
+                                  {p.latest_triage && (
+                                    <div style={{ fontSize: '0.65rem', color: p.latest_triage.urgency === 'emergency' ? '#ff3b30' : '#888' }}>
+                                      AI Urgency: {p.latest_triage.urgency}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           {patientsList.filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase())).length === 0 && (
@@ -1387,15 +1494,50 @@ export default function DentistDashboard() {
                   </div>
                 </div>
 
-                <button
-                  className="upload-btn"
-                  onClick={handlePrescriptionUpload}
-                  disabled={isUploading}
-                  style={{ marginTop: "1rem", background: editingPrescId ? "#2ecc71" : "#f0b800", color: editingPrescId ? "#fff" : "#000" }}
-                >
-                  {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className={`fas ${editingPrescId ? "fa-save" : "fa-upload"}`}></i>}
-                  {isUploading ? (editingPrescId ? " Updating..." : " Uploading...") : (editingPrescId ? " Update Prescription" : " Upload Prescription")}
-                </button>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '1rem' }}>
+                  <button
+                    className="upload-btn"
+                    onClick={handlePrescriptionUpload}
+                    disabled={isUploading}
+                    style={{ flex: 2, background: editingPrescId ? "#2ecc71" : "#f0b800", color: editingPrescId ? "#fff" : "#000" }}
+                  >
+                    {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className={`fas ${editingPrescId ? "fa-save" : "fa-upload"}`}></i>}
+                    {isUploading ? (editingPrescId ? " Updating..." : " Uploading...") : (editingPrescId ? " Save Prescription" : " Save Prescription")}
+                  </button>
+
+                  <button
+                    className="p-btn"
+                    onClick={generateAISummary}
+                    disabled={isSummarizing || (!prescDetails && !prescDiagnosis)}
+                    style={{ flex: 1, background: '#1a1a1a', border: '1px solid var(--primary-gold)', color: 'var(--primary-gold)', whiteSpace: 'nowrap' }}
+                  >
+                    {isSummarizing ? "Thinking..." : <><i className="fas fa-magic"></i> AI Summary</>}
+                  </button>
+                </div>
+
+                {aiSummaryResult && (
+                  <div className="ai-summary-box animate-fade-in" style={{ marginTop: '15px', padding: '15px', borderRadius: '10px', background: 'rgba(212, 175, 55, 0.05)', border: '1px dotted var(--primary-gold)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                      <h5 style={{ color: 'var(--primary-gold)', margin: 0 }}>AI Generated Insights</h5>
+                      <button onClick={() => setAiSummaryResult(null)} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer' }}><i className="fas fa-times"></i></button>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#ccc', marginBottom: '10px' }}>
+                      <strong>Clinical Record:</strong> {aiSummaryResult.clinical}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#ccc' }}>
+                      <strong>Patient Note:</strong> {aiSummaryResult.patient_friendly}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setPrescRecommendations(prev => prev + "\n\n" + aiSummaryResult.patient_friendly);
+                        setAiSummaryResult(null);
+                      }}
+                      style={{ marginTop: '10px', fontSize: '0.75rem', color: 'var(--primary-gold)', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Append Patient Note to Recommendations
+                    </button>
+                  </div>
+                )}
                 {editingPrescId && (
                   <button
                     onClick={cancelEditing}

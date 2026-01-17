@@ -14,3 +14,8 @@ flossy-ui\.env.production
 flossy_backend\.env
 flossy_backend\.env.local
 flossy_backend\.env.production
+AWS_DEPLOYMENT_GUIDE.md
+DEPLOYMENT_GUIDE.md
+DEPLOYMENT_INFO.md
+GOOGLE_CLOUD_RUN_DEPLOYMENT.md
+IMPLEMENTATION_PLAN_AI.md
