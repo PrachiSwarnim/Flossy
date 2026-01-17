@@ -21,6 +21,10 @@ app = FastAPI(
     description="AI Dental Assistant API-only backend",
 )
 
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "service": "flossy-backend"}
+
 # 1. Handle Proxy Headers (Correct way for Cloud Run/Load Balancers)
 # This prevents scheme-switching redirects (HTTPS -> HTTP)
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
@@ -30,24 +34,26 @@ app.add_middleware(ClerkAuthMiddleware)
 
 
 
-# Specific origins are now in app.core.config
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
-
 
 # Routers
 app.include_router(api_router, prefix="/api")
 
+# CORS must be OUTERMOST (added last in FastAPI)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https?://(localhost|([a-z0-9-]+\.)?smileartistsdentalstudio\.com|([a-z0-9-]+\.)?vercel\.app|([a-z0-9-]+\.)?run\.app)(:\d+)?",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
+
 @app.on_event("startup")
 async def startup():
-    init_db()
+    print("🚀 App starting up...")
+    # Initialize DB in background to avoid blocking Cloud Run startup check
+    asyncio.create_task(asyncio.to_thread(init_db))
     asyncio.create_task(reminder_daemon())
 
 if __name__ == "__main__":

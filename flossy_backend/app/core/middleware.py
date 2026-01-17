@@ -44,8 +44,8 @@ class ClerkAuthMiddleware(BaseHTTPMiddleware):
             response = JSONResponse({"detail": "Unauthorized"}, status_code=401)
             # Fail-safe CORS injection
             origin = request.headers.get("origin")
-            if origin in ALLOWED_ORIGINS or origin == None:
-                 response.headers["Access-Control-Allow-Origin"] = origin or "*"
+            if origin:
+                 response.headers["Access-Control-Allow-Origin"] = origin
                  response.headers["Access-Control-Allow-Credentials"] = "true"
             return response
         
@@ -64,6 +64,8 @@ class ClerkAuthMiddleware(BaseHTTPMiddleware):
                 response.headers["Access-Control-Allow-Credentials"] = "true"
             return response
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"❌ Middleware error on {path}: {str(e)}")
             response = JSONResponse({"detail": "Invalid Token or Server Error"}, status_code=401)
             origin = request.headers.get("origin")

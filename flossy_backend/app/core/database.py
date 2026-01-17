@@ -27,14 +27,14 @@ def create_resilient_engine(url):
                 conn.execute(text("SELECT 1"))
             return temp_engine
     except Exception as e:
-        print(f"⚠️ Warning: Could not connect to {url.split('@')[-1] if '@' in url else url}")
+        print(f"⚠️ Warning: Could not connect to database.")
         print(f"Error: {e}")
         print("💡 Falling back to SQLite for stability.")
         return create_engine("sqlite:///./sql_app.db", connect_args={"check_same_thread": False})
     
     # If already sqlite or fallback
     connect_args = {"check_same_thread": False} if "sqlite" in url else {}
-    return create_engine(url, connect_args=connect_args)
+    return create_engine(url, connect_args=connect_args, pool_pre_ping=True)
 
 engine = create_resilient_engine(DATABASE_URL)
 
@@ -51,14 +51,11 @@ def get_db():
 
 def init_db():
     """
-    Lightweight DB initialization. This is safe to run on low-memory platforms.
-    Avoid heavy operations here.
+    Lightweight DB initialization with auto-migrations.
     """
+    print("🛠️ Starting DB initialization and migrations...")
     try:
-        # Import models here to ensure they are registered with Base
-        from app import models as _ # Trigger registration
-
-        
+        from app import models as _ 
         Base.metadata.create_all(bind=engine)
         
         inspector = inspect(engine)
@@ -66,8 +63,8 @@ def init_db():
         with engine.connect() as conn:
             # 1. Check 'patients' table
             try:
-                columns = [c['name'].lower() for c in inspector.get_columns('patients')]
-                if columns:
+                if inspector.has_table('patients'):
+                    columns = [c['name'].lower() for c in inspector.get_columns('patients')]
                     if "age" not in columns:
                         conn.execute(text("ALTER TABLE patients ADD COLUMN age INTEGER;"))
                     if "source" not in columns:
@@ -80,8 +77,8 @@ def init_db():
             
             # 2. Check 'appointments' table
             try:
-                columns = [c['name'].lower() for c in inspector.get_columns('appointments')]
-                if columns:
+                if inspector.has_table('appointments'):
+                    columns = [c['name'].lower() for c in inspector.get_columns('appointments')]
                     if "reminder_level" not in columns:
                         conn.execute(text("ALTER TABLE appointments ADD COLUMN reminder_level INTEGER DEFAULT 0;"))
                     if "follow_up_reason" not in columns:
@@ -94,52 +91,34 @@ def init_db():
 
             # 3. Check 'prescriptions' table
             try:
-                columns = [c['name'].lower() for c in inspector.get_columns('prescriptions')]
-                if columns:
+                if inspector.has_table('prescriptions'):
+                    columns = [c['name'].lower() for c in inspector.get_columns('prescriptions')]
                     if "diagnosis" not in columns:
                         conn.execute(text("ALTER TABLE prescriptions ADD COLUMN diagnosis TEXT;"))
                         conn.execute(text("ALTER TABLE prescriptions ADD COLUMN treatment_plan TEXT;"))
                         conn.execute(text("ALTER TABLE prescriptions ADD COLUMN recommendations TEXT;"))
-                    # SQLite doesn't support DROP NOT NULL well, but we can try or skip
                     try: conn.execute(text("ALTER TABLE prescriptions ALTER COLUMN details DROP NOT NULL;"))
                     except: pass 
             except Exception as e: print(f"Migration error (prescriptions): {e}")
             
-            # 4. Ensure Prescription IDs start from 1000
-            try:
-                # Check if table is empty
-                res = conn.execute(text("SELECT COUNT(*) FROM prescriptions")).scalar()
-                if res == 0:
-                    # Insert dummy row with ID 999 so next is 1000
-                    p_res = conn.execute(text("SELECT id FROM patients LIMIT 1")).scalar()
-                    pid = p_res
-                    if not pid:
-                        # Create dummy patient
-                        conn.execute(text("INSERT INTO patients (name, phone, source) VALUES ('System', '0000000000', 'system')"))
-                        pid = conn.execute(text("SELECT id FROM patients WHERE phone='0000000000'")).scalar()
-                    
-                    if pid:
-                        conn.execute(text(f"INSERT INTO prescriptions (id, patient_id, details) VALUES (999, {pid}, 'System Offset');"))
-                        print("Initialized Prescription ID sequence to start from 1000.")
-            except Exception as e: print(f"Sequence init error: {e}")
-
             # 4. Check 'invoice_items' table for 'discount'
             try:
-                columns = [c['name'].lower() for c in inspector.get_columns('invoice_items')]
-                if columns and "discount" not in columns:
-                    conn.execute(text("ALTER TABLE invoice_items ADD COLUMN discount FLOAT DEFAULT 0.0;"))
+                if inspector.has_table('invoice_items'):
+                    columns = [c['name'].lower() for c in inspector.get_columns('invoice_items')]
+                    if "discount" not in columns:
+                        conn.execute(text("ALTER TABLE invoice_items ADD COLUMN discount FLOAT DEFAULT 0.0;"))
             except Exception as e: print(f"Migration error (invoice_items discount): {e}")
             
-            # 4. Check 'invoices' table
+            # 5. Check 'invoices' table
             try:
-                columns = [c['name'].lower() for c in inspector.get_columns('invoices')]
-                if columns and "currency" not in columns:
-                    conn.execute(text("ALTER TABLE invoices ADD COLUMN currency VARCHAR(10) DEFAULT 'INR';"))
+                if inspector.has_table('invoices'):
+                    columns = [c['name'].lower() for c in inspector.get_columns('invoices')]
+                    if "currency" not in columns:
+                        conn.execute(text("ALTER TABLE invoices ADD COLUMN currency VARCHAR(10) DEFAULT 'INR';"))
             except Exception as e: print(f"Migration error (invoices): {e}")
 
-            # 5. Seed Treatment Catalog
+            # 6. Seed Treatment Catalog
             try:
-                # Check if table exists (it should due to create_all)
                 if inspector.has_table("treatment_catalog"):
                     res_tc = conn.execute(text("SELECT count(*) FROM treatment_catalog")).fetchone()
                     if res_tc and res_tc[0] == 0:
@@ -158,14 +137,13 @@ def init_db():
                         for name, cost, cat in treatments:
                             conn.execute(text("INSERT INTO treatment_catalog (name, default_cost, category) VALUES (:n, :c, :cat)"), {"n": name, "c": cost, "cat": cat})
                     else:
-                        # Force update for specific requested prices
                         conn.execute(text("UPDATE treatment_catalog SET default_cost = 500 WHERE name = 'Root Canal Treatment (RCT)'"))
                         conn.execute(text("UPDATE treatment_catalog SET default_cost = 800 WHERE name = 'Tooth Extraction (Simple)'"))
             except Exception as e:
                 print(f"Migration/Seed error (catalog): {e}")
 
             conn.commit()
-            print("(OK) DB Schema auto-migration check complete.")
+            print("✅ DB Schema auto-migration check complete.")
             
     except Exception as e:
         print(f"(!) init_db migration error: {e}")
