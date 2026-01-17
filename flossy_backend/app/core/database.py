@@ -53,6 +53,32 @@ def get_session_local():
         _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
     return _SessionLocal
 
+# transparent Proxy for engine and SessionLocal to support lazy loading
+class LazyProxy:
+    def __init__(self, factory):
+        self._factory = factory
+        self._real_obj = None
+
+    def _get_real(self):
+        if self._real_obj is None:
+            self._real_obj = self._factory()
+        return self._real_obj
+
+    def __getattr__(self, name):
+        return getattr(self._get_real(), name)
+    
+    def __call__(self, *args, **kwargs):
+        return self._get_real()(*args, **kwargs)
+
+    def __enter__(self):
+        return self._get_real().__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self._get_real().__exit__(exc_type, exc_val, exc_tb)
+
+engine = LazyProxy(get_engine)
+SessionLocal = LazyProxy(get_session_local)
+
 Base = declarative_base()
 
 def get_db():
