@@ -5,6 +5,7 @@ from app.core.database import get_db
 from app.core.dependencies import require_role
 from app.models import Patient
 from app.api.v1.patients.schemas import PatientUpdate
+from app.core.utils import clean_name
 
 router = APIRouter()
 
@@ -63,28 +64,44 @@ def archive_patient(id: int, db: Session = Depends(get_db), user = Depends(requi
     return {"success": True}
 
 @router.get("/me")
-def get_my_profile(db: Session = Depends(get_db), user_payload = Depends(require_role("patient"))):
-    from models import User
-    email = (user_payload.get("email") or user_payload.get("email_address") or "").lower()
-    user = db.query(User).filter(User.email.ilike(email)).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
+def get_my_profile(db: Session = Depends(get_db), user = Depends(require_role("patient"))):
+    """
+    Get the current patient's profile.
+    Note: require_role returns a User object, not the JWT payload.
+    """
+    # user is already a User object from require_role
     patient = db.query(Patient).filter(Patient.user_id == user.id).first()
+    
     if not patient:
-         return {
-            "name": f"{user_payload.get('first_name', '')} {user_payload.get('last_name', '')}".strip() or "New Patient",
+        # Return basic profile from User if no Patient record exists
+        # Try to get first/last name from user's email or stored names
+        name_parts = []
+        if hasattr(user, 'first_name') and user.first_name:
+            if user.first_name and user.first_name != "None":
+                name_parts.append(user.first_name)
+        
+        if hasattr(user, 'last_name') and user.last_name:
+            if user.last_name and user.last_name != "None":
+                name_parts.append(user.last_name)
+        
+        display_name = " ".join(name_parts).strip() if name_parts else "New Patient"
+        
+        return {
+            "name": display_name,
             "phone": None,
             "age": None,
             "sex": None,
-            "email": email
+            "email": user.email
         }
     
+    # Filter out "None" from patient name if it exists
+    final_name = clean_name(patient.name)
+
     return {
         "id": patient.id,
-        "name": patient.name,
+        "name": final_name or clean_name(user.email.split("@")[0]),
         "phone": patient.phone,
         "age": patient.age,
-        "email": email,
+        "email": user.email,
         "sex": patient.sex
     }

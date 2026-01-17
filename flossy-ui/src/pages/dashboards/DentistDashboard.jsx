@@ -173,8 +173,10 @@ export default function DentistDashboard() {
   }, [isLoaded, user]);
 
   // === Full Name ===
-  const fullName =
-    `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Doctor";
+  const firstName = user?.firstName || "";
+  const lastName = user?.lastName;
+  const hasValidLastName = lastName && lastName !== "None" && lastName !== "null" && lastName !== "undefined";
+  const fullName = hasValidLastName ? `${firstName} ${lastName}` : firstName || "Doctor";
 
   useEffect(() => {
     if (fullName) {

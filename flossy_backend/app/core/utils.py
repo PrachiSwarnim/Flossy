@@ -69,3 +69,12 @@ def build_actions(prompt_variants, temps, ctx_sizes, models):
     """
     combos = list(itertools.product(range(len(prompt_variants)), temps, ctx_sizes, range(len(models))))
     return combos
+
+def clean_name(name: str) -> str:
+    """Helper to remove strings like 'None', 'null', 'undefined' from names."""
+    if not name:
+        return ""
+    # Remove common placeholder strings
+    for placeholder in ["None", "null", "undefined", "None None"]:
+        name = name.replace(placeholder, "")
+    return name.strip()

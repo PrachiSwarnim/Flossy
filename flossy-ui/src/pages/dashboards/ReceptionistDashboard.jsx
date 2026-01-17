@@ -95,8 +95,10 @@ export default function ReceptionistDashboard() {
     }
 
     // === Full Name ===
-    const fullName =
-        `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Receptionist";
+    const firstName = user?.firstName || "";
+    const lastName = user?.lastName;
+    const hasValidLastName = lastName && lastName !== "None" && lastName !== "null" && lastName !== "undefined";
+    const fullName = hasValidLastName ? `${firstName} ${lastName}` : firstName || "Receptionist";
 
     useEffect(() => {
         if (fullName) {

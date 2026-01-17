@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.dependencies import require_role
 from app.models import Appointment, User, Patient
 from app.api.v1.appointments.schemas import AppointmentUpdate, AppointmentCreate
+from app.core.utils import clean_name
 
 router = APIRouter()
 
@@ -16,18 +17,28 @@ def create_appointment(
     appt: AppointmentCreate,
     request: Request,
     db: Session = Depends(get_db),
-    user_data = Depends(require_role(["patient"])) # Only patients book for themselves generally
+    user = Depends(require_role(["patient"])) # Only patients book for themselves generally
 ):
-    # 1. Identify Patient
-    email = (user_data.get("email") or user_data.get("email_address") or "").lower()
-    user = db.query(User).filter(User.email.ilike(email)).first()
-    if not user:
-        raise HTTPException(status_code=400, detail="User profile not found")
-        
+    """
+    Create a new appointment.
+    Note: require_role returns a User object, not the JWT payload.
+    We use request.state.user for the JWT payload (for first/last name).
+    """
+    # user is already a User object from require_role
+    # Get JWT payload for additional info like first_name, last_name
+    jwt_payload = getattr(request.state, "user", {})
+    
     patient = db.query(Patient).filter(Patient.user_id == user.id).first()
     if not patient:
+        # Build name from JWT payload or user email
+        first_name = jwt_payload.get("first_name", "") if isinstance(jwt_payload, dict) else ""
+        last_name = jwt_payload.get("last_name", "") if isinstance(jwt_payload, dict) else ""
+        name = clean_name(f"{first_name} {last_name}")
+        if not name:
+            name = clean_name(user.email.split("@")[0].replace(".", " ").title()) or "New Patient"
+        
         patient = Patient(
-            name=f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or "New Patient",
+            name=name,
             phone=appt.phone or "0000000000",
             user_id=user.id,
             age=appt.age,

@@ -116,7 +116,11 @@ export default function PatientDashboard() {
   // Sync voice messages logic removed (LiveKit handles its own state)
   // We can add a listener for LiveKit events later if needed to sync text log.
 
-  const fullName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "";
+  // Compute display name - filter out "None" or null surnames
+  const firstName = user?.firstName || "";
+  const lastName = user?.lastName;
+  const hasValidLastName = lastName && lastName !== "None" && lastName !== "null" && lastName !== "undefined";
+  const fullName = hasValidLastName ? `${firstName} ${lastName}` : firstName || "Patient";
 
   useEffect(() => {
     if (fullName) {
@@ -371,7 +375,7 @@ export default function PatientDashboard() {
     <>
       <Header openAI={() => setAiOpen(true)} />
 
-      <main className="dentist-main">
+      <main className="patient-main">
         <h2 id="welcomeMessage">{isNewUser ? "Welcome" : "Welcome back"}, {fullName}!</h2>
 
         {/* PATIENT DASHBOARD LAYOUT - Profile Sidebar + Main Grid */}
@@ -387,7 +391,10 @@ export default function PatientDashboard() {
                 </div>
               )}
             </div>
-            <h3 className="profile-name">{profile?.name || fullName}</h3>
+            <h3 className="profile-name">{
+              // Filter out "None" from profile name
+              profile?.name && !profile.name.includes("None") ? profile.name : fullName
+            }</h3>
             <span className="profile-role">Patient</span>
 
             <div className="profile-info-grid">
