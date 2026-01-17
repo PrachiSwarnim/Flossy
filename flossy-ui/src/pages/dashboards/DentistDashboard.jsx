@@ -401,6 +401,7 @@ export default function DentistDashboard() {
   const [patientsList, setPatientsList] = useState([]);
   const [historyPrescriptions, setHistoryPrescriptions] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [editingInvoice, setEditingInvoice] = useState(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [aiSummaryResult, setAiSummaryResult] = useState(null);
 

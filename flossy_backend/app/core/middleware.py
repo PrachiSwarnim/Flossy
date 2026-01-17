@@ -3,6 +3,7 @@ from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from .security import verify_token
+from .config import ALLOWED_ORIGINS
 
 # Paths that do not require authentication
 EXEMPT_PATHS = {
@@ -40,19 +41,34 @@ class ClerkAuthMiddleware(BaseHTTPMiddleware):
         auth = request.headers.get("Authorization")
         if not auth or not auth.startswith("Bearer "):
             print(f"🔒 Auth blocked: {request.method} {path} - Missing/invalid Header")
-            return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+            response = JSONResponse({"detail": "Unauthorized"}, status_code=401)
+            # Fail-safe CORS injection
+            origin = request.headers.get("origin")
+            if origin in ALLOWED_ORIGINS or origin == None:
+                 response.headers["Access-Control-Allow-Origin"] = origin or "*"
+                 response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response
         
         print(f"🔑 Auth attempting: {request.method} {path}")
 
-        
         try:
             token = auth.split(" ")[1]
             request.state.user = verify_token(token)
             return await call_next(request)
         except HTTPException as e:
             print(f"🔒 Auth HTTP error: {e.detail}")
-            return JSONResponse({"detail": e.detail}, status_code=e.status_code)
+            response = JSONResponse({"detail": e.detail}, status_code=e.status_code)
+            origin = request.headers.get("origin")
+            if origin:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response
         except Exception as e:
             print(f"❌ Middleware error on {path}: {str(e)}")
-            return JSONResponse({"detail": "Invalid Token or Server Error"}, status_code=401)
+            response = JSONResponse({"detail": "Invalid Token or Server Error"}, status_code=401)
+            origin = request.headers.get("origin")
+            if origin:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response
 

@@ -20,4 +20,13 @@ LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY")
 LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
 LIVEKIT_URL = os.getenv("LIVEKIT_URL")
 FRONTEND_ORIGINS = os.getenv("FRONTEND_ORIGINS", "*")
-
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://smileartistsdentalstudio.com",
+    "https://www.smileartistsdentalstudio.com",
+    "https://smile-artists-dental-studio.vercel.app",
+    "https://flossy-ui.vercel.app",
+    "https://flossy-ui-nine.vercel.app",
+    "https://flossy-backend-422640267680.asia-south1.run.app"
+]

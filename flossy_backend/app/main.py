@@ -2,6 +2,7 @@
 import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import ALLOWED_ORIGINS
 
 from app.api.v1.api_router import api_router
 from app.core.middleware import ClerkAuthMiddleware
@@ -29,21 +30,15 @@ app.add_middleware(ClerkAuthMiddleware)
 
 
 
-# Specific origins for production
-ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "https://smileartistsdentalstudio.com",
-    "https://www.smileartistsdentalstudio.com",
-    "https://smile-artists-dental-studio.vercel.app",
-    "https://flossy-ui.vercel.app"
-]
+# Specific origins are now in app.core.config
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
