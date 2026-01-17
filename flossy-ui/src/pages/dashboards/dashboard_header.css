@@ -4,15 +4,23 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.8rem 4%;
-  background: rgba(26, 26, 26, 0.95);
-  backdrop-filter: blur(10px);
+  background: rgba(26, 26, 26, 0.98);
+  backdrop-filter: blur(15px);
   position: fixed;
   top: 0;
-  left: 0;
-  width: 100%;
+  right: 0;
+  left: 320px;
+  /* Offset by sidebar width */
+  width: auto;
+  /* Let it stretch from left to right */
   z-index: 1200;
   border-bottom: 1px solid #333;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.4);
+  transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-collapsed .sa-header {
+  left: 80px;
 }
 
 /* == LOGO == */

@@ -32,9 +32,10 @@ body {
 
 /* =============== Main Wrapper =============== */
 .patient-main {
-  max-width: 1400px;
+  max-width: 1300px;
   margin: 0 auto;
-  padding: 100px 2rem 4rem;
+  padding: 120px 3rem 4rem;
+  /* More top padding for the fixed header */
 }
 
 /* ===============  Title =============== */
@@ -602,14 +603,20 @@ body {
   top: 0;
   bottom: 0;
   width: 320px;
-  background: linear-gradient(180deg, #1a1a1a 0%, #121212 100%);
-  border-right: 1px solid rgba(212, 175, 55, 0.2);
+  background: #111;
+  /* Solid dark background for a cleaner look */
+  border-right: 1px solid rgba(212, 175, 55, 0.15);
   z-index: 1500;
-  padding: 6rem 1rem 2rem;
+  padding: 3rem 1.5rem 2rem;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
-  box-shadow: 4px 0 25px rgba(0, 0, 0, 0.5);
+  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.profile-sidebar::before {
+  display: none;
+  /* Remove the weird gold horizontal bar */
 }
 
 .sidebar-collapsed .profile-sidebar {
@@ -633,20 +640,22 @@ body {
 .sidebar-expand-toggle {
   position: absolute;
   right: -12px;
-  top: 110px;
-  width: 24px;
-  height: 24px;
+  top: 40px;
+  /* Bring it higher up */
+  width: 25px;
+  height: 25px;
   background: var(--primary-gold);
-  color: #1a1a1a;
+  color: #000;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 1600;
-  box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
-  font-size: 0.7rem;
-  transition: transform 0.3s ease;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+  border: 2px solid #111;
 }
 
 .sidebar-expand-toggle:hover {
@@ -681,75 +690,51 @@ body {
   font-weight: 700 !important;
 }
 
-/* Hide elements in collapsed mode */
+/* Sidebar Collapsed Polish */
 .sidebar-collapsed .profile-header-text,
 .sidebar-collapsed .profile-info-grid,
 .sidebar-collapsed .profile-details-compact span,
 .sidebar-collapsed .sidebar-actions span,
 .sidebar-collapsed .profile-name,
 .sidebar-collapsed .profile-role {
-  display: none;
+  display: none !important;
 }
 
 .sidebar-collapsed .profile-avatar {
   width: 50px;
   height: 50px;
-  margin: 0 auto;
+  margin: 0 auto 1rem;
 }
 
-.sidebar-collapsed .detail-row {
-  justify-content: center;
+.sidebar-collapsed .sidebar-actions {
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
 }
 
 .sidebar-collapsed .edit-profile-btn,
 .sidebar-collapsed .sidebar-book-btn {
-  width: 50px;
-  height: 50px;
+  width: 48px;
+  height: 48px;
   padding: 0;
-  border-radius: 50%;
-  aspect-ratio: 1;
-  display: flex;
+  border-radius: 12px;
+  display: flex !important;
   align-items: center;
   justify-content: center;
+}
+
+.sidebar-collapsed .detail-row {
+  justify-content: center;
+  background: transparent;
+  padding: 1rem 0;
 }
 
 .sidebar-collapsed .profile-sidebar-content {
   opacity: 0.9;
 }
 
-/* Hide text in collapsed mode */
-.sidebar-collapsed .profile-header-text,
-.sidebar-collapsed .profile-info-grid,
-.sidebar-collapsed .profile-details-compact span,
-.sidebar-collapsed .sidebar-actions span {
-  display: none;
-}
-
 .sidebar-collapsed .profile-details-compact {
   align-items: center;
-}
-
-.sidebar-collapsed .detail-row {
-  justify-content: center;
-  padding: 0.8rem;
-}
-
-.sidebar-collapsed .profile-avatar {
-  width: 45px;
-  height: 45px;
-}
-
-.sidebar-collapsed .sidebar-actions {
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.sidebar-collapsed .edit-profile-btn,
-.sidebar-collapsed .sidebar-book-btn {
-  width: 45px;
-  height: 45px;
-  padding: 0;
-  border-radius: 50%;
 }
 
 .profile-sidebar::before {
@@ -885,112 +870,40 @@ body {
   text-overflow: ellipsis;
 }
 
-/* Book Appointment Button in Sidebar */
-.profile-sidebar .p-btn {
+/* Consolidate Buttons */
+.edit-profile-btn,
+.sidebar-book-btn {
+  margin-top: 0.5rem;
   width: 100%;
-  display: flex;
+  padding: 0.8rem;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  margin-top: auto;
-  padding: 0.9rem 1.2rem;
-  font-size: 0.95rem;
+  font-family: var(--font-body);
 }
 
-.profile-sidebar .p-btn i {
-  font-size: 1rem;
-}
-
-/* Responsive Layout */
-@media (max-width: 900px) {
-  .dashboard-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .profile-sidebar {
-    position: static;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    padding: 1.5rem;
-    min-height: auto;
-    gap: 1.5rem;
-  }
-
-  .profile-sidebar::before {
-    height: 100%;
-    border-radius: 20px;
-  }
-
-  .profile-avatar {
-    width: 80px;
-    height: 80px;
-  }
-
-  .profile-info-grid {
-    order: 2;
-    max-width: 300px;
-  }
-
-  .profile-details-compact {
-    order: 3;
-    flex-direction: row;
-    flex-wrap: wrap;
-    width: 100%;
-    border-top: none;
-    padding-top: 0;
-  }
-
-  .detail-row {
-    flex: 1 1 auto;
-    min-width: 180px;
-  }
-
-  .profile-sidebar .p-btn {
-    order: 4;
-    width: auto;
-    flex: 1;
-    max-width: 250px;
-  }
-
-  .profile-name,
-  .profile-role {
-    order: 1;
-  }
-}
-
-@media (max-width: 480px) {
-  .profile-sidebar {
-    padding: 1rem;
-  }
-
-  .profile-info-grid {
-    max-width: 100%;
-  }
-
-  .detail-row {
-    min-width: 140px;
-  }
-}
-
-/* Sidebar Toggle Button */
-.sidebar-toggle-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.3);
+.edit-profile-btn {
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.5);
   color: var(--primary-gold);
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 100;
-  backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
-  margin-bottom: 2rem;
-  align-self: flex-start;
 }
+
+.edit-profile-btn:hover {
+  background: rgba(212, 175, 55, 0.1);
+  border-color: var(--primary-gold);
+}
+
+/* Sidebar Toggle Cleanup */
+.sidebar-toggle-btn {
+  display: none;
+}
+
+/* Replaced by sidebar-expand-toggle */
 
 .sidebar-toggle-btn:hover {
   background: var(--primary-gold);
