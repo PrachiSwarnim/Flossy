@@ -35,8 +35,8 @@ jobs:
       # 4. Build and Push Backend Image
       - name: 'Build and Push Container'
         run: |
-          docker build -t asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flossy-repo/flossy-backend:${{ github.sha }} ./flossy_backend
-          docker push asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flossy-repo/flossy-backend:${{ github.sha }}
+          docker build -t asia-south1-docker.pkg.dev/flossy-476616/flossy-repo/flossy-backend:${{ github.sha }} ./flossy_backend
+          docker push asia-south1-docker.pkg.dev/flossy-476616/flossy-repo/flossy-backend:${{ github.sha }}
 
       # 5. Deploy to Cloud Run
       - id: 'deploy'
@@ -44,7 +44,7 @@ jobs:
         uses: 'google-github-actions/deploy-cloudrun@v2'
         with:
           service: 'flossy-backend'
-          image: 'asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flossy-repo/flossy-backend:${{ github.sha }}'
+          image: 'asia-south1-docker.pkg.dev/flossy-476616/flossy-repo/flossy-backend:${{ github.sha }}'
           region: 'asia-south1'
           flags: '--allow-unauthenticated --memory=1Gi --cpu=1 --timeout=300'
 
