@@ -6,18 +6,13 @@ export default function Header({ openAI }) {
   const { signOut } = useClerk();
   const navigate = useNavigate();
 
-  const handleHomeClick = async () => {
-    await signOut();
-    navigate("/");
-  };
-
   return (
     <header className="sa-header">
-      <div className="sa-logo">
+      <div className="sa-logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
         <img src="/static/assets/logo.png" alt="logo" />
-        <div style={{ display: "flex", flexDirection: "column", lineHeight: "0.9", alignItems: "flex-end", gap: "5px" }}>
-          <span className="text-brand" style={{ fontSize: "1.5rem", color: "#d4af37" }}>Smile Artists</span>
-          <span className="text-tagline" style={{ fontSize: "1.1rem", color: "#d4af37", textTransform: "none", letterSpacing: "0px" }}>...crafting smiles</span>
+        <div style={{ display: "flex", flexDirection: "column", lineHeight: "1", alignItems: "flex-start", gap: "2px" }}>
+          <span className="text-brand" style={{ fontSize: "1.4rem", color: "#d4af37", fontWeight: "700" }}>Smile Artists</span>
+          <span className="text-tagline" style={{ fontSize: "0.85rem", color: "#d4af37", opacity: 0.8, fontWeight: "normal" }}>...crafting smiles</span>
         </div>
       </div>
 
@@ -26,14 +21,17 @@ export default function Header({ openAI }) {
         <nav>
           <ul>
             <li>
-              <button className="nav-btn" onClick={handleHomeClick}>
-                Home
-              </button>
+              <Link to="/" className="nav-btn">Home</Link>
             </li>
 
-            <li>
-              <button className="nav-btn" onClick={openAI}>FlossyAI</button>
-            </li>
+            {openAI && (
+              <li>
+                <button className="nav-btn" onClick={openAI}>
+                  <i className="fas fa-robot" style={{ marginRight: '8px' }}></i>
+                  FlossyAI
+                </button>
+              </li>
+            )}
 
             <SignedIn>
               <li>
@@ -49,7 +47,9 @@ export default function Header({ openAI }) {
         </nav>
 
         <SignedIn>
-          <UserButton afterSignOutUrl="/" />
+          <div className="user-profile-wrapper">
+            <UserButton afterSignOutUrl="/" />
+          </div>
         </SignedIn>
       </div>
     </header>

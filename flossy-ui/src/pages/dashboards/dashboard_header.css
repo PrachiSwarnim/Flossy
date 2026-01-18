@@ -1,26 +1,19 @@
-/* == Header Wrapper == */
 .sa-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.8rem 4%;
-  background: rgba(26, 26, 26, 0.98);
-  backdrop-filter: blur(15px);
+  padding: 0.8rem 6%;
+  background: rgba(18, 18, 18, 0.98);
+  backdrop-filter: blur(20px);
   position: fixed;
   top: 0;
+  left: 0;
   right: 0;
-  left: 320px;
-  /* Offset by sidebar width */
-  width: auto;
-  /* Let it stretch from left to right */
+  width: 100%;
   z-index: 1200;
-  border-bottom: 1px solid #333;
-  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.4);
-  transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.sidebar-collapsed .sa-header {
-  left: 80px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  transition: all 0.4s ease;
 }
 
 /* == LOGO == */
@@ -35,16 +28,23 @@
 }
 
 .sa-logo img {
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  transition: transform 0.3s ease;
-  border: 1px solid var(--primary-gold);
+  transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 2px solid var(--primary-gold);
+  object-fit: contain;
+  background: #252525;
 }
 
 .sa-logo:hover img {
-  transform: scale(1.1);
-  box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.4);
+}
+
+.text-tagline {
+  letter-spacing: 0.5px;
+  font-style: italic;
 }
 
 /* == NAV RIGHT SIDE == */
@@ -126,21 +126,36 @@ nav ul li a:hover,
   transform: translateY(-2px);
 }
 
+.user-profile-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.user-profile-wrapper:hover {
+  border-color: var(--primary-gold);
+  background: rgba(212, 175, 55, 0.1);
+}
+
 /* == CLERK USER BUTTON == */
 .cl-userButton-root {
-  height: 35px !important;
-  width: 35px !important;
+  height: 40px !important;
+  width: 40px !important;
   border-radius: 50%;
   border: 1px solid var(--primary-gold);
   transition: transform 0.2s ease;
 }
 
 .cl-userButton-root:hover {
-  transform: scale(1.1);
+  transform: scale(1.05);
   box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
 }
 
 .cl-avatarBox {
-  height: 35px !important;
-  width: 35px !important;
+  height: 40px !important;
+  width: 40px !important;
 }

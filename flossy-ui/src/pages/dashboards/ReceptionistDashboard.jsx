@@ -94,11 +94,19 @@ export default function ReceptionistDashboard() {
         loadAppointments();
     }
 
+    // === Name Cleaning Helper ===
+    const cleanName = (name) => {
+        if (!name) return "";
+        return name
+            .replace(/\b(None|null|undefined)\b/gi, "")
+            .trim();
+    };
+
     // === Full Name ===
     const firstName = user?.firstName || "";
-    const lastName = user?.lastName;
-    const hasValidLastName = lastName && lastName !== "None" && lastName !== "null" && lastName !== "undefined";
-    const fullName = hasValidLastName ? `${firstName} ${lastName}` : firstName || "Receptionist";
+    const lastName = user?.lastName || "";
+    const rawFullName = `${firstName} ${lastName}`.trim();
+    const fullName = cleanName(rawFullName) || "Receptionist";
 
     useEffect(() => {
         if (fullName) {
@@ -498,7 +506,7 @@ export default function ReceptionistDashboard() {
                                                 })}
                                             </b>
                                             <div className="appt-patient">
-                                                {capitalizeFullName(a.patient_name)}
+                                                {capitalizeFullName(cleanName(a.patient_name))}
                                                 <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
                                                     {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
                                                 </span>
@@ -650,7 +658,7 @@ export default function ReceptionistDashboard() {
                                                 <b style={{ color: "#f0b800" }}>{new Date(a.time).toLocaleDateString("en-IN", { day: '2-digit', month: 'short' })}</b>
                                                 <b>{new Date(a.time).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit', hour12: true })}</b>
                                             </div>
-                                            <div className="appt-patient">{capitalizeFullName(a.patient_name)}</div>
+                                            <div className="appt-patient">{capitalizeFullName(cleanName(a.patient_name))}</div>
                                             <div className="appt-reason">{a.reason}</div>
                                             <div style={{ color: "#f0b800", fontSize: "0.8rem", marginTop: "4px" }}>
                                                 <i className="fas fa-user-md"></i> {a.doctor_name}
@@ -702,7 +710,7 @@ export default function ReceptionistDashboard() {
                                                 })}
                                             </b>
                                             <div className="appt-patient">
-                                                {capitalizeFullName(a.patient_name)}
+                                                {capitalizeFullName(cleanName(a.patient_name))}
                                                 <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
                                                     {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
                                                 </span>

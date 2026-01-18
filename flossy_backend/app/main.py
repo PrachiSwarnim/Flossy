@@ -16,26 +16,10 @@ app = FastAPI(
     description="AI Dental Assistant API",
 )
 
-# 1. CORS (Outermost)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "https://smileartistsdentalstudio.com",
-        "https://www.smileartistsdentalstudio.com",
-        "https://smile-artists-dental-studio.vercel.app",
-    ],
-    allow_origin_regex=r"https?://.*smileartistsdentalstudio\.com|https?://.*vercel\.app",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# 2. Proxy Headers (for Cloud Run)
+# 1. Proxy Headers (Internal)
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
-# 3. Dynamic Service Imports (Safe Boot)
+# 2. Dynamic Service Imports (Internal)
 try:
     from app.core.middleware import ClerkAuthMiddleware
     app.add_middleware(ClerkAuthMiddleware)
@@ -45,11 +29,34 @@ try:
     logger.info("✅ All routers and auth middleware loaded.")
 except Exception as e:
     logger.error(f"❌ Critical error during service loading: {e}")
-    # We still allow the app to start so we can see logs/health
+
+# 3. CORS (MUST BE ADDED LAST TO BE OUTERMOST)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://smileartistsdentalstudio.com",
+        "https://www.smileartistsdentalstudio.com",
+        "https://smile-artists-dental-studio.vercel.app",
+        "https://flossy-ui.vercel.app",
+        "https://flossy-ui-nine.vercel.app",
+    ],
+    allow_origin_regex=r"https?://.*smileartistsdentalstudio\.com|https?://.*vercel\.app",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "service": "flossy-backend", "deployment": os.getenv("K_REVISION", "local")}
+    return {
+        "status": "healthy", 
+        "service": "flossy-backend", 
+        "version": "2.1.0",
+        "deployment": os.getenv("K_REVISION", "local")
+    }
 
 @app.on_event("startup")
 async def startup():
