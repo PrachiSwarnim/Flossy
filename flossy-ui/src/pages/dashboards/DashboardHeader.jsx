@@ -7,7 +7,7 @@ export default function Header({ openAI }) {
   const navigate = useNavigate();
 
   return (
-    <header className="sa-header">
+    <header className="sa-header" id="flossy-main-header">
       <div className="sa-logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
         <img src="/static/assets/logo.png" alt="logo" />
         <div style={{ display: "flex", flexDirection: "column", lineHeight: "1", alignItems: "flex-start", gap: "2px" }}>
