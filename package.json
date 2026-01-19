@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "build": "npm install --prefix flossy-ui && npm run build --prefix flossy-ui"
+  },
   "dependencies": {
     "@clerk/clerk-react": "^5.53.4",
     "clsx": "^2.1.1",

@@ -233,6 +233,8 @@ body {
   font-size: 0.95rem;
   outline: none;
   transition: 0.2s;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   appearance: none;
   /* Remove browser default UI */
 }
