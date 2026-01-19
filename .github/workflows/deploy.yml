@@ -65,6 +65,12 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel
 
+      - name: Fix npm optional dependencies issue
+        run: |
+          cd flossy-ui
+          rm -rf node_modules package-lock.json
+          npm install
+
       - name: Deploy to Vercel (Production)
         run: |
           cd flossy-ui
