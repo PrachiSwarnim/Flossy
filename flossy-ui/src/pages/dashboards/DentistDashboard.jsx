@@ -1534,25 +1534,32 @@ export default function DentistDashboard() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '12px', marginTop: '1.5rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '15px', marginTop: '1.5rem', alignItems: 'center' }}>
                   <button
                     className="upload-btn"
                     onClick={handlePrescriptionUpload}
                     disabled={isUploading}
                     style={{
-                      flex: 2,
-                      height: '48px',
-                      borderRadius: '10px',
-                      fontSize: '1rem',
-                      fontWeight: 'bold',
+                      flex: 1,
+                      height: '52px',
+                      borderRadius: '12px',
+                      fontSize: '0.95rem',
+                      fontWeight: '700',
+                      letterSpacing: '0.5px',
                       background: editingPrescId ? "#2ecc71" : "var(--primary-gold)",
                       color: editingPrescId ? "#fff" : "#000",
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '10px',
+                      transition: 'all 0.3s ease',
                       boxShadow: '0 4px 15px rgba(240, 184, 0, 0.2)'
                     }}
                   >
                     {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className={`fas ${editingPrescId ? "fa-save" : "fa-upload"}`}></i>}
-                    {isUploading ? (editingPrescId ? " Updating..." : " Saving...") : (editingPrescId ? " Save Changes" : " Save Prescription")}
+                    {isUploading ? (editingPrescId ? "UPDATING..." : "SAVING...") : (editingPrescId ? "SAVE CHANGES" : "SAVE PRESCRIPTION")}
                   </button>
 
                   <button
@@ -1561,20 +1568,26 @@ export default function DentistDashboard() {
                     disabled={isSummarizing || (!prescDetails && !prescDiagnosis)}
                     style={{
                       flex: 1,
-                      height: '48px',
-                      borderRadius: '10px',
-                      background: 'rgba(240, 184, 0, 0.1)',
-                      border: '1.5px solid var(--primary-gold)',
+                      height: '52px',
+                      borderRadius: '12px',
+                      background: 'rgba(240, 184, 0, 0.05)',
+                      border: '2px solid var(--primary-gold)',
                       color: 'var(--primary-gold)',
                       whiteSpace: 'nowrap',
-                      fontWeight: '600',
+                      fontWeight: '700',
+                      letterSpacing: '0.5px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '10px',
                       transition: 'all 0.3s ease'
                     }}
                   >
                     {isSummarizing ? (
-                      <><i className="fas fa-circle-notch fa-spin"></i> Analyzing...</>
+                      <><i className="fas fa-circle-notch fa-spin"></i> ANALYZING...</>
                     ) : (
-                      <><i className="fas fa-magic"></i> AI Summary</>
+                      <><i className="fas fa-magic"></i> AI SUMMARY</>
                     )}
                   </button>
 
@@ -1582,18 +1595,19 @@ export default function DentistDashboard() {
                     <button
                       onClick={cancelEditing}
                       style={{
-                        flex: 0.8,
-                        height: '48px',
-                        background: '#222',
+                        flex: 0.5,
+                        height: '52px',
+                        background: 'transparent',
                         border: "1px solid #444",
                         color: "#888",
-                        borderRadius: "10px",
+                        borderRadius: "12px",
                         cursor: "pointer",
-                        fontSize: '0.9rem',
+                        fontSize: '0.85rem',
+                        fontWeight: '600',
                         transition: 'all 0.3s ease'
                       }}
                     >
-                      Cancel Edit
+                      CANCEL
                     </button>
                   )}
                 </div>
