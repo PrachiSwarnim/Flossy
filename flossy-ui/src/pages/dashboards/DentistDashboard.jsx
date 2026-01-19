@@ -1097,42 +1097,56 @@ export default function DentistDashboard() {
           <div className="row-stats" style={{ display: "flex", justifyContent: "center", width: "100%", marginBottom: "2rem" }}>
             <div className="card animate-fade-up" style={{ animationDelay: "0.2s", width: "100%", maxWidth: "1000px" }}>
               <div className="card-header">
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <h3>Daily Closure Report</h3>
-                  <input
-                    type="date"
-                    value={reportDate}
-                    onChange={(e) => setReportDate(e.target.value)}
-                    style={{
-                      background: "rgba(0,0,0,0.3)",
-                      border: "1px solid #555",
-                      color: "#fff",
-                      padding: "5px 10px",
-                      borderRadius: "5px",
-                      fontSize: "0.9rem",
-                      cursor: "pointer",
-                      colorScheme: "dark"
-                    }}
-                  />
-                  <select
-                    value={reportView}
-                    onChange={(e) => setReportView(e.target.value)}
-                    style={{
-                      background: "rgba(0,0,0,0.3)",
-                      border: "1px solid #555",
-                      color: "#fff",
-                      padding: "5px 10px",
-                      borderRadius: "5px",
-                      fontSize: "0.9rem",
-                      cursor: "pointer",
-                      outline: "none",
-                      colorScheme: "dark"
-                    }}
-                  >
-                    <option value="daily" style={{ background: "#222", color: "#fff" }}>Daily</option>
-                    <option value="monthly" style={{ background: "#222", color: "#fff" }}>Monthly</option>
-                    <option value="yearly" style={{ background: "#222", color: "#fff" }}>Yearly</option>
-                  </select>
+                <div style={{ display: "flex", alignItems: "center", gap: "15px", flexWrap: "wrap" }}>
+                  <h3 style={{ margin: 0 }}>Daily Closure Report</h3>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                    <input
+                      type="date"
+                      value={reportDate}
+                      onChange={(e) => setReportDate(e.target.value)}
+                      style={{
+                        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+                        border: "2px solid #f0b800",
+                        color: "#fff",
+                        padding: "10px 15px",
+                        borderRadius: "8px",
+                        fontSize: "0.95rem",
+                        cursor: "pointer",
+                        colorScheme: "dark",
+                        fontWeight: "500",
+                        boxShadow: "0 2px 10px rgba(240, 184, 0, 0.15)",
+                        transition: "all 0.3s ease",
+                        outline: "none"
+                      }}
+                    />
+                    <select
+                      value={reportView}
+                      onChange={(e) => setReportView(e.target.value)}
+                      style={{
+                        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+                        border: "2px solid #f0b800",
+                        color: "#fff",
+                        padding: "10px 20px",
+                        borderRadius: "8px",
+                        fontSize: "0.95rem",
+                        cursor: "pointer",
+                        outline: "none",
+                        colorScheme: "dark",
+                        fontWeight: "500",
+                        boxShadow: "0 2px 10px rgba(240, 184, 0, 0.15)",
+                        transition: "all 0.3s ease",
+                        appearance: "none",
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23f0b800' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                        backgroundRepeat: "no-repeat",
+                        backgroundPosition: "right 10px center",
+                        paddingRight: "35px"
+                      }}
+                    >
+                      <option value="daily" style={{ background: "#1a1a2e", color: "#fff", padding: "10px" }}>📅 Daily</option>
+                      <option value="monthly" style={{ background: "#1a1a2e", color: "#fff", padding: "10px" }}>📆 Monthly</option>
+                      <option value="yearly" style={{ background: "#1a1a2e", color: "#fff", padding: "10px" }}>🗓️ Yearly</option>
+                    </select>
+                  </div>
                 </div>
                 <i className="fas fa-chart-line card-icon"></i>
               </div>
