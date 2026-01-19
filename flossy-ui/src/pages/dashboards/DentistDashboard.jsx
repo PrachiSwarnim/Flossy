@@ -1534,18 +1534,24 @@ export default function DentistDashboard() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '15px', marginTop: '1.5rem', alignItems: 'center' }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: editingPrescId ? '1fr 1fr 0.5fr' : '1fr 1fr',
+                  gap: '15px',
+                  marginTop: '1.5rem',
+                  width: '100%'
+                }}>
                   <button
                     className="upload-btn"
                     onClick={handlePrescriptionUpload}
                     disabled={isUploading}
                     style={{
-                      flex: 1,
+                      width: "100%",
                       height: '52px',
                       borderRadius: '12px',
-                      fontSize: '0.95rem',
-                      fontWeight: '700',
-                      letterSpacing: '0.5px',
+                      fontSize: '0.9rem',
+                      fontWeight: '800',
+                      letterSpacing: '1px',
                       background: editingPrescId ? "#2ecc71" : "var(--primary-gold)",
                       color: editingPrescId ? "#fff" : "#000",
                       border: 'none',
@@ -1555,11 +1561,15 @@ export default function DentistDashboard() {
                       justifyContent: 'center',
                       gap: '10px',
                       transition: 'all 0.3s ease',
-                      boxShadow: '0 4px 15px rgba(240, 184, 0, 0.2)'
+                      boxShadow: '0 4px 15px rgba(240, 184, 0, 0.2)',
+                      padding: "0 10px",
+                      margin: "0"
                     }}
                   >
                     {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className={`fas ${editingPrescId ? "fa-save" : "fa-upload"}`}></i>}
-                    {isUploading ? (editingPrescId ? "UPDATING..." : "SAVING...") : (editingPrescId ? "SAVE CHANGES" : "SAVE PRESCRIPTION")}
+                    <span style={{ whiteSpace: 'nowrap' }}>
+                      {isUploading ? (editingPrescId ? "UPDATING..." : "SAVING...") : (editingPrescId ? "SAVE PRESCRIPTION" : "SAVE PRESCRIPTION")}
+                    </span>
                   </button>
 
                   <button
@@ -1567,27 +1577,28 @@ export default function DentistDashboard() {
                     onClick={generateAISummary}
                     disabled={isSummarizing || (!prescDetails && !prescDiagnosis)}
                     style={{
-                      flex: 1,
+                      width: "100%",
                       height: '52px',
                       borderRadius: '12px',
-                      background: 'rgba(240, 184, 0, 0.05)',
+                      background: 'rgba(240, 184, 0, 0.12)',
                       border: '2px solid var(--primary-gold)',
                       color: 'var(--primary-gold)',
-                      whiteSpace: 'nowrap',
-                      fontWeight: '700',
-                      letterSpacing: '0.5px',
+                      fontWeight: '800',
+                      letterSpacing: '1px',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '10px',
-                      transition: 'all 0.3s ease'
+                      transition: 'all 0.3s ease',
+                      padding: "0 10px",
+                      margin: "0"
                     }}
                   >
                     {isSummarizing ? (
-                      <><i className="fas fa-circle-notch fa-spin"></i> ANALYZING...</>
+                      <><i className="fas fa-circle-notch fa-spin"></i> <span style={{ whiteSpace: 'nowrap' }}>ANALYZING...</span></>
                     ) : (
-                      <><i className="fas fa-magic"></i> AI SUMMARY</>
+                      <><i className="fas fa-magic"></i> <span style={{ whiteSpace: 'nowrap' }}>AI SUMMARY</span></>
                     )}
                   </button>
 
@@ -1595,16 +1606,17 @@ export default function DentistDashboard() {
                     <button
                       onClick={cancelEditing}
                       style={{
-                        flex: 0.5,
+                        width: "100%",
                         height: '52px',
-                        background: 'transparent',
+                        background: 'rgba(255,255,255,0.05)',
                         border: "1px solid #444",
                         color: "#888",
                         borderRadius: "12px",
                         cursor: "pointer",
-                        fontSize: '0.85rem',
-                        fontWeight: '600',
-                        transition: 'all 0.3s ease'
+                        fontSize: '0.8rem',
+                        fontWeight: '700',
+                        transition: 'all 0.3s ease',
+                        margin: "0"
                       }}
                     >
                       CANCEL
