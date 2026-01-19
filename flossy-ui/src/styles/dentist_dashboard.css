@@ -1,8 +1,14 @@
 /* =============== Global Background =============== */
+html,
 body {
   background: var(--bg-dark) !important;
   font-family: var(--font-body);
   color: var(--text-light);
+  overflow-x: hidden;
+  /* Prevent horizontal scrolling that causes header offset */
+  margin: 0;
+  padding: 0;
+  width: 100%;
 }
 
 /* ===== PAGE LOAD OVERLAY ===== */

@@ -11,8 +11,8 @@ export default function Header({ openAI }) {
       className="sa-header"
       id="flossy-main-header"
       style={{
-        width: "100vw",
-        maxWidth: "100vw",
+        width: "100%",
+        maxWidth: "100%",
         height: "auto",
         position: "fixed",
         top: 0,
@@ -28,7 +28,8 @@ export default function Header({ openAI }) {
         padding: "0.8rem 4%",
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between"
+        justifyContent: "space-between",
+        overflowX: "hidden"
       }}
     >
       <div className="sa-logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>

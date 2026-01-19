@@ -56,8 +56,17 @@ def verify_token(token: str) -> dict:
             "https://accounts.clerk.dev"
         ]
         
-        # Check if the issuer ends with any of the expected suffixes or matches exactly
-        is_valid_issuer = any(token_issuer == iss or token_issuer.endswith(".clerk.accounts.dev") for iss in expected_issuers if iss)
+        # Check if the issuer matches expected patterns
+        # Clerk dev issuers look like: https://xxx.clerk.accounts.dev
+        # Clerk production issuers can be custom domains or clerk.xxx.com
+        is_valid_issuer = (
+            any(token_issuer == iss for iss in expected_issuers if iss) or
+            ".clerk.accounts.dev" in token_issuer or
+            "clerk." in token_issuer or
+            ".clerk." in token_issuer
+        )
+        
+        print(f"🔍 Issuer validation: token_issuer={token_issuer}, valid={is_valid_issuer}")
         
         if not is_valid_issuer:
             print(f"❌ Invalid issuer: {token_issuer}")
