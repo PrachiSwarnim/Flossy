@@ -13,15 +13,45 @@ router = APIRouter()
 def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(["receptionist", "dentist", "admin"]))):
     """
     Returns all non-archived patients with AI risk profiling and triage status.
+    Excludes staff members (dentists, receptionists) from the list.
+    Ensures all users with 'patient' role have a patient record.
     """
     from sqlalchemy import or_, desc
-    from app.models import Appointment, TriageResult
+    from app.models import Appointment, TriageResult, User
+    import time
     
+    # First, ensure all users with role='patient' have a Patient record
+    patient_users = db.query(User).filter(User.role == "patient").all()
+    for pu in patient_users:
+        existing = db.query(Patient).filter(Patient.user_id == pu.id).first()
+        if not existing:
+            # Auto-create patient record for this user
+            name_parts = pu.email.split("@")[0].replace(".", " ").replace("_", " ").title()
+            unique_placeholder = f"TEMP_{pu.id}_{int(time.time()) % 100000}"
+            new_patient = Patient(
+                name=name_parts,
+                phone=unique_placeholder,
+                user_id=pu.id,
+                source="website"
+            )
+            db.add(new_patient)
+    db.commit()
+    
+    # Query all non-archived patients
     patients = db.query(Patient).filter(or_(Patient.is_archived == 0, Patient.is_archived == None)).all()
     
     results = []
     for p in patients:
+        # Skip patients whose linked user is a dentist or receptionist (staff)
+        if p.user and p.user.role in ["dentist", "receptionist", "admin"]:
+            continue
+            
         display_name = p.name.strip().title() if p.name else "Unknown Patient"
+        
+        # Hide TEMP_ placeholder phone numbers
+        phone_display = p.phone
+        if phone_display and phone_display.startswith("TEMP_"):
+            phone_display = None  # Hide placeholder
         
         # Fetch latest triage
         latest_triage = db.query(TriageResult).filter(TriageResult.patient_id == p.id).order_by(desc(TriageResult.created_at)).first()
@@ -48,7 +78,7 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
         results.append({
             "id": p.id,
             "name": display_name,
-            "phone": p.phone,
+            "phone": phone_display,
             "age": p.age,
             "email": p.user.email if p.user else None,
             "source": p.source or "website",
