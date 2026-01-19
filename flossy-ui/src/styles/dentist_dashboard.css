@@ -262,7 +262,8 @@ body {
 }
 
 .upload-btn {
-  width: 100%;
+  width: auto;
+  min-width: 160px;
   padding: 1rem;
   background: #f0b800;
   color: #000000 !important;
