@@ -1,0 +1,6 @@
+{
+    "buildCommand": "npm run build --prefix flossy-ui",
+    "installCommand": "npm install --prefix flossy-ui",
+    "outputDirectory": "flossy-ui/dist",
+    "framework": "vite"
+}
