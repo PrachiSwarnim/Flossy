@@ -19,6 +19,37 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
     from sqlalchemy import or_, desc
     from app.models import Appointment, TriageResult, User
     import time
+    import re
+    
+    def extract_name_from_email(email: str) -> str:
+        """Extract a clean, human-readable name from an email address."""
+        if not email or "@" not in email:
+            return "Unknown"
+        
+        local_part = email.split("@")[0]
+        
+        # Remove numbers
+        local_part = re.sub(r'\d+', '', local_part)
+        
+        # Split by common separators
+        parts = re.split(r'[._\-]', local_part)
+        
+        # Filter out empty parts and very short parts (likely initials)
+        parts = [p.strip().title() for p in parts if len(p.strip()) > 1]
+        
+        if len(parts) >= 2:
+            # Check if it looks like lastname.firstname format (common in India)
+            # Heuristic: if first part looks like a surname (vasisht, kumar, sharma, etc)
+            # Actually, simpler: just reverse if parts[1] is a common first name
+            # For now, let's just use as-is but put them in a natural order
+            # Assumption: email format firstname.lastname or lastname.firstname
+            # We'll display as "Firstname Lastname" by taking parts[1] parts[0] if needed
+            # Actually let's just join them and let the clinic edit if wrong
+            return " ".join(parts)
+        elif len(parts) == 1:
+            return parts[0]
+        else:
+            return "Unknown"
     
     # First, ensure all users with role='patient' have a Patient record
     patient_users = db.query(User).filter(User.role == "patient").all()
@@ -26,10 +57,10 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
         existing = db.query(Patient).filter(Patient.user_id == pu.id).first()
         if not existing:
             # Auto-create patient record for this user
-            name_parts = pu.email.split("@")[0].replace(".", " ").replace("_", " ").title()
+            clean_name = extract_name_from_email(pu.email)
             unique_placeholder = f"TEMP_{pu.id}_{int(time.time()) % 100000}"
             new_patient = Patient(
-                name=name_parts,
+                name=clean_name,
                 phone=unique_placeholder,
                 user_id=pu.id,
                 source="website"
@@ -44,6 +75,12 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
     for p in patients:
         # Skip patients whose linked user is a dentist or receptionist (staff)
         if p.user and p.user.role in ["dentist", "receptionist", "admin"]:
+            continue
+        
+        # Skip system/test accounts
+        if p.phone and p.phone in ["0000000000", "0", "00000", "1234567890"]:
+            continue
+        if p.name and p.name.lower().strip() in ["system", "test", "admin", "unknown"]:
             continue
             
         display_name = p.name.strip().title() if p.name else "Unknown Patient"
