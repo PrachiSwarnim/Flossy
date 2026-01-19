@@ -155,9 +155,11 @@ export default function DentistDashboard() {
 
     // Check permission (Redundant with top-level check but safe)
     const role = user?.publicMetadata?.role;
-    const email = user?.primaryEmailAddress?.emailAddress;
+    const email = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
 
-    if (role !== "dentist" && email !== "prachi.swarnim@gmail.com") return;
+    // Allow dentists by role OR by hardcoded emails
+    const allowedDentistEmails = ["prachi.swarnim@gmail.com", "choudhary.shruti01@gmail.com", "smileartistsdental@gmail.com"];
+    if (role !== "dentist" && !allowedDentistEmails.includes(email)) return;
 
     // Default report date to today
     setReportDate(new Date().toISOString().split('T')[0]);
