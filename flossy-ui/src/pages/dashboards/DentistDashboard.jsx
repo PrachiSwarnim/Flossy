@@ -151,28 +151,46 @@ export default function DentistDashboard() {
 
   // === Load Data ===
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || !session) {
+      console.log("⏳ Waiting for Clerk to load...", { isLoaded, hasSession: !!session });
+      return;
+    }
 
     // Check permission (Redundant with top-level check but safe)
     const role = user?.publicMetadata?.role;
     const email = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
 
+    console.log("🔍 Dentist Dashboard: Checking access", { role, email });
+
     // Allow dentists by role OR by hardcoded emails
     const allowedDentistEmails = ["prachi.swarnim@gmail.com", "choudhary.shruti01@gmail.com", "smileartistsdental@gmail.com"];
-    if (role !== "dentist" && !allowedDentistEmails.includes(email)) return;
+    if (role !== "dentist" && !allowedDentistEmails.includes(email)) {
+      console.log("❌ Access denied - not a dentist", { role, email });
+      setPageLoading(false); // Stop loading even if access is denied
+      return;
+    }
+
+    console.log("✅ Access granted - loading dashboard data...");
 
     // Default report date to today
     setReportDate(new Date().toISOString().split('T')[0]);
 
     // Start loading
     loadAppointments()
-      .catch(e => console.error("Failed to load appointments:", e))
-      .finally(() => setPageLoading(false));
+      .then(() => console.log("✅ Appointments loaded"))
+      .catch(e => console.error("❌ Failed to load appointments:", e))
+      .finally(() => {
+        console.log("🏁 Setting pageLoading to false");
+        setPageLoading(false);
+      });
 
     // Safety timeout: forced stop after 5 seconds
-    const timer = setTimeout(() => setPageLoading(false), 5000);
+    const timer = setTimeout(() => {
+      console.log("⏰ Safety timeout triggered");
+      setPageLoading(false);
+    }, 5000);
     return () => clearTimeout(timer);
-  }, [isLoaded, user]);
+  }, [isLoaded, user, session]);
 
   // === Name Cleaning Helper ===
   const cleanName = (name) => {
