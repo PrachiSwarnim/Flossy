@@ -137,9 +137,14 @@ def sync_user_to_db(db: Session, user_payload: dict, email_hint: str = None) -> 
         fname = user_payload.get("given_name") or user_payload.get("first_name") or email.split("@")[0]
         lname = user_payload.get("family_name") or user_payload.get("last_name") or ""
         
+        # Use a unique placeholder phone based on user ID to avoid constraint violations
+        # Format: TEMP_<user_id>_<timestamp_suffix>
+        import time
+        unique_placeholder_phone = f"TEMP_{user.id}_{int(time.time()) % 100000}"
+        
         patient = Patient(
             name=f"{fname} {lname}".strip(),
-            phone="0000000000",
+            phone=unique_placeholder_phone,
             user_id=user.id,
             contact_datetime=datetime.now(timezone.utc),
             source="website"
