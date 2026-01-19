@@ -24,4 +24,4 @@ api_router.include_router(invoices_router, prefix="/invoices", tags=["Invoices"]
 api_router.include_router(misc_router, prefix="", tags=["Misc"]) # Uses /treatments
 api_router.include_router(doctors_router, prefix="/doctors", tags=["Doctors"]) # Uses / (so /api/doctors)
 
-api_router.include_router(ai_router, prefix="", tags=["AI"])
+api_router.include_router(ai_router, prefix="/ai", tags=["AI"])

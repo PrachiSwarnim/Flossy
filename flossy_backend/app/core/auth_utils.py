@@ -133,9 +133,16 @@ def sync_user_to_db(db: Session, user_payload: dict, email_hint: str = None) -> 
     patient = db.query(Patient).filter(Patient.user_id == user.id).first()
     if not patient:
         print(f"🌱 Creating patient profile for user: {email}")
-        # Try to get names from payload
-        fname = user_payload.get("given_name") or user_payload.get("first_name") or email.split("@")[0]
-        lname = user_payload.get("family_name") or user_payload.get("last_name") or ""
+        # Sanitize names to avoid "None", "null", "undefined" strings
+        def sanitize(val):
+            if not val or str(val).lower() in ["none", "null", "undefined"]:
+                return ""
+            return str(val).strip()
+
+        fname = sanitize(user_payload.get("given_name") or user_payload.get("first_name"))
+        if not fname: fname = email.split("@")[0]
+        
+        lname = sanitize(user_payload.get("family_name") or user_payload.get("last_name"))
         
         # Use a unique placeholder phone based on user ID to avoid constraint violations
         # Format: TEMP_<user_id>_<timestamp_suffix>

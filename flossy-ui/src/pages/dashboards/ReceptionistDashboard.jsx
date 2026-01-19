@@ -6,6 +6,7 @@ import Header from "./DashboardHeader";
 import Footer from "../../components/Footer";
 import InvoiceForm from "../../components/InvoiceForm";
 import "../../styles/dentist_dashboard.css";
+import { TIME_SLOTS, formatTime12h } from "../../utils/timeSlots";
 
 const API = import.meta.env.VITE_API_BASE_URL?.replace("http://", "https://");
 
@@ -20,6 +21,7 @@ export default function ReceptionistDashboard() {
     const [patientAge, setPatientAge] = useState("");
     const [patientSex, setPatientSex] = useState("M");
     const [visitDate, setVisitDate] = useState("");
+    const [visitTime, setVisitTime] = useState("");
     const [visitReason, setVisitReason] = useState("");
     const [assignedDoctor, setAssignedDoctor] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,7 +53,8 @@ export default function ReceptionistDashboard() {
     const [negotiationModalOpen, setNegotiationModalOpen] = useState(false);
     const [negotiatingAppt, setNegotiatingAppt] = useState(null);
     const [denialReason, setDenialReason] = useState("");
-    const [proposedTime, setProposedTime] = useState("");
+    const [proposedDate, setProposedDate] = useState("");
+    const [proposedTimeSlot, setProposedTimeSlot] = useState("");
     const [complaintType, setComplaintType] = useState("manual");
     const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
     const [reportView, setReportView] = useState("daily");
@@ -70,14 +73,18 @@ export default function ReceptionistDashboard() {
 
     function openNegotiation(appt) {
         setNegotiatingAppt(appt);
-        setProposedTime(appt.time);
+        const dt = new Date(appt.time);
+        setProposedDate(dt.toISOString().split('T')[0]);
+        // Try to match time to a slot
+        const timeStr = dt.toTimeString().substring(0, 5);
+        setProposedTimeSlot(timeStr);
         setNegotiationModalOpen(true);
     }
 
     async function submitNegotiation() {
         if (!denialReason) return alert("Please provide a reason.");
         const token = await session.getToken({ template: "default" });
-        const isoDate = new Date(proposedTime).toISOString();
+        const isoDate = new Date(`${proposedDate}T${proposedTimeSlot}`).toISOString();
 
         await fetch(`${API}/api/appointments/${negotiatingAppt.id}`, {
             method: "PUT",
@@ -349,7 +356,7 @@ export default function ReceptionistDashboard() {
     }
 
     async function handleAddPatient() {
-        if (!patientName || !patientPhone || !patientAge || !visitDate || !visitReason || !assignedDoctor) {
+        if (!patientName || !patientPhone || !patientAge || !visitDate || !visitTime || !visitReason || !assignedDoctor) {
             alert("Please fill in all details, including assigning a doctor.");
             return;
         }
@@ -358,6 +365,7 @@ export default function ReceptionistDashboard() {
         const token = await session.getToken({ template: "default" });
 
         try {
+            const isoDateTime = new Date(`${visitDate}T${visitTime}`).toISOString();
             const res = await fetch(`${API}/api/receptionist/add_patient`, {
                 method: "POST",
                 headers: {
@@ -368,7 +376,7 @@ export default function ReceptionistDashboard() {
                     name: patientName,
                     phone: patientPhone,
                     age: parseInt(patientAge),
-                    datetime: visitDate,
+                    datetime: isoDateTime,
                     reason: visitReason,
                     doctor_name: assignedDoctor || null,
                     sex: patientSex
@@ -382,6 +390,7 @@ export default function ReceptionistDashboard() {
                 setPatientAge("");
                 setPatientSex("M");
                 setVisitDate("");
+                setVisitTime("");
                 setVisitReason("");
                 setAssignedDoctor("");
 
@@ -773,12 +782,24 @@ export default function ReceptionistDashboard() {
                                 <p style={{ marginBottom: '10px', color: '#ccc' }}>Propose a new time for {negotiatingAppt?.patient_name}</p>
 
                                 <label style={{ display: 'block', marginBottom: '5px', color: '#aaa' }}>New Date & Time:</label>
-                                <input
-                                    type="datetime-local"
-                                    value={proposedTime}
-                                    onChange={e => setProposedTime(e.target.value)}
-                                    style={{ width: '100%', padding: '10px', marginBottom: '15px', borderRadius: '5px', border: 'none' }}
-                                />
+                                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                                    <input
+                                        type="date"
+                                        value={proposedDate}
+                                        onChange={e => setProposedDate(e.target.value)}
+                                        style={{ flex: 1, padding: '10px', borderRadius: '5px', border: 'none' }}
+                                    />
+                                    <select
+                                        value={proposedTimeSlot}
+                                        onChange={e => setProposedTimeSlot(e.target.value)}
+                                        style={{ flex: 1, padding: '10px', borderRadius: '5px', border: 'none' }}
+                                    >
+                                        <option value="" disabled>Time</option>
+                                        {TIME_SLOTS.map(slot => (
+                                            <option key={slot} value={slot}>{formatTime12h(slot)}</option>
+                                        ))}
+                                    </select>
+                                </div>
 
                                 <label style={{ display: 'block', marginBottom: '5px', color: '#aaa' }}>Reason for Change:</label>
                                 <textarea
@@ -854,12 +875,24 @@ export default function ReceptionistDashboard() {
 
                                 <div className="form-group">
                                     <label style={{ color: "#888", marginBottom: "5px", display: "block" }}>Date & Time of Visit</label>
-                                    <input
-                                        type="datetime-local"
-                                        value={visitDate}
-                                        onChange={e => setVisitDate(e.target.value)}
-                                        style={{ width: "100%", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff" }}
-                                    />
+                                    <div style={{ display: "flex", gap: "10px" }}>
+                                        <input
+                                            type="date"
+                                            value={visitDate}
+                                            onChange={e => setVisitDate(e.target.value)}
+                                            style={{ flex: 1, padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff" }}
+                                        />
+                                        <select
+                                            value={visitTime}
+                                            onChange={e => setVisitTime(e.target.value)}
+                                            style={{ flex: 1, padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff" }}
+                                        >
+                                            <option value="" disabled>Select Time</option>
+                                            {TIME_SLOTS.map(slot => (
+                                                <option key={slot} value={slot}>{formatTime12h(slot)}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
 
                                 <div className="form-group">

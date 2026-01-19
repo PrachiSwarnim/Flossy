@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useUser, useSession, useClerk } from "@clerk/clerk-react"; // Added useSession
+import { useUser, useSession, useClerk } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import "../styles/appointment_form.css";
+import { TIME_SLOTS, formatTime12h } from "../utils/timeSlots";
 
 export default function AppointmentRequestForm({ className }) {
     const { isSignedIn, user } = useUser();
@@ -13,7 +14,8 @@ export default function AppointmentRequestForm({ className }) {
         name: "",
         phone: "",
         reason: "",
-        datetime: "",
+        date: "",
+        time: "",
         age: "",
         sex: "",
     });
@@ -31,8 +33,14 @@ export default function AppointmentRequestForm({ className }) {
         if (isSignedIn && session) {
             try {
                 const token = await session.getToken({ template: "default" });
-                const dt = new Date(formData.datetime);
-                const isoDate = dt.toISOString();
+
+                if (!formData.date || !formData.time) {
+                    alert("Please select both date and time.");
+                    setLoading(false);
+                    return;
+                }
+
+                const isoDate = new Date(`${formData.date}T${formData.time}`).toISOString();
 
                 const res = await fetch(`${API}/api/appointments/`, {
                     method: "POST",
@@ -148,15 +156,50 @@ export default function AppointmentRequestForm({ className }) {
                             />
                         </div>
 
-                        <div className="input-group">
-                            <input
-                                type="datetime-local"
-                                name="datetime"
-                                required
-                                value={formData.datetime}
-                                onChange={handleChange}
-                                style={{ color: formData.datetime ? 'inherit' : '#999' }}
-                            />
+                        <div style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
+                            <div className="input-group" style={{ flex: 1 }}>
+                                <input
+                                    type="date"
+                                    name="date"
+                                    required
+                                    value={formData.date}
+                                    onChange={handleChange}
+                                    min={new Date().toISOString().split('T')[0]} // Prevents past dates
+                                    style={{
+                                        color: formData.date ? 'inherit' : '#999',
+                                        padding: "0.8rem",
+                                        width: "100%",
+                                        background: "rgba(255,255,255,0.05)",
+                                        border: "1px solid rgba(255,255,255,0.1)",
+                                        borderRadius: "6px"
+                                    }}
+                                />
+                            </div>
+                            <div className="input-group" style={{ flex: 1 }}>
+                                <select
+                                    name="time"
+                                    required
+                                    value={formData.time}
+                                    onChange={handleChange}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.8rem',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        borderRadius: '6px',
+                                        fontSize: '0.95rem',
+                                        color: formData.time ? '#f4f4f4' : '#888',
+                                        height: '100%',
+                                        appearance: 'none',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <option value="" disabled>Select Time</option>
+                                    {TIME_SLOTS.map(slot => (
+                                        <option key={slot} value={slot}>{formatTime12h(slot)}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         <div className="input-group">
