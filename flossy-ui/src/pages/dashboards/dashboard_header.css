@@ -138,32 +138,65 @@ nav ul li a:hover,
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  border: 2px solid transparent;
+  border: 1.5px solid var(--primary-gold);
   transition: all 0.3s ease;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: rgba(212, 175, 55, 0.05);
+  /* Subtle background for transparency */
 }
 
 .user-profile-wrapper:hover {
-  border-color: var(--primary-gold);
-  background: rgba(212, 175, 55, 0.1);
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
 }
 
 /* == CLERK USER BUTTON == */
 .cl-userButton-root {
   height: 40px !important;
   width: 40px !important;
-  border-radius: 50%;
-  border: 1px solid var(--primary-gold);
-  transition: transform 0.2s ease;
+  border-radius: 50% !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
 }
 
-.cl-userButton-root:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+.cl-userButton-trigger {
+  height: 38px !important;
+  width: 38px !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.cl-userButton-avatarBox {
+  height: 38px !important;
+  width: 38px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
 }
 
 .cl-avatarBox {
   height: 40px !important;
   width: 40px !important;
+  border-radius: 50% !important;
+}
+
+.cl-userButton-avatarBox {
+  height: 40px !important;
+  width: 40px !important;
+  border-radius: 50% !important;
+}
+
+.cl-internal-2y6lxk {
+  border-radius: 50% !important;
 }

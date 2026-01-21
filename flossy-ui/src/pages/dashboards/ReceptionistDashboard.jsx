@@ -215,40 +215,40 @@ export default function ReceptionistDashboard() {
         }
     }
 
-    // 🔒 BLOCK ACCESS UNTIL LOADED
+    // 🔒 SECURE ROLE ACCESS
     useEffect(() => {
         if (!isLoaded) return;
 
-        const role = user?.publicMetadata?.role || sessionStorage.getItem("flossy_role");
-        const email = user?.primaryEmailAddress?.emailAddress;
-
-        // Redirect based on role
-        if (role === "dentist") {
-            navigate("/dentist");
-            return;
-        }
-        if (role === "patient") {
-            navigate("/patient");
+        if (!user) {
+            navigate("/login");
             return;
         }
 
-        // Allow if role is "receptionist" OR email is the specific receptionist email
+        const role = user.publicMetadata?.role;
+        const email = user.primaryEmailAddress?.emailAddress?.toLowerCase();
+
+        // Authority check: Receptionist, core team, or authorized email
         const isReceptionist = role === "receptionist" ||
-            email === "anything.handmade1@gmail.com" ||
-            email === "anything.handmade1@gmail.com" ||
-            email == "purviraj236@gmail.com" ||
-            email == "aartikumari0975@gmail.com";
+            ["anything.handmade1@gmail.com", "purviraj236@gmail.com", "aartikumari0975@gmail.com", "prachi.swarnim07@gmail.com"].includes(email);
 
-        if (!isReceptionist && role !== undefined && role !== null) {
-            navigate("/not-authorized");
-            return;
+        if (isReceptionist) {
+            setPageLoading(false);
+            fetchPatients();
+            fetchInvoices();
+            loadAppointments();
+            fetchDoctors();
+        } else {
+            console.warn("🔐 Access Denied: User is not a receptionist.", { email, role });
+            // Clear any stale local roles
+            sessionStorage.removeItem("flossy_role");
+
+            if (role === "dentist") {
+                navigate("/dentist", { replace: true });
+            } else {
+                // Default for patients or anyone else
+                navigate("/patient", { replace: true });
+            }
         }
-
-        setPageLoading(false);
-        fetchPatients();
-        fetchInvoices();
-        loadAppointments();
-        fetchDoctors();
     }, [isLoaded, user, navigate]);
 
 

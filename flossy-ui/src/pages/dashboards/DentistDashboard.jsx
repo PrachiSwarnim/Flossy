@@ -72,31 +72,32 @@ export default function DentistDashboard() {
   const { session } = useSession();
   const navigate = useNavigate();
 
-  // 🔒 BLOCK ACCESS UNTIL LOADED
+  // 🔒 SECURE ROLE ACCESS
   useEffect(() => {
     if (!isLoaded) return;
 
-    const role = user?.publicMetadata?.role || sessionStorage.getItem("flossy_role");
-    const email = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
+    if (!user) {
+      navigate("/login");
+      return;
+    }
 
-    // Allow Dentist OR specific bypass emails
+    const role = user.publicMetadata?.role;
+    const email = user.primaryEmailAddress?.emailAddress?.toLowerCase();
+
+    // Authority check: Only dentists or the core team can be here
     const isDentist = role === "dentist" ||
-      email === "prachi.swarnim@gmail.com" ||
-      email === "choudhary.shruti01@gmail.com";
+      ["prachi.swarnim@gmail.com", "choudhary.shruti01@gmail.com"].includes(email);
 
     if (!isDentist) {
-      if (role === "receptionist") {
-        navigate("/receptionist");
-        return;
-      }
-      if (role === "patient") {
-        navigate("/patient");
-        return;
-      }
+      console.warn("🔐 Access Denied: User is not a dentist.", { email, role });
+      // Clear any stale local roles to prevent redirect loops
+      sessionStorage.removeItem("flossy_role");
 
-      // If they have NO role yet (undefined), they might be a new dentist awaiting sync.
-      if (role !== undefined && role !== null) {
-        navigate("/not-authorized");
+      if (role === "receptionist") {
+        navigate("/receptionist", { replace: true });
+      } else {
+        // Default for patients or anyone else
+        navigate("/patient", { replace: true });
       }
     }
   }, [isLoaded, user, navigate]);
@@ -804,7 +805,9 @@ export default function DentistDashboard() {
       <Header openAI={() => setAiOpen(true)} />
 
       <main className="dentist-main">
-        <h2 id="Message">{isNewUser ? "Welcome" : "Welcome back"}, Dr. {fullName}!</h2>
+        <h2 id="Message">
+          {isNewUser ? "Welcome" : "Welcome back"}, {user?.publicMetadata?.role === "dentist" ? "Dr. " : ""}{fullName}!
+        </h2>
 
         <div className="dashboard-layout" style={{ display: "flex", flexDirection: "column", gap: "2rem", paddingBottom: "3rem" }}>
 
