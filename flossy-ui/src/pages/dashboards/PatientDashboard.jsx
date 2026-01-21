@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useUser, useSession } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { PropagateLoader } from "react-spinners";
@@ -45,6 +45,9 @@ export default function PatientDashboard() {
     age: "",
     sex: "M"
   });
+
+  // Ref for auto-scrolling chat
+  const chatContainerRef = useRef(null);
 
   // LOAD PRESCRIPTIONS
   async function loadPrescriptions() {
@@ -444,6 +447,13 @@ export default function PatientDashboard() {
     }
   }
 
+  // Auto-scroll chat when new messages arrive
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [messages, typing]);
+
   // LOADING SCREEN
   const loadingScreen = (
     <>
@@ -467,9 +477,20 @@ export default function PatientDashboard() {
     <div className={`dashboard-shell ${!profileVisible ? "sidebar-collapsed" : "sidebar-expanded"}`}>
       {/* PATIENT PROFILE SIDEBAR - Fixed to left */}
       <aside className="profile-sidebar">
-        <div className="sidebar-expand-toggle" onClick={() => setProfileVisible(!profileVisible)}>
+        <div className="sidebar-expand-toggle" onClick={() => setProfileVisible(!profileVisible)} title={profileVisible ? "Hide Sidebar" : "Show Sidebar"}>
           <i className={`fas fa-chevron-${profileVisible ? 'left' : 'right'}`}></i>
         </div>
+
+        {/* Close button at top right of sidebar */}
+        {profileVisible && (
+          <button
+            className="sidebar-close-btn"
+            onClick={() => setProfileVisible(false)}
+            title="Close Sidebar"
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        )}
 
         <div className="profile-sidebar-content">
           <div className="profile-avatar">
@@ -489,7 +510,7 @@ export default function PatientDashboard() {
             <span className="profile-role">Patient</span>
           </div>
 
-          <div className="profile-info-grid">
+          <div className="profile-info-grid" style={{ justifyContent: 'center', textAlign: 'center' }}>
             <div className="profile-stat">
               <span className="stat-value">{upcoming.length}</span>
               <span className="stat-label">Upcoming</span>
@@ -644,16 +665,16 @@ export default function PatientDashboard() {
               {/* AI TRIAGE CARD (RECRUITER FLEX 💪) */}
               <div className="patient-card animate-fade-up" style={{ animationDelay: "0.25s", background: "linear-gradient(145deg, #1a1a1a, #2a2a2a)", border: "1px solid var(--primary-gold)" }}>
                 <div className="card-header">
-                  <h3 style={{ color: "var(--primary-gold)" }}>AI Dental Triage</h3>
-                  <i className="fas fa-robot card-icon" style={{ color: "var(--primary-gold)" }}></i>
+                  <h3 style={{ color: "var(--primary-gold)" }}>Symptom Checker</h3>
+                  <i className="fas fa-stethoscope card-icon" style={{ color: "var(--primary-gold)" }}></i>
                 </div>
                 <div style={{ padding: '15px 0' }}>
                   <p style={{ fontSize: '0.85rem', color: '#ccc', marginBottom: '12px' }}>
-                    Describe your pain or symptoms. Our AI will assess the urgency.
+                    Tell us what's bothering you. Our AI will help assess your symptoms and recommend next steps.
                   </p>
                   <textarea
                     className="triage-textarea"
-                    placeholder="Describe your symptoms here (e.g. sharp pain, sensitivity...)"
+                    placeholder="E.g., I have a sharp pain when I bite down, or my gums are bleeding..."
                     value={triageSymptom}
                     onChange={(e) => setTriageSymptom(e.target.value)}
                   />
@@ -663,7 +684,7 @@ export default function PatientDashboard() {
                     disabled={isTriageLoading || !triageSymptom}
                     style={{ width: '100%', marginTop: '10px', opacity: (isTriageLoading || !triageSymptom) ? 0.6 : 1 }}
                   >
-                    {isTriageLoading ? "Analyzing Symptoms..." : "Analyze Symptoms"}
+                    {isTriageLoading ? "Checking..." : "Check My Symptoms"}
                   </button>
 
                   {triageResult && (
@@ -816,7 +837,7 @@ export default function PatientDashboard() {
           </div>
 
           {/* AI CONTENT area - Always visible now */}
-          <div className="ai-content">
+          <div className="ai-content" ref={chatContainerRef}>
             {messages.length === 0 && (
               <div className="ai-welcome">
                 <p>
@@ -911,7 +932,13 @@ export default function PatientDashboard() {
                   </div>
 
                   <div className="modal-actions" style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                    <button className="p-btn small" onClick={() => setIsEditProfileOpen(false)} style={{ background: '#333' }}>Cancel</button>
+                    <button
+                      className="p-btn small cancel-btn"
+                      onClick={() => setIsEditProfileOpen(false)}
+                      style={{ background: 'transparent', border: '1px solid #666', color: '#ccc' }}
+                    >
+                      Cancel
+                    </button>
                     <button className="p-btn small" onClick={updateProfile}>Save Changes</button>
                   </div>
                 </div>

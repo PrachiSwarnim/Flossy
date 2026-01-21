@@ -235,11 +235,26 @@ async def ai_triage(request: Request, db: Session = Depends(get_db), user=Depend
     payload = await request.json()
     symptoms = payload.get("symptoms", "").strip()
     if not symptoms:
-        raise HTTPException(status_code=400, detail="Symptoms text is required")
+        raise HTTPException(status_code=400, detail="Please describe your symptoms")
 
+    # Find or create patient profile
     patient = db.query(Patient).filter(Patient.user_id == user.id).first()
     if not patient:
-        raise HTTPException(status_code=404, detail="Patient profile not found")
+        # Auto-create patient profile if it doesn't exist
+        import time
+        from datetime import timezone
+        unique_phone = f"TEMP_{user.id}_{int(time.time()) % 100000}"
+        patient = Patient(
+            user_id=user.id,
+            name=user.email.split('@')[0] if user.email else "Patient",
+            phone=unique_phone,
+            source="website",
+            contact_datetime=datetime.now(timezone.utc)
+        )
+        db.add(patient)
+        db.commit()
+        db.refresh(patient)
+        print(f"📝 Auto-created patient for triage: id={patient.id}")
 
     prompt = f"""
     You are a professional dental triage assistant.
@@ -291,9 +306,15 @@ async def ai_triage(request: Request, db: Session = Depends(get_db), user=Depend
             "id": triage_record.id
         }
         
+    except json.JSONDecodeError as e:
+        print(f"Triage JSON Parse Error: {e}")
+        print(f"Raw AI Output: {raw_ai_output}")
+        raise HTTPException(status_code=500, detail="AI returned an invalid response. Please try again.")
     except Exception as e:
         print(f"Triage Error: {e}")
-        raise HTTPException(status_code=500, detail="AI Triage failed to process.")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Symptom analysis failed: {str(e)}")
 
 @router.post("/summarize_visit")
 async def summarize_visit(request: Request, db: Session = Depends(get_db), user=Depends(require_role("dentist"))):

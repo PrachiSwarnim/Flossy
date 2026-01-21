@@ -697,6 +697,31 @@ body {
   transform: scale(1.1);
 }
 
+/* Sidebar Close Button (X at top right) */
+.sidebar-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 50%;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 1700;
+}
+
+.sidebar-close-btn:hover {
+  background: rgba(212, 175, 55, 0.1);
+  border-color: var(--primary-gold);
+  color: var(--primary-gold);
+}
+
 .profile-sidebar-content {
   display: flex;
   flex-direction: column;
@@ -707,6 +732,21 @@ body {
 .profile-header-text {
   text-align: center;
   margin-top: 1rem;
+}
+
+/* Profile Info Grid - Centered */
+.profile-info-grid {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin: 1rem 0;
+}
+
+.profile-stat {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 /* Sidebar Actions */

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser, useSession, useClerk } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import "../styles/appointment_form.css";
@@ -34,11 +34,7 @@ export default function AppointmentRequestForm({ className }) {
                 const titles = ['mr', 'ms', 'mrs', 'dr', 'prof'];
                 parts = parts.filter(part => !titles.includes(part.toLowerCase()));
                 if (parts.length === 0) return "";
-                if (parts.length === 2) {
-                    const p1 = parts[0].replace(/\d+/g, "").charAt(0).toUpperCase() + parts[0].replace(/\d+/g, "").slice(1).toLowerCase();
-                    const p2 = parts[1].replace(/\d+/g, "").charAt(0).toUpperCase() + parts[1].replace(/\d+/g, "").slice(1).toLowerCase();
-                    return `${p2} ${p1}`;
-                }
+                // DO NOT REVERSE - keep names in order
                 return parts.map(part => {
                     const cleanPart = part.replace(/\d+/g, "");
                     return cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1).toLowerCase();
@@ -46,7 +42,8 @@ export default function AppointmentRequestForm({ className }) {
             };
 
             const userEmail = user?.primaryEmailAddress?.emailAddress || "";
-            const clerkName = user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : null;
+            // Prioritize fullName from Clerk
+            const clerkName = user?.fullName || (user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : null);
             const fullName = clerkName || capitalizeFullName(userEmail);
 
             if (fullName) {
