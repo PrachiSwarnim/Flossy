@@ -11,14 +11,13 @@ def extract_names_from_email(email: str) -> tuple:
         return email or "Unknown", ""
 
     local_part = email.split("@")[0]
-    # Split by common separators
-    parts = re.split(r'[._\-]', local_part)
+    # Split by common separators OR digits (to handle prachiswarnim03 -> Prachi Swarnim)
+    parts = re.split(r'[._\-\d]+', local_part)
     # Clean up common titles/prefixes
     titles = ['mr', 'ms', 'mrs', 'dr', 'prof']
     parts = [p for p in parts if p.lower() not in titles]
-    # Remove numbers from each part and filter empty/short parts
-    parts = [re.sub(r'\d+', '', p).strip().title() for p in parts]
-    parts = [p for p in parts if len(p) >= 1]
+    # Filter empty/short parts and TitleCase them
+    parts = [p.strip().title() for p in parts if len(p.strip()) >= 1]
 
     if len(parts) == 2:
         # Reverse 2-part handles like choudhary.shruti -> Shruti Choudhary
@@ -124,76 +123,79 @@ def fetch_clerk_email(user_payload: dict) -> str:
 def sync_user_to_db(db: Session, user_payload: dict, email_hint: str = None) -> User:
     """
     Ensures a User (and Patient profile) exists in the local DB.
+    Force updates names and roles on every sync (login).
     """
     email = fetch_clerk_email(user_payload)
-    
     if not email and email_hint:
-        print(f"💡 Email not in JWT, using hint: {email_hint}")
         email = email_hint.lower().strip()
 
     if not email:
-        print(f"❌ sync_user_to_db aborted: No email found in payload {user_payload.get('sub')}")
         return None
 
     role = get_automatic_role(email)
-    print(f"🔍 Syncing user {email}. Automatic role: {role}")
     
+    # 1. Clerk API Details (fetch first/last name)
+    clerk_fname = ""
+    clerk_lname = ""
+    clerk_user_id = user_payload.get("sub")
+    
+    if CLERK_SECRET_KEY and clerk_user_id:
+        try:
+            headers = {"Authorization": f"Bearer {CLERK_SECRET_KEY}"}
+            res = requests.get(f"https://api.clerk.com/v1/users/{clerk_user_id}", headers=headers)
+            if res.status_code == 200:
+                data = res.json()
+                # Clerk uses first_name/last_name
+                clerk_fname = data.get("first_name") or ""
+                clerk_lname = data.get("last_name") or ""
+        except: pass
+
+    # 2. Extract names if Clerk details missing
+    extracted_fname, extracted_lname = extract_names_from_email(email)
+    
+    def sanitize(val):
+        if not val or str(val).lower() in ["none", "null", "undefined"]:
+            return ""
+        return str(val).strip()
+
+    final_fname = sanitize(clerk_fname) or extracted_fname
+    final_lname = sanitize(clerk_lname) or extracted_lname
+
+    # 3. Create or Update User
     user = db.query(User).filter(User.email.ilike(email)).first()
     if not user:
-        print(f"🌱 Creating new user in DB: {email} with role {role}")
         user = User(email=email, role=role, created_at=datetime.now(timezone.utc))
         db.add(user)
         db.commit()
         db.refresh(user)
         sync_clerk_role(user_payload, role)
-    else:
-        # Update role if it doesn't match the automatic assignment
-        if user.role != role:
-            print(f"🔄 Updating user role: {email} ({user.role} -> {role})")
-            user.role = role
-            db.commit()
-            sync_clerk_role(user_payload, role)
+    
+    # Sync names and role to User record
+    user.first_name = final_fname
+    user.last_name = final_lname
+    user.role = role
+    db.add(user)
+    db.commit()
 
-    # ALWAYS ensure a patient profile exists for every user
-    # This identifies them as a "person" in the system (Dentists/Staff are also people)
+    # 4. Create or Update Patient Profile
     patient = db.query(Patient).filter(Patient.user_id == user.id).first()
     if not patient:
-        print(f"🌱 Creating patient profile for user: {email}")
-        # Sanitize names to avoid "None", "null", "undefined" strings
-        def sanitize(val):
-            if not val or str(val).lower() in ["none", "null", "undefined"]:
-                return ""
-            return str(val).strip()
-
-        fname = sanitize(user_payload.get("given_name") or user_payload.get("first_name"))
-        lname = sanitize(user_payload.get("family_name") or user_payload.get("last_name"))
-
-        if not fname:
-            fname, lname_fallback = extract_names_from_email(email)
-            if not lname: lname = lname_fallback
-        
-        # Update user record with names
-        user.first_name = fname
-        user.last_name = lname
-        db.add(user)
-        db.commit()
-        
-        # Use a unique placeholder phone based on user ID to avoid constraint violations
-        # Format: TEMP_<user_id>_<timestamp_suffix>
         import time
-        unique_placeholder_phone = f"TEMP_{user.id}_{int(time.time()) % 100000}"
-        
+        unique_phone = f"TEMP_{user.id}_{int(time.time()) % 100000}"
         patient = Patient(
-            name=f"{fname} {lname}".strip(),
-            first_name=fname,
-            last_name=lname,
-            phone=unique_placeholder_phone,
             user_id=user.id,
-            contact_datetime=datetime.now(timezone.utc),
-            source="website"
+            phone=unique_phone,
+            source="website",
+            contact_datetime=datetime.now(timezone.utc)
         )
         db.add(patient)
-        db.commit()
-            
+    
+    # Force update patient names
+    patient.first_name = final_fname
+    patient.last_name = final_lname
+    patient.name = f"{final_fname} {final_lname}".strip()
+    
+    db.add(patient)
+    db.commit()
     return user
 
