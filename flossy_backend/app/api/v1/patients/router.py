@@ -214,8 +214,7 @@ def update_my_profile(data: PatientUpdate, db: Session = Depends(get_db), user =
         # (This can happen if they logged in but haven't booked an appointment yet)
         patient = Patient(
             user_id=user.id,
-            name=data.name or (user.email.split("@")[0] if user.email else "New Patient"),
-            email=user.email
+            name=data.name or (user.email.split("@")[0] if user.email else "New Patient")
         )
         db.add(patient)
         db.flush()

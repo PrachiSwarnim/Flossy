@@ -491,8 +491,9 @@ export default function DentistDashboard() {
           const data = await res.json();
           setPatientsList(data);
         } else {
-          console.error("Patients Fetch Error:", res.status);
-          alert(`Failed to load patient list (Error ${res.status}). Please check console.`);
+          const errData = await res.json().catch(() => ({}));
+          console.error("Patients Fetch Error:", res.status, errData);
+          alert(`Failed to load patient list (Error ${res.status}: ${errData.detail || "Unknown"}). Please check console.`);
         }
       } catch (err) {
         console.error("Failed to load patients", err);
@@ -1624,139 +1625,146 @@ export default function DentistDashboard() {
                   )}
                 </div>
 
-                {aiSummaryResult && (
-                  <div className="ai-summary-box animate-fade-in" style={{
-                    marginTop: '20px',
-                    padding: '20px',
-                    borderRadius: '12px',
-                    background: 'linear-gradient(135deg, rgba(240, 184, 0, 0.08) 0%, rgba(20, 20, 20, 0.6) 100%)',
-                    border: '1px solid rgba(240, 184, 0, 0.3)',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                    backdropFilter: 'blur(10px)'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', borderBottom: '1px solid rgba(240, 184, 0, 0.2)', paddingBottom: '10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <i className="fas fa-robot" style={{ color: 'var(--primary-gold)' }}></i>
-                        <h5 style={{ color: 'var(--primary-gold)', margin: 0, fontSize: '1.1rem', letterSpacing: '0.5px' }}>AI Visit Insights</h5>
-                      </div>
-                      <button
-                        onClick={() => setAiSummaryResult(null)}
-                        style={{ background: 'transparent', border: 'none', color: '#666', cursor: 'pointer', fontSize: '1.1rem' }}
-                      >
-                        <i className="fas fa-times"></i>
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'grid', gap: '15px' }}>
-                      <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                        <span style={{ color: 'var(--primary-gold)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Clinical Record (Formal)</span>
-                        <div style={{ fontSize: '0.9rem', color: '#eee', lineHeight: '1.5' }}>{aiSummaryResult.clinical}</div>
-                      </div>
-
-                      <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                        <span style={{ color: 'var(--primary-gold)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Patient Note (Simplified)</span>
-                        <div style={{ fontSize: '0.9rem', color: '#eee', lineHeight: '1.5' }}>{aiSummaryResult.patient_friendly}</div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '15px' }}>
-                      <button
-                        onClick={() => {
-                          setPrescRecommendations(prev => prev + (prev ? "\n\n" : "") + "Note for Patient: " + aiSummaryResult.patient_friendly);
-                          setAiSummaryResult(null);
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: '10px',
-                          fontSize: '0.8rem',
-                          color: '#000',
-                          background: 'var(--primary-gold)',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold',
-                          transition: 'opacity 0.2s'
-                        }}
-                      >
-                        <i className="fas fa-plus"></i> Append to Recommendations
-                      </button>
-                      <button
-                        onClick={() => {
-                          setPrescDetails(aiSummaryResult.clinical);
-                          setAiSummaryResult(null);
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: '10px',
-                          fontSize: '0.8rem',
-                          color: 'var(--primary-gold)',
-                          background: 'rgba(240, 184, 0, 0.1)',
-                          border: '1px solid var(--primary-gold)',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        <i className="fas fa-sync"></i> Replace Clinic Notes
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
-
-
-              {/* PREVIOUS PRESCRIPTIONS LIST */}
-              {historyPrescriptions.length > 0 && prescPatient && (
-                <div className="recent-prescriptions" style={{ marginTop: "2rem", borderTop: "1px solid #333", paddingTop: "1rem" }}>
-                  <h4 style={{ marginBottom: "1rem", color: "#f0b800" }}>
-                    {prescPatient ? `Prescriptions for ${cleanName(prescPatient)}` : "Recent Prescriptions"}
-                  </h4>
-                  <div className="presc-list" style={{ maxHeight: "300px", overflowY: "auto" }}>
-                    {historyPrescriptions
-                      .filter(p => !prescPatient || p.patient.toLowerCase() === prescPatient.toLowerCase())
-                      .map(p => (
-                        <div key={p.id} className="presc-item-mini" style={{
-                          background: "#222", padding: "10px", borderRadius: "8px", marginBottom: "10px",
-                          display: "flex", justifyContent: "space-between", alignItems: "center"
-                        }}>
-                          <div>
-                            <b style={{ color: "#fff" }}>{capitalizeFullName(p.patient)}</b>
-                            <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(p.date).toLocaleDateString()}</div>
-                            <div style={{ fontSize: "0.85rem", color: "#ccc", marginTop: "4px" }}>
-                              {p.diagnosis ? `Dx: ${p.diagnosis.substring(0, 40)}...` :
-                                p.details ? p.details.substring(0, 40) + "..." : "No details"}
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", gap: "8px" }}>
-                            <button
-                              onClick={() => startEditing(p)}
-                              style={{ background: "#222", border: "1px solid #555", color: "#f0b800", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
-                            >
-                              <i className="fas fa-edit"></i> Edit
-                            </button>
-                            <button
-                              onClick={() => downloadPrescription(p.id, true, p.patient)}
-                              style={{ background: "#f0b800", border: "none", color: "#000", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer", fontWeight: "bold" }}
-                            >
-                              <i className="fas fa-stamp"></i> Stamped
-                            </button>
-                            <button
-                              onClick={() => downloadPrescription(p.id, false, p.patient)}
-                              style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
-                            >
-                              Plain
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    {prescPatient && historyPrescriptions.filter(p => p.patient.toLowerCase() === prescPatient.toLowerCase()).length === 0 && (
-                      <p style={{ color: "#888", fontStyle: "italic" }}>No prescriptions found for this patient.</p>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
+
+          {/* ROW 3: PATIENT CLINICAL HISTORY & AI INSIGHTS */}
+          {(prescPatient || aiSummaryResult) && (
+            <div className="row-clinical-history" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+              <div className="card animate-fade-up" style={{ animationDelay: "0.2s", width: "100%", maxWidth: "1000px" }}>
+                <div className="card-header">
+                  <h3>Clinical History & AI Insights: {prescPatient ? capitalizeFullName(prescPatient) : "General"}</h3>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <i className="fas fa-microscope card-icon"></i>
+                  </div>
+                </div>
+
+                <div className="history-grid" style={{
+                  display: "grid",
+                  gridTemplateColumns: aiSummaryResult ? "1.2fr 1fr" : "1fr",
+                  gap: "20px",
+                  padding: "1.5rem"
+                }}>
+
+                  {/* LEFT COLUMN: AI INSIGHTS */}
+                  {aiSummaryResult && (
+                    <div className="ai-insights-panel" style={{
+                      padding: "20px",
+                      borderRadius: "16px",
+                      background: "linear-gradient(135deg, rgba(240, 184, 0, 0.1) 0%, rgba(30, 30, 30, 0.4) 100%)",
+                      border: "1px solid rgba(240, 184, 0, 0.3)",
+                      boxShadow: "0 10px 30px rgba(0,0,0,0.2)"
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "15px" }}>
+                        <i className="fas fa-robot" style={{ color: "#f0b800", fontSize: "1.2rem" }}></i>
+                        <h4 style={{ margin: 0, color: "#f0b800", letterSpacing: "0.5px" }}>Visit Analysis</h4>
+                      </div>
+
+                      <div style={{ display: "grid", gap: "15px" }}>
+                        <div style={{ padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px" }}>
+                          <span style={{ color: "#f0b800", fontSize: "0.7rem", textTransform: "uppercase", fontWeight: "bold", display: "block", marginBottom: "5px", opacity: 0.8 }}>Clinical Summary</span>
+                          <div style={{ fontSize: "0.9rem", color: "#eee", lineHeight: "1.6" }}>{aiSummaryResult.clinical}</div>
+                        </div>
+
+                        <div style={{ padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px" }}>
+                          <span style={{ color: "#f0b800", fontSize: "0.7rem", textTransform: "uppercase", fontWeight: "bold", display: "block", marginBottom: "5px", opacity: 0.8 }}>Patient Communication</span>
+                          <div style={{ fontSize: "0.9rem", color: "#ddd", lineHeight: "1.6", fontStyle: "italic" }}>"{aiSummaryResult.patient_friendly}"</div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+                        <button
+                          onClick={() => {
+                            setPrescRecommendations(prev => prev + (prev ? "\n\n" : "") + "Note for Patient: " + aiSummaryResult.patient_friendly);
+                            setAiSummaryResult(null);
+                          }}
+                          style={{
+                            flex: 1, padding: "12px", borderRadius: "8px", background: "#f0b800", border: "none", color: "#000",
+                            fontWeight: "bold", fontSize: "0.8rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
+                          }}
+                        >
+                          <i className="fas fa-plus"></i> Append to Rx
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPrescDetails(aiSummaryResult.clinical);
+                            setAiSummaryResult(null);
+                          }}
+                          style={{
+                            flex: 1, padding: "12px", borderRadius: "8px", background: "rgba(255,255,255,0.1)", border: "1px solid #444", color: "#fff",
+                            fontWeight: "bold", fontSize: "0.8rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
+                          }}
+                        >
+                          <i className="fas fa-sync"></i> Replace Notes
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* RIGHT COLUMN: PREVIOUS RECORDS */}
+                  <div className="records-history-panel">
+                    <div style={{ marginBottom: "20px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "15px" }}>
+                        <i className="fas fa-history" style={{ color: "#f0b800" }}></i>
+                        <h4 style={{ margin: 0, color: "#fff" }}>Medical History</h4>
+                      </div>
+
+                      <div className="elegant-scroll" style={{ maxHeight: "400px", overflowY: "auto", paddingRight: "5px" }}>
+                        {/* Tab Headers if you want to split Rx/Invoices, but combining them for a "Timeline" feel */}
+                        <div className="timeline-title" style={{ fontSize: "0.75rem", color: "#666", textTransform: "uppercase", marginBottom: "10px", fontWeight: "bold" }}>Prescriptions</div>
+                        {historyPrescriptions.length > 0 && prescPatient ? (
+                          historyPrescriptions
+                            .filter(p => !prescPatient || p.patient.toLowerCase() === prescPatient.toLowerCase())
+                            .map(p => (
+                              <div key={p.id} style={{
+                                background: "rgba(255,255,255,0.03)", padding: "12px", borderRadius: "10px", marginBottom: "10px",
+                                borderLeft: "3px solid #f0b800", display: "flex", justifyContent: "space-between", alignItems: "center"
+                              }}>
+                                <div>
+                                  <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: "2px" }}>{new Date(p.date).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                                  <div style={{ fontSize: "0.85rem", color: "#fff", fontWeight: "600" }}>
+                                    {p.diagnosis ? p.diagnosis.replace(/•/g, "").split("\n")[0].substring(0, 30) : "Clinical Visit"}
+                                  </div>
+                                </div>
+                                <div style={{ display: "flex", gap: "5px" }}>
+                                  <button onClick={() => startEditing(p)} className="action-icon-btn" title="Edit"><i className="fas fa-edit"></i></button>
+                                  <button onClick={() => downloadPrescription(p.id, true, p.patient)} className="action-icon-btn gold" title="Download"><i className="fas fa-file-pdf"></i></button>
+                                </div>
+                              </div>
+                            ))
+                        ) : (
+                          <div style={{ padding: "10px", color: "#555", fontSize: "0.85rem", fontStyle: "italic" }}>No previous prescriptions.</div>
+                        )}
+
+                        <div className="timeline-title" style={{ fontSize: "0.75rem", color: "#666", textTransform: "uppercase", marginTop: "20px", marginBottom: "10px", fontWeight: "bold" }}>Billing Records</div>
+                        {invoices.length > 0 && prescPatient ? (
+                          invoices
+                            .filter(inv => !prescPatient || (inv.patient_name || "").toLowerCase() === prescPatient.toLowerCase())
+                            .map(inv => (
+                              <div key={inv.id} style={{
+                                background: "rgba(255,255,255,0.03)", padding: "12px", borderRadius: "10px", marginBottom: "10px",
+                                borderLeft: "3px solid #2ecc71", display: "flex", justifyContent: "space-between", alignItems: "center"
+                              }}>
+                                <div>
+                                  <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: "2px" }}>{new Date(inv.date).toLocaleDateString("en-IN")}</div>
+                                  <div style={{ fontSize: "0.85rem", color: "#2ecc71" }}>₹ {inv.total.toLocaleString()} ({inv.invoice_number})</div>
+                                </div>
+                                <div style={{ display: "flex", gap: "5px" }}>
+                                  <button onClick={() => downloadInvoice(inv.id, inv.invoice_number, true, inv.patient_name)} className="action-icon-btn green"><i className="fas fa-receipt"></i></button>
+                                </div>
+                              </div>
+                            ))
+                        ) : (
+                          <div style={{ padding: "10px", color: "#555", fontSize: "0.85rem", fontStyle: "italic" }}>No billing history.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ROW 3: BILLING & INVOICES (CENTERED) */}
           <div className="row-billing" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
@@ -1773,54 +1781,6 @@ export default function DentistDashboard() {
                 onCancelEdit={() => setEditingInvoice(null)}
                 preSelectedPatient={prescPatient}
               />
-
-
-              {invoices.length > 0 && prescPatient && (
-                <div className="recent-prescriptions" style={{ marginTop: "2rem", borderTop: "1px solid #333", paddingTop: "1rem" }}>
-                  <h4 style={{ marginBottom: "1rem", color: "#f0b800" }}>
-                    {prescPatient ? `Invoices for ${cleanName(prescPatient)}` : "Recent Invoices"}
-                  </h4>
-                  <div className="presc-list elegant-scroll" style={{ maxHeight: "300px", overflowY: "auto" }}>
-                    {invoices
-                      .filter(inv => !prescPatient || (inv.patient_name || "").toLowerCase() === prescPatient.toLowerCase())
-                      .map(inv => (
-                        <div key={inv.id} className="presc-item-mini" style={{
-                          background: "#222", padding: "10px", borderRadius: "8px", marginBottom: "10px",
-                          display: "flex", justifyContent: "space-between", alignItems: "center"
-                        }}>
-                          <div>
-                            <b style={{ color: "#fff" }}>{capitalizeFullName(inv.patient_name)}</b>
-                            <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(inv.date).toLocaleDateString()}</div>
-                            <div style={{ fontSize: "0.85rem", color: "#2ecc71" }}>₹ {inv.total.toLocaleString()} ({inv.invoice_number})</div>
-                          </div>
-                          <div style={{ display: "flex", gap: "8px" }}>
-                            <button
-                              onClick={() => startEditingInvoice(inv)}
-                              style={{ background: "#2ecc71", border: "none", color: "#000", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer", fontWeight: "bold" }}
-                            >
-                              <i className="fas fa-edit"></i> Edit
-                            </button>
-                            <button
-                              onClick={() => downloadInvoice(inv.id, inv.invoice_number, true, inv.patient_name)}
-                              style={{ background: "#f0b800", border: "none", color: "#000", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer", fontWeight: "bold" }}
-                            >
-                              <i className="fas fa-stamp"></i> Stamped
-                            </button>
-                            <button
-                              onClick={() => downloadInvoice(inv.id, inv.invoice_number, false, inv.patient_name)}
-                              style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "5px 10px", borderRadius: "4px", fontSize: "0.8rem", cursor: "pointer" }}
-                            >
-                              Plain
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    {prescPatient && invoices.filter(inv => (inv.patient_name || "").toLowerCase() === prescPatient.toLowerCase()).length === 0 && (
-                      <p style={{ color: "#888", fontStyle: "italic" }}>No invoices found for this patient.</p>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 

@@ -466,3 +466,79 @@ body {
     transform: translateY(0);
   }
 }
+
+/* =============== Clinical History Section =============== */
+.row-clinical-history {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.history-grid {
+  display: grid;
+  gap: 20px;
+}
+
+@media (min-width: 900px) {
+  .history-grid {
+    grid-template-columns: 1.2fr 1fr;
+  }
+}
+
+.ai-insights-panel {
+  transition: all 0.3s ease;
+}
+
+.ai-insights-panel:hover {
+  border-color: var(--primary-gold) !important;
+  box-shadow: 0 15px 40px rgba(240, 184, 0, 0.1) !important;
+}
+
+.action-icon-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #444;
+  color: #888;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-icon-btn:hover {
+  background: #333;
+  color: #fff;
+  border-color: #666;
+}
+
+.action-icon-btn.gold:hover {
+  color: var(--primary-gold);
+  border-color: var(--primary-gold);
+  background: rgba(240, 184, 0, 0.1);
+}
+
+.action-icon-btn.green:hover {
+  color: #2ecc71;
+  border-color: #2ecc71;
+  background: rgba(46, 204, 113, 0.1);
+}
+
+.timeline-title {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.timeline-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #333;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
