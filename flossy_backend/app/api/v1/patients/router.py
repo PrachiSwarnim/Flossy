@@ -22,29 +22,25 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
     import re
     
     def extract_name_from_email(email: str) -> str:
-        """Extract a clean, human-readable name from an email address."""
+        """Extract a clean, human-readable name from an email address.
+        Returns name in 'Firstname Lastname' order.
+        """
         if not email or "@" not in email:
             return "Unknown"
         
         local_part = email.split("@")[0]
         
-        # Remove numbers
-        local_part = re.sub(r'\d+', '', local_part)
-        
-        # Split by common separators
+        # Split by common separators first
         parts = re.split(r'[._\-]', local_part)
         
-        # Filter out empty parts and very short parts (likely initials)
-        parts = [p.strip().title() for p in parts if len(p.strip()) > 1]
+        # Remove numbers from each part and filter empty/short parts
+        parts = [re.sub(r'\d+', '', p).strip().title() for p in parts]
+        parts = [p for p in parts if len(p) > 1]
         
         if len(parts) >= 2:
-            # Check if it looks like lastname.firstname format (common in India)
-            # Heuristic: if first part looks like a surname (vasisht, kumar, sharma, etc)
-            # Actually, simpler: just reverse if parts[1] is a common first name
-            # For now, let's just use as-is but put them in a natural order
-            # Assumption: email format firstname.lastname or lastname.firstname
-            # We'll display as "Firstname Lastname" by taking parts[1] parts[0] if needed
-            # Actually let's just join them and let the clinic edit if wrong
+            # Indian emails often use lastname.firstname format (e.g., choudhary.shruti01)
+            # Reverse to get "Firstname Lastname" order
+            parts = parts[::-1]
             return " ".join(parts)
         elif len(parts) == 1:
             return parts[0]
@@ -83,7 +79,7 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
         if p.name and p.name.lower().strip() in ["system", "test", "admin", "unknown"]:
             continue
             
-        display_name = p.name.strip().title() if p.name else "Unknown Patient"
+        display_name = clean_name(p.name).title() if p.name else "Unknown Patient"
         
         # Hide TEMP_ placeholder phone numbers
         phone_display = p.phone

@@ -71,10 +71,18 @@ def build_actions(prompt_variants, temps, ctx_sizes, models):
     return combos
 
 def clean_name(name: str) -> str:
-    """Helper to remove strings like 'None', 'null', 'undefined' from names."""
+    """Helper to remove strings like 'None', 'null', 'undefined' and trailing numbers from names."""
+    import re
     if not name:
         return ""
     # Remove common placeholder strings
     for placeholder in ["None", "null", "undefined", "None None"]:
         name = name.replace(placeholder, "")
-    return name.strip()
+    
+    # Remove trailing digits from each word (e.g., "Dhruv7" -> "Dhruv")
+    words = name.split()
+    cleaned_words = [re.sub(r'\d+$', '', word) for word in words]
+    # Filter out any empty strings that might result
+    cleaned_words = [w for w in cleaned_words if w.strip()]
+    
+    return " ".join(cleaned_words).strip()
