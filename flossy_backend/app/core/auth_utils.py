@@ -191,24 +191,36 @@ def sync_user_to_db(db: Session, user_payload: dict, email_hint: str = None, fna
     db.commit()
 
     # 4. Create or Update Patient Profile
+    # IMPORTANT: Always check if patient exists, even for existing users
+    # This handles cases where patient was deleted but user still exists
     patient = db.query(Patient).filter(Patient.user_id == user.id).first()
+    
     if not patient:
         import time
         unique_phone = f"TEMP_{user.id}_{int(time.time()) % 100000}"
+        print(f"📝 Creating NEW Patient record for user_id={user.id}, email={email}")
         patient = Patient(
             user_id=user.id,
+            name=f"{final_fname} {final_lname}".strip() or email.split('@')[0],
+            first_name=final_fname,
+            last_name=final_lname,
             phone=unique_phone,
             source="website",
             contact_datetime=datetime.now(timezone.utc)
         )
         db.add(patient)
+        db.commit()
+        db.refresh(patient)
+        print(f"✅ Patient created: id={patient.id}, name={patient.name}")
+    else:
+        print(f"📝 Updating EXISTING Patient record id={patient.id} for user_id={user.id}")
+        # Force update patient names
+        patient.first_name = final_fname
+        patient.last_name = final_lname
+        patient.name = f"{final_fname} {final_lname}".strip()
+        db.add(patient)
+        db.commit()
+        print(f"✅ Patient updated: name={patient.name}")
     
-    # Force update patient names
-    patient.first_name = final_fname
-    patient.last_name = final_lname
-    patient.name = f"{final_fname} {final_lname}".strip()
-    
-    db.add(patient)
-    db.commit()
     return user
 
