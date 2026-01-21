@@ -110,10 +110,9 @@ export default function ReceptionistDashboard() {
     };
 
     // === Full Name ===
-    const firstName = user?.firstName || "";
-    const lastName = user?.lastName || "";
-    const rawFullName = `${firstName} ${lastName}`.trim();
-    const fullName = cleanName(rawFullName) || "Receptionist";
+    // USER REQUEST: Take name from email username
+    const userEmail = user?.primaryEmailAddress?.emailAddress || "";
+    const fullName = capitalizeFullName(userEmail) || "Receptionist";
 
     useEffect(() => {
         if (fullName) {
@@ -332,11 +331,26 @@ export default function ReceptionistDashboard() {
 
     function capitalizeFullName(name) {
         if (!name) return "";
-        return name
-            .trim()
-            .split(/\s+/)
-            .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-            .join(" ");
+
+        // 1. If it's a full email, extract the handle first
+        let target = name;
+        if (name.includes("@")) {
+            target = name.split("@")[0];
+        }
+
+        // 2. Remove None/null and numbers
+        let cleaned = target.replace(/\b(None|null|undefined)\b/gi, "").replace(/\d+/g, "").trim();
+        if (!cleaned) return "";
+
+        // 3. Split by space, dots, or dashes (like email parts)
+        let parts = cleaned.split(/[.\-_\s]+/).filter(p => p.length > 1);
+
+        if (parts.length === 0) return cleaned;
+
+        // 4. Capitalize and Join (No reversal, as per user request to fix "Vasisht Dhruv")
+        const capitalized = parts.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+
+        return capitalized.join(" ");
     }
 
     async function downloadInvoice(id, invNum, stamp = true, patientName = "") {

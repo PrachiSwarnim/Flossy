@@ -23,7 +23,7 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
     
     def extract_name_from_email(email: str) -> str:
         """Extract a clean, human-readable name from an email address.
-        Returns name in 'Firstname Lastname' order.
+        Returns name in the order found in the email handle (Firstname Lastname).
         """
         if not email or "@" not in email:
             return "Unknown"
@@ -37,13 +37,9 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
         parts = [re.sub(r'\d+', '', p).strip().title() for p in parts]
         parts = [p for p in parts if len(p) > 1]
         
-        if len(parts) >= 2:
-            # Indian emails often use lastname.firstname format (e.g., choudhary.shruti01)
-            # Reverse to get "Firstname Lastname" order
-            parts = parts[::-1]
+        if len(parts) >= 1:
+            # Join parts in the order they appear in the email
             return " ".join(parts)
-        elif len(parts) == 1:
-            return parts[0]
         else:
             return "Unknown"
     
@@ -79,7 +75,11 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
         if p.name and p.name.lower().strip() in ["system", "test", "admin", "unknown"]:
             continue
             
-        display_name = clean_name(p.name).title() if p.name else "Unknown Patient"
+        # USER REQUEST: Full name should be taken from email id username if user is linked
+        if p.user and p.user.email:
+            display_name = extract_name_from_email(p.user.email)
+        else:
+            display_name = clean_name(p.name).title() if p.name else "Unknown Patient"
         
         # Hide TEMP_ placeholder phone numbers
         phone_display = p.phone
