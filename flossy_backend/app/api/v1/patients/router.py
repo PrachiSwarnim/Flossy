@@ -53,10 +53,10 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
         existing = db.query(Patient).filter(Patient.user_id == pu.id).first()
         if not existing:
             # Auto-create patient record for this user
-            clean_name = extract_name_from_email(pu.email)
+            extracted_name = extract_name_from_email(pu.email)
             unique_placeholder = f"TEMP_{pu.id}_{int(time.time()) % 100000}"
             new_patient = Patient(
-                name=clean_name,
+                name=extracted_name,
                 phone=unique_placeholder,
                 user_id=pu.id,
                 source="website"

@@ -66,8 +66,12 @@ class ClerkAuthMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            print(f"❌ Middleware error on {path}: {type(e).__name__}: {str(e)}")
-            response = JSONResponse({"detail": f"Invalid Token or Server Error: {str(e)}"}, status_code=401)
+            print(f"❌ Middleware internal error on {path}: {type(e).__name__}: {str(e)}")
+            # Return 500 for unexpected server errors instead of 401
+            response = JSONResponse(
+                {"detail": f"Internal Server Error: {type(e).__name__}: {str(e)}"}, 
+                status_code=500
+            )
             origin = request.headers.get("origin")
             if origin:
                 response.headers["Access-Control-Allow-Origin"] = origin
