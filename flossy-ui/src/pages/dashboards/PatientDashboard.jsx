@@ -137,10 +137,11 @@ export default function PatientDashboard() {
 
     if (parts.length === 0) return "";
 
-    if (parts.length === 2) {
-      const p1 = parts[0].replace(/\d+/g, "").charAt(0).toUpperCase() + parts[0].replace(/\d+/g, "").slice(1).toLowerCase();
-      const p2 = parts[1].replace(/\d+/g, "").charAt(0).toUpperCase() + parts[1].replace(/\d+/g, "").slice(1).toLowerCase();
-      return `${p2} ${p1}`;
+    if (parts.length >= 2) {
+      return parts.map(part => {
+        const cleanPart = part.replace(/\d+/g, "");
+        return cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1).toLowerCase();
+      }).filter(p => p.length > 0).join(' ');
     }
 
     return parts.map(part => {
@@ -150,7 +151,7 @@ export default function PatientDashboard() {
   };
 
   const userEmail = user?.primaryEmailAddress?.emailAddress || "";
-  const clerkName = user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : null;
+  const clerkName = user?.fullName || (user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : null);
   const fullName = clerkName || capitalizeFullName(userEmail) || "Patient";
 
   useEffect(() => {
@@ -482,9 +483,9 @@ export default function PatientDashboard() {
           </div>
 
           <div className="profile-header-text">
-            <h3 className="profile-name">{
-              profile?.name && !profile.name.includes("None") ? profile.name : fullName
-            }</h3>
+            <h3 className="profile-name">
+              {fullName}
+            </h3>
             <span className="profile-role">Patient</span>
           </div>
 

@@ -51,7 +51,9 @@ export default function PostLogin() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            email_hint: user.primaryEmailAddress?.emailAddress
+            email_hint: user.primaryEmailAddress?.emailAddress,
+            first_name: user.firstName || "",
+            last_name: user.lastName || ""
           })
         });
 

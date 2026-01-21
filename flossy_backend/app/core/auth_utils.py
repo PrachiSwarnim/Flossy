@@ -11,7 +11,7 @@ def extract_names_from_email(email: str) -> tuple:
         return email or "Unknown", ""
 
     local_part = email.split("@")[0]
-    # Split by common separators OR digits (to handle prachiswarnim03 -> Prachi Swarnim)
+    # Split by common separators OR digits
     parts = re.split(r'[._\-\d]+', local_part)
     # Clean up common titles/prefixes
     titles = ['mr', 'ms', 'mrs', 'dr', 'prof']
@@ -19,10 +19,8 @@ def extract_names_from_email(email: str) -> tuple:
     # Filter empty/short parts and TitleCase them
     parts = [p.strip().title() for p in parts if len(p.strip()) >= 1]
 
-    if len(parts) == 2:
-        # Reverse 2-part handles like choudhary.shruti -> Shruti Choudhary
-        return parts[1], parts[0]
-    elif len(parts) >= 3:
+    if len(parts) >= 2:
+        # Standard: first.last -> First Last (DO NOT REVERSE)
         return parts[0], " ".join(parts[1:])
     elif len(parts) == 1:
         return parts[0], ""
@@ -47,6 +45,7 @@ def get_automatic_role(email: str) -> str:
     if email in [
         "anyhting.handmade1@gmail.com", 
         "anything.handmade1@gmail.com",
+        
         "smileartists.reception@gmail.com" # Added fallback
     ]:
         return "receptionist"
@@ -120,7 +119,7 @@ def fetch_clerk_email(user_payload: dict) -> str:
         
     return ""
 
-def sync_user_to_db(db: Session, user_payload: dict, email_hint: str = None) -> User:
+def sync_user_to_db(db: Session, user_payload: dict, email_hint: str = None, fname_hint: str = None, lname_hint: str = None) -> User:
     """
     Ensures a User (and Patient profile) exists in the local DB.
     Force updates names and roles on every sync (login).
@@ -134,32 +133,46 @@ def sync_user_to_db(db: Session, user_payload: dict, email_hint: str = None) -> 
 
     role = get_automatic_role(email)
     
-    # 1. Clerk API Details (fetch first/last name)
-    clerk_fname = ""
-    clerk_lname = ""
+    # 1. Check JWT payload first (sometimes Clerk includes it)
+    clerk_fname = (user_payload.get("first_name") or \
+                   user_payload.get("given_name") or \
+                   user_payload.get("firstName") or "").strip()
+    clerk_lname = (user_payload.get("last_name") or \
+                   user_payload.get("family_name") or \
+                   user_payload.get("lastName") or "").strip()
+    
     clerk_user_id = user_payload.get("sub")
     
-    if CLERK_SECRET_KEY and clerk_user_id:
+    # 2. Clerk API Details (Fetch if JWT doesn't have it)
+    if not clerk_fname and CLERK_SECRET_KEY and clerk_user_id:
         try:
+            print(f"🔍 Fetching name from Clerk API for {clerk_user_id}...")
             headers = {"Authorization": f"Bearer {CLERK_SECRET_KEY}"}
-            res = requests.get(f"https://api.clerk.com/v1/users/{clerk_user_id}", headers=headers)
+            res = requests.get(f"https://api.clerk.com/v1/users/{clerk_user_id}", headers=headers, timeout=5)
             if res.status_code == 200:
                 data = res.json()
-                # Clerk uses first_name/last_name
                 clerk_fname = data.get("first_name") or ""
                 clerk_lname = data.get("last_name") or ""
-        except: pass
+                print(f"✅ Clerk API returned: {clerk_fname} {clerk_lname}")
+            else:
+                print(f"⚠️ Clerk API error: {res.status_code} - {res.text}")
+        except Exception as e:
+            print(f"❌ Clerk API call failed: {e}")
 
-    # 2. Extract names if Clerk details missing
+    # 3. Extract names as THIRD priority fallback
     extracted_fname, extracted_lname = extract_names_from_email(email)
     
     def sanitize(val):
-        if not val or str(val).lower() in ["none", "null", "undefined"]:
+        if not val or str(val).lower() in ["none", "null", "undefined", "empty"]:
             return ""
         return str(val).strip()
 
-    final_fname = sanitize(clerk_fname) or extracted_fname
-    final_lname = sanitize(clerk_lname) or extracted_lname
+    # PRIORITIZE CLERK
+    # 1. Clerk API/JWT
+    # 2. Frontend Hints (fname_hint, lname_hint)
+    # 3. Email Extraction
+    final_fname = sanitize(clerk_fname) or sanitize(fname_hint) or extracted_fname
+    final_lname = sanitize(clerk_lname) or sanitize(lname_hint) or extracted_lname
 
     # 3. Create or Update User
     user = db.query(User).filter(User.email.ilike(email)).first()

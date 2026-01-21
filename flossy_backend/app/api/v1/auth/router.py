@@ -44,9 +44,17 @@ def post_login(payload: dict, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Authentication required")
 
     email_hint = payload.get("email_hint")
-    print(f"🔄 post_login: Syncing user {user_payload.get('sub')} (hint: {email_hint})")
+    fname_hint = payload.get("first_name")
+    lname_hint = payload.get("last_name")
+    print(f"🔄 post_login: Syncing user {user_payload.get('sub')} (hint: {email_hint}, name: {fname_hint} {lname_hint})")
     
-    user = sync_user_to_db(db, user_payload, email_hint=email_hint)
+    user = sync_user_to_db(
+        db, 
+        user_payload, 
+        email_hint=email_hint,
+        fname_hint=fname_hint,
+        lname_hint=lname_hint
+    )
     if not user:
          print("❌ post_login: Sync failed")
          raise HTTPException(status_code=400, detail="Sync failed")

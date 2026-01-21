@@ -206,7 +206,7 @@ export default function DentistDashboard() {
   // === Full Name ===
   // USER REQUEST: Take name from email username
   const userEmail = user?.primaryEmailAddress?.emailAddress || "";
-  const clerkName = user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : null;
+  const clerkName = user?.fullName || (user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : null);
   const fullName = clerkName || capitalizeFullName(userEmail) || "Doctor";
 
   useEffect(() => {
@@ -410,12 +410,13 @@ export default function DentistDashboard() {
     // 4. Determine if it's likely "Last.First" or "First.Last"
     // Heuristic: If we have 2 parts, we follow the user's request for "Vasisht Dhruv" -> "Dhruv Vasisht"
     // For many handles, the second part is the given name.
-    if (parts.length === 2) {
-      // Capitalize both
-      const p1 = parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
-      const p2 = parts[1].charAt(0).toUpperCase() + parts[1].slice(1).toLowerCase();
-      // Reverse to First Last (dhruv.vasisht handle format)
-      return `${p2} ${p1}`;
+    if (parts.length >= 2) {
+      // Return First Last in order (DO NOT REVERSE)
+      const formatted = parts.map(part => {
+        const cleanPart = part.replace(/\d+/g, "");
+        return cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1).toLowerCase();
+      }).filter(p => p.length > 0).join(' ');
+      return formatted;
     }
 
     // 5. Capitalize and join for 1 or 3+ parts

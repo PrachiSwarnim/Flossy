@@ -112,7 +112,7 @@ export default function ReceptionistDashboard() {
     // === Full Name ===
     // USER REQUEST: Take name from email username
     const userEmail = user?.primaryEmailAddress?.emailAddress || "";
-    const clerkName = user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : null;
+    const clerkName = user?.fullName || (user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : null);
     const fullName = clerkName || capitalizeFullName(userEmail) || "Receptionist";
 
     useEffect(() => {
@@ -347,10 +347,11 @@ export default function ReceptionistDashboard() {
         if (parts.length === 0) return "";
 
         // 4. Reverse 2-part handles to "First Last" order (e.g. vasisht.dhruv -> Dhruv Vasisht)
-        if (parts.length === 2) {
-            const p1 = parts[0].replace(/\d+/g, "").charAt(0).toUpperCase() + parts[0].replace(/\d+/g, "").slice(1).toLowerCase();
-            const p2 = parts[1].replace(/\d+/g, "").charAt(0).toUpperCase() + parts[1].replace(/\d+/g, "").slice(1).toLowerCase();
-            return `${p2} ${p1}`;
+        if (parts.length >= 2) {
+            return parts.map(part => {
+                const cleanPart = part.replace(/\d+/g, "");
+                return cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1).toLowerCase();
+            }).filter(p => p.length > 0).join(' ');
         }
 
         // 5. Capitalize and join for 1 or 3+ parts
