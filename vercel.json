@@ -2,5 +2,11 @@
     "buildCommand": "npm run build --prefix flossy-ui",
     "installCommand": "npm install --prefix flossy-ui --force",
     "outputDirectory": "flossy-ui/dist",
-    "framework": "vite"
+    "framework": "vite",
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
 }
