@@ -300,6 +300,8 @@ body {
 
 .ai-header {
   padding: 1.5rem;
+  padding-top: 5rem;
+  /* Avoid overlap with main header */
   background: #111;
   border-bottom: 1px solid #333;
   display: flex;
@@ -607,7 +609,8 @@ body {
   /* Solid dark background for a cleaner look */
   border-right: 1px solid rgba(212, 175, 55, 0.15);
   z-index: 1500;
-  padding: 3rem 1.5rem 2rem;
+  padding: 5rem 1.5rem 2rem;
+  /* More top padding for header */
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
@@ -695,6 +698,14 @@ body {
 
 .sidebar-expand-toggle:hover {
   transform: scale(1.1);
+}
+
+/* Sidebar Toggle Button - Left side, below header */
+.sidebar-collapsed .sidebar-expand-toggle {
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 80px;
 }
 
 /* Sidebar Close Button (X at top right) */

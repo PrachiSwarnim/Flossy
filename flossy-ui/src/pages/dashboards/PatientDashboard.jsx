@@ -189,7 +189,7 @@ export default function PatientDashboard() {
     if (!session) return;
     try {
       const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/ai_suggestion`, {
+      const res = await fetch(`${API}/api/ai/ai_suggestion`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -415,7 +415,7 @@ export default function PatientDashboard() {
     try {
       const token = await session.getToken({ template: "default" });
 
-      const aiRes = await fetch(`${API}/api/ai_response`, {
+      const aiRes = await fetch(`${API}/api/ai/ai_response`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -477,16 +477,22 @@ export default function PatientDashboard() {
     <div className={`dashboard-shell ${!profileVisible ? "sidebar-collapsed" : "sidebar-expanded"}`}>
       {/* PATIENT PROFILE SIDEBAR - Fixed to left */}
       <aside className="profile-sidebar">
-        <div className="sidebar-expand-toggle" onClick={() => setProfileVisible(!profileVisible)} title={profileVisible ? "Hide Sidebar" : "Show Sidebar"}>
-          <i className={`fas fa-chevron-${profileVisible ? 'left' : 'right'}`}></i>
+        {/* Toggle button - shows menu when collapsed, chevron when expanded */}
+        <div
+          className="sidebar-expand-toggle"
+          onClick={() => setProfileVisible(!profileVisible)}
+          title={profileVisible ? "Hide Sidebar" : "Show Sidebar"}
+        >
+          <i className={`fas fa-${profileVisible ? 'chevron-left' : 'bars'}`}></i>
         </div>
 
-        {/* Close button at top right of sidebar */}
+        {/* Close button at top right of sidebar - only when expanded */}
         {profileVisible && (
           <button
             className="sidebar-close-btn"
             onClick={() => setProfileVisible(false)}
             title="Close Sidebar"
+            style={{ top: '5.5rem' }}
           >
             <i className="fas fa-times"></i>
           </button>

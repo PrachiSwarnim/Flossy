@@ -196,6 +196,32 @@
     /* Slightly smaller inputs */
 }
 
+/* Dropdown with scrollbar - show only 4 items */
+.dashboard-form .input-group select,
+.appt-request-form select {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* Style the dropdown options */
+.dashboard-form select option,
+.appt-request-form select option {
+    padding: 8px 12px;
+    background: #1a1a1a;
+    color: #fff;
+}
+
+/* Age and Sex fields - smaller width */
+.dashboard-form .input-group[style*="flex: 1"] input[name="age"] {
+    max-width: 80px;
+}
+
+/* Modal content with proper scrolling */
+.modal-content.compact-form {
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .appointment-card {
