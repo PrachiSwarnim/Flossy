@@ -211,9 +211,9 @@ export default function PatientDashboard() {
         setProfile(data);
         setEditProfileData({
           name: data.name || "",
-          phone: data.phone || "",
+          phone: (data.phone && data.phone.startsWith("TEMP_")) ? "" : (data.phone || ""),
           age: data.age || "",
-          sex: data.sex || "M"
+          sex: data.sex || "Male" // Default to Male if not set
         });
       }
     } catch (e) {
@@ -506,16 +506,20 @@ export default function PatientDashboard() {
             </div>
             <div className="detail-row">
               <i className="fas fa-phone"></i>
-              <span>{profile?.phone || "Not provided"}</span>
+              <span>{(profile?.phone && !profile.phone.startsWith("TEMP_")) ? profile.phone : ""}</span>
             </div>
             <div className="detail-row">
               <i className="fas fa-birthday-cake"></i>
-              <span>{profile?.age ? `${profile.age} years old` : "Age N/A"}</span>
+              <span>{profile?.age ? `${profile.age} years old` : ""}</span>
             </div>
             <div className="detail-row">
               <i className="fas fa-venus-mars"></i>
-              <span>{profile?.sex || "N/A"}</span>
+              <span>{profile?.sex || ""}</span>
             </div>
+
+            <button className="edit-details-link" onClick={() => setIsEditProfileOpen(true)}>
+              <i className="fas fa-pen"></i> Edit Personal Details
+            </button>
           </div>
 
           <div className="sidebar-actions">
@@ -647,11 +651,10 @@ export default function PatientDashboard() {
                     Describe your pain or symptoms. Our AI will assess the urgency.
                   </p>
                   <textarea
-                    className="p-input"
-                    placeholder="e.g. Sharp pain in lower molar when drinking cold water..."
+                    className="triage-textarea"
+                    placeholder="Describe your symptoms here (e.g. sharp pain, sensitivity...)"
                     value={triageSymptom}
                     onChange={(e) => setTriageSymptom(e.target.value)}
-                    style={{ background: '#000', border: '1px solid #444', height: '80px', paddingTop: '10px' }}
                   />
                   <button
                     className="p-btn"
@@ -697,7 +700,13 @@ export default function PatientDashboard() {
               {/* AI INSIGHTS CARD */}
               <div className="patient-card animate-fade-up" style={{ animationDelay: "0.3s", gridColumn: "1 / -1" }}>
                 <div className="card-header">
-                  <h3>My Oral Health</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <h3>My Oral Health</h3>
+                    <div className="info-tooltip-container">
+                      <i className="fas fa-info-circle tooltip-trigger"></i>
+                      <span className="tooltip-text">Updated by your dentist after clinical examinations.</span>
+                    </div>
+                  </div>
                   <i className="fas fa-smile-beam card-icon"></i>
                 </div>
                 <div className="info-box success">
