@@ -226,7 +226,9 @@ async def ai_suggestion(request: Request, db: Session = Depends(get_db)):
         # High temperature for variety in facts
         fact = ai_generate(f"You are a fun dental historian and health expert with a sparkling personality. {prompt}", temperature=1.0)
     except Exception as e:
-        print(f"AI Suggestion Error: {e}")
+        print(f"❌ AI Suggestion Error: {e}")
+        import traceback
+        traceback.print_exc()
         fact = "Your Tooth Enamel is the hardest substance in your body—even tougher than bone! ✨"
 
     return {"suggestion": fact}
@@ -280,26 +282,43 @@ async def ai_triage(request: Request, db: Session = Depends(get_db), user=Depend
 
     try:
         raw_ai_output = ai_generate(prompt)
+        print(f"DEBUG: raw_ai_output={raw_ai_output[:100]}...") # Log first 100 chars
+        
         # Handle potential markdown wrapping
         if "```json" in raw_ai_output:
             raw_ai_output = raw_ai_output.split("```json")[1].split("```")[0].strip()
         elif "```" in raw_ai_output:
              raw_ai_output = raw_ai_output.split("```")[1].split("```")[0].strip()
         
-        triage_data = json.loads(raw_ai_output)
-        
+        try:
+            triage_data = json.loads(raw_ai_output)
+        except json.JSONDecodeError as json_err:
+            print(f"❌ Triage JSON Parse Error: {json_err}")
+            print(f"📝 Raw AI Output: {raw_ai_output}")
+            raise HTTPException(status_code=500, detail="AI returned an invalid response format")
+
         # Save to DB
-        triage_record = TriageResult(
-            patient_id=patient.id,
-            symptoms=symptoms,
-            urgency=triage_data.get("urgency", "routine"),
-            probable_issue=triage_data.get("probable_issue"),
-            recommended_dept=triage_data.get("recommended_dept"),
-            ai_reasoning=triage_data.get("ai_reasoning")
-        )
-        db.add(triage_record)
-        db.commit()
-        db.refresh(triage_record)
+        try:
+            triage_record = TriageResult(
+                patient_id=patient.id,
+                symptoms=symptoms,
+                urgency=triage_data.get("urgency", "routine"),
+                probable_issue=triage_data.get("probable_issue"),
+                recommended_dept=triage_data.get("recommended_dept"),
+                ai_reasoning=triage_data.get("ai_reasoning")
+            )
+            db.add(triage_record)
+            db.commit()
+            db.refresh(triage_record)
+        except Exception as db_err:
+            print(f"❌ Database error saving triage: {db_err}")
+            db.rollback()
+            # If DB fails, we still return the AI findings!
+            return {
+                "success": True,
+                "triage": triage_data,
+                "id": 0 # Temporary ID
+            }
         
         return {
             "success": True,
@@ -307,15 +326,13 @@ async def ai_triage(request: Request, db: Session = Depends(get_db), user=Depend
             "id": triage_record.id
         }
         
-    except json.JSONDecodeError as e:
-        print(f"Triage JSON Parse Error: {e}")
-        print(f"Raw AI Output: {raw_ai_output}")
-        raise HTTPException(status_code=500, detail="AI returned an invalid response. Please try again.")
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        print(f"Triage Error: {e}")
+        print(f"❌ Triage Fatal Error: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Symptom analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/summarize_visit")
 async def summarize_visit(request: Request, db: Session = Depends(get_db), user=Depends(require_role("dentist"))):

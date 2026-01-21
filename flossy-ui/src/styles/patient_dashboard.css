@@ -287,7 +287,8 @@ body {
   height: 100vh;
   background: #1a1a1a;
   border-left: 1px solid #333;
-  z-index: 5000;
+  z-index: 11000 !important;
+  /* Higher than main header (9999) */
   transition: right 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
   display: flex;
   flex-direction: column;
@@ -300,7 +301,8 @@ body {
 
 .ai-header {
   padding: 1.5rem;
-  padding-top: 5rem;
+  padding-top: 9rem;
+  /* Pushed significantly down to clear main header */
   /* Avoid overlap with main header */
   background: #111;
   border-bottom: 1px solid #333;
@@ -608,9 +610,10 @@ body {
   background: #111;
   /* Solid dark background for a cleaner look */
   border-right: 1px solid rgba(212, 175, 55, 0.15);
-  z-index: 1500;
-  padding: 5rem 1.5rem 2rem;
-  /* More top padding for header */
+  z-index: 99999 !important;
+  /* Extremely high to beat any other element */
+  padding: 9rem 1.5rem 2rem;
+  /* Massive top padding to push content below fixed header */
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;

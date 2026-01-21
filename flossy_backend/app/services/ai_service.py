@@ -68,26 +68,33 @@ def load_faiss_index():
             if download_from_gcs(GCS_BUCKET_NAME, GCS_FAISS_PATH, LOCAL_FAISS_PATH):
                 faiss_path = LOCAL_FAISS_PATH
             else:
-                raise FileNotFoundError(f"FAISS file missing: {local_faiss} (and GCS download failed)")
+                print(f"⚠️ FAISS file missing: {local_faiss} and GCS download failed. Continuing without KB.")
+                _faiss_index = None # Mark as failed but don't crash
         
         if not os.path.exists(local_meta) and not os.path.exists(LOCAL_META_PATH):
             print(f"📥 Local meta not found, trying GCS bucket: {GCS_BUCKET_NAME}")
             if download_from_gcs(GCS_BUCKET_NAME, GCS_META_PATH, LOCAL_META_PATH):
                 meta_path = LOCAL_META_PATH
             else:
-                raise FileNotFoundError(f"Meta file missing: {local_meta} (and GCS download failed)")
+                print(f"⚠️ Meta file missing: {local_meta} and GCS download failed. Continuing without KB.")
         elif os.path.exists(LOCAL_META_PATH):
             meta_path = LOCAL_META_PATH
 
-        try:
-            _faiss_index = faiss.read_index(faiss_path)
-            with open(meta_path, "r", encoding="utf-8") as f:
-                meta = json.load(f)
-            _faiss_chunks = meta.get("chunks", [])
-            print(f"✅ FAISS index loaded ({len(_faiss_chunks)} chunks).")
-        except Exception as e:
-            print(f"❌ Error loading FAISS: {e}")
-            raise RuntimeError(f"FAISS load failed: {e}")
+        if faiss_path and os.path.exists(faiss_path) and os.path.exists(meta_path):
+            try:
+                _faiss_index = faiss.read_index(faiss_path)
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+                _faiss_chunks = meta.get("chunks", [])
+                print(f"✅ FAISS index loaded ({len(_faiss_chunks)} chunks).")
+            except Exception as e:
+                print(f"❌ Error loading FAISS: {e}")
+                _faiss_index = None
+                _faiss_chunks = []
+        else:
+            _faiss_index = None
+            _faiss_chunks = []
+            print("⚠️ KB Files missing or unreachable. AI will use general knowledge.")
 
     return _faiss_index, _faiss_chunks
 
