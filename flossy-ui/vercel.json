@@ -1,4 +1,10 @@
 {
     "framework": "vite",
-    "installCommand": "npm install --force"
+    "installCommand": "npm install --force",
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
 }
