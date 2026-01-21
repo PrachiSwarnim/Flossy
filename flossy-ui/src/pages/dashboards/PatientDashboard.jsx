@@ -252,8 +252,9 @@ export default function PatientDashboard() {
   }
 
   async function runTriage() {
-    if (!triageSymptom.trim()) return;
+    if (!triageSymptom || !triageSymptom.trim()) return;
     setIsTriageLoading(true);
+    setTriageResult(null); // Clear previous result
     try {
       const token = await session.getToken({ template: "default" });
       const res = await fetch(`${API}/api/ai/triage`, {
@@ -266,11 +267,35 @@ export default function PatientDashboard() {
       });
       if (res.ok) {
         const data = await res.json();
-        setTriageResult(data.triage);
-        setTriageSymptom("");
+        if (data.triage) {
+          setTriageResult(data.triage);
+          setTriageSymptom("");
+        } else {
+          setTriageResult({
+            urgency: "routine",
+            probable_issue: "Unable to analyze",
+            ai_reasoning: "Please try again or consult with our dentist directly.",
+            patient_guidance: "Book an appointment for a proper consultation."
+          });
+        }
+      } else {
+        // API error - show fallback message
+        console.error("Triage API error:", res.status);
+        setTriageResult({
+          urgency: "routine",
+          probable_issue: "Service temporarily unavailable",
+          ai_reasoning: "Our AI assistant is currently busy. Your symptoms have been noted.",
+          patient_guidance: "Please book an appointment for a professional evaluation."
+        });
       }
     } catch (err) {
       console.error("Triage error", err);
+      setTriageResult({
+        urgency: "routine",
+        probable_issue: "Connection error",
+        ai_reasoning: "Unable to connect to our AI service at this time.",
+        patient_guidance: "Please try again later or call us directly."
+      });
     } finally {
       setIsTriageLoading(false);
     }

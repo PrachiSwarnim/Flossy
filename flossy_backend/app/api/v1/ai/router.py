@@ -11,7 +11,7 @@ from app.core.database import get_db, SessionLocal
 from app.core.dependencies import require_role
 from app.core.security import verify_token
 from app.core.config import CLERK_SECRET_KEY
-from app.models import LLMInteraction, User, TriageResult, Patient
+from app.models import LLMInteraction, User, TriageResult, Patient, Appointment
 from app.core.utils import ai_generate, embed_with_client, cos_sim
 from app.services.ai_service import load_faiss_index, get_genai_client, get_bandit_and_meta
 
@@ -225,7 +225,8 @@ async def ai_suggestion(request: Request, db: Session = Depends(get_db)):
     try:
         # High temperature for variety in facts
         fact = ai_generate(f"You are a fun dental historian and health expert with a sparkling personality. {prompt}", temperature=1.0)
-    except:
+    except Exception as e:
+        print(f"AI Suggestion Error: {e}")
         fact = "Your Tooth Enamel is the hardest substance in your body—even tougher than bone! ✨"
 
     return {"suggestion": fact}
