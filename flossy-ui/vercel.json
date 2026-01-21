@@ -1,5 +1,4 @@
 {
     "framework": "vite",
-    "rootDirectory": "flossy-ui",
     "installCommand": "npm install --force"
 }
