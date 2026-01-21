@@ -3,6 +3,32 @@ import requests
 from app.core.config import CLERK_SECRET_KEY
 from app.models import User, Patient
 from sqlalchemy.orm import Session
+import re
+
+def extract_names_from_email(email: str) -> tuple:
+    """Extract first and last names from an email address."""
+    if not email or "@" not in email:
+        return email or "Unknown", ""
+
+    local_part = email.split("@")[0]
+    # Split by common separators
+    parts = re.split(r'[._\-]', local_part)
+    # Clean up common titles/prefixes
+    titles = ['mr', 'ms', 'mrs', 'dr', 'prof']
+    parts = [p for p in parts if p.lower() not in titles]
+    # Remove numbers from each part and filter empty/short parts
+    parts = [re.sub(r'\d+', '', p).strip().title() for p in parts]
+    parts = [p for p in parts if len(p) >= 1]
+
+    if len(parts) == 2:
+        # Reverse 2-part handles like choudhary.shruti -> Shruti Choudhary
+        return parts[1], parts[0]
+    elif len(parts) >= 3:
+        return parts[0], " ".join(parts[1:])
+    elif len(parts) == 1:
+        return parts[0], ""
+    else:
+        return "Unknown", ""
 
 def get_automatic_role(email: str) -> str:
     """
@@ -140,9 +166,17 @@ def sync_user_to_db(db: Session, user_payload: dict, email_hint: str = None) -> 
             return str(val).strip()
 
         fname = sanitize(user_payload.get("given_name") or user_payload.get("first_name"))
-        if not fname: fname = email.split("@")[0]
-        
         lname = sanitize(user_payload.get("family_name") or user_payload.get("last_name"))
+
+        if not fname:
+            fname, lname_fallback = extract_names_from_email(email)
+            if not lname: lname = lname_fallback
+        
+        # Update user record with names
+        user.first_name = fname
+        user.last_name = lname
+        db.add(user)
+        db.commit()
         
         # Use a unique placeholder phone based on user ID to avoid constraint violations
         # Format: TEMP_<user_id>_<timestamp_suffix>
@@ -151,6 +185,8 @@ def sync_user_to_db(db: Session, user_payload: dict, email_hint: str = None) -> 
         
         patient = Patient(
             name=f"{fname} {lname}".strip(),
+            first_name=fname,
+            last_name=lname,
             phone=unique_placeholder_phone,
             user_id=user.id,
             contact_datetime=datetime.now(timezone.utc),

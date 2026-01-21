@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import require_role
 from app.models import Patient, TriageResult
+from app.core.auth_utils import extract_names_from_email
 from app.api.v1.patients.schemas import PatientUpdate
 from app.core.utils import clean_name
 
@@ -21,38 +22,21 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
     import time
     import re
     
-    def extract_name_from_email(email: str) -> str:
-        """Extract a clean, human-readable name from an email address.
-        Returns name in the order found in the email handle (Firstname Lastname).
-        """
-        if not email or "@" not in email:
-            return "Unknown"
-        
-        local_part = email.split("@")[0]
-        
-        # Split by common separators first
-        parts = re.split(r'[._\-]', local_part)
-        
-        # Remove numbers from each part and filter empty/short parts
-        parts = [re.sub(r'\d+', '', p).strip().title() for p in parts]
-        parts = [p for p in parts if len(p) > 1]
-        
-        if len(parts) >= 1:
-            # Join parts in the order they appear in the email
-            return " ".join(parts)
-        else:
-            return "Unknown"
     
+    print(f"🔍 Fetching patients for user: {user.email}")
     # First, ensure all users with role='patient' have a Patient record
     patient_users = db.query(User).filter(User.role == "patient").all()
     for pu in patient_users:
         existing = db.query(Patient).filter(Patient.user_id == pu.id).first()
         if not existing:
             # Auto-create patient record for this user
-            extracted_name = extract_name_from_email(pu.email)
+            fname, lname = extract_names_from_email(pu.email)
+            extracted_name = f"{fname} {lname}".strip()
             unique_placeholder = f"TEMP_{pu.id}_{int(time.time()) % 100000}"
             new_patient = Patient(
                 name=extracted_name,
+                first_name=fname,
+                last_name=lname,
                 phone=unique_placeholder,
                 user_id=pu.id,
                 source="website"
@@ -62,22 +46,32 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
     
     # Query all non-archived patients
     patients = db.query(Patient).filter(or_(Patient.is_archived == 0, Patient.is_archived == None)).all()
+    print(f"📊 Total patients in DB: {len(patients)}")
     
     results = []
+    skipped_staff = 0
+    skipped_test = 0
+    
     for p in patients:
         # Skip patients whose linked user is a dentist or receptionist (staff)
         if p.user and p.user.role in ["dentist", "receptionist", "admin"]:
+            skipped_staff += 1
             continue
         
         # Skip system/test accounts
         if p.phone and p.phone in ["0000000000", "0", "00000", "1234567890"]:
+            skipped_test += 1
             continue
         if p.name and p.name.lower().strip() in ["system", "test", "admin", "unknown"]:
+            skipped_test += 1
             continue
             
         # USER REQUEST: Full name should be taken from email id username if user is linked
         if p.user and p.user.email:
-            display_name = extract_name_from_email(p.user.email)
+            fname, lname = extract_names_from_email(p.user.email)
+            display_name = f"{fname} {lname}".strip()
+        elif p.first_name:
+            display_name = f"{p.first_name} {p.last_name or ''}".strip()
         else:
             display_name = clean_name(p.name).title() if p.name else "Unknown Patient"
         
@@ -107,7 +101,7 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
         risk_level = "Low"
         if risk_score > 70: risk_level = "Critical"
         elif risk_score > 30: risk_level = "Moderate"
-
+ 
         results.append({
             "id": p.id,
             "name": display_name,
@@ -129,6 +123,7 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
             } if latest_triage else None
         })
     
+    print(f"✅ Returning {len(results)} patients (Skipped: {skipped_staff} staff, {skipped_test} test)")
     results.sort(key=lambda x: x["name"])
     return results
 
@@ -140,6 +135,10 @@ def update_patient(id: int, data: PatientUpdate, db: Session = Depends(get_db), 
     
     if data.name:
         patient.name = data.name
+    if data.first_name:
+        patient.first_name = data.first_name
+    if data.last_name:
+        patient.last_name = data.last_name
     if data.phone:
         patient.phone = data.phone
     if data.age is not None:
@@ -197,6 +196,8 @@ def get_my_profile(db: Session = Depends(get_db), user = Depends(require_role("p
     return {
         "id": patient.id,
         "name": final_name or clean_name(user.email.split("@")[0]),
+        "first_name": patient.first_name,
+        "last_name": patient.last_name,
         "phone": patient.phone,
         "age": patient.age,
         "email": user.email,
@@ -221,6 +222,10 @@ def update_my_profile(data: PatientUpdate, db: Session = Depends(get_db), user =
 
     if data.name:
         patient.name = data.name
+    if data.first_name:
+        patient.first_name = data.first_name
+    if data.last_name:
+        patient.last_name = data.last_name
     if data.phone:
         patient.phone = data.phone
     if data.age is not None:

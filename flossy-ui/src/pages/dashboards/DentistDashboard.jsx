@@ -205,7 +205,8 @@ export default function DentistDashboard() {
   // === Full Name ===
   // USER REQUEST: Take name from email username
   const userEmail = user?.primaryEmailAddress?.emailAddress || "";
-  const fullName = capitalizeFullName(userEmail) || "Doctor";
+  const clerkName = user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : null;
+  const fullName = clerkName || capitalizeFullName(userEmail) || "Doctor";
 
   useEffect(() => {
     if (fullName) {
@@ -390,27 +391,38 @@ export default function DentistDashboard() {
   }
 
   function capitalizeFullName(name) {
-    if (!name) return "";
+    if (!name || typeof name !== 'string') return "";
 
-    // 1. If it's a full email, extract the handle first
-    let target = name;
-    if (name.includes("@")) {
-      target = name.split("@")[0];
+    // 1. Get the local part (before @)
+    const localPart = name.split('@')[0];
+
+    // 2. Handle common formats (reverse/straight names)
+    // Split by dot, underscore, or dash
+    let parts = localPart.split(/[._-]/);
+
+    // 3. Clean up common titles/prefixes
+    const titles = ['mr', 'ms', 'mrs', 'dr', 'prof'];
+    parts = parts.filter(part => !titles.includes(part.toLowerCase()));
+
+    if (parts.length === 0) return "";
+
+    // 4. Determine if it's likely "Last.First" or "First.Last"
+    // Heuristic: If we have 2 parts, we follow the user's request for "Vasisht Dhruv" -> "Dhruv Vasisht"
+    // For many handles, the second part is the given name.
+    if (parts.length === 2) {
+      // Capitalize both
+      const p1 = parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
+      const p2 = parts[1].charAt(0).toUpperCase() + parts[1].slice(1).toLowerCase();
+      // Reverse to First Last (dhruv.vasisht handle format)
+      return `${p2} ${p1}`;
     }
 
-    // 2. Remove None/null and numbers
-    let cleaned = target.replace(/\b(None|null|undefined)\b/gi, "").replace(/\d+/g, "").trim();
-    if (!cleaned) return "";
-
-    // 3. Split by space, dots, or dashes (like email parts)
-    let parts = cleaned.split(/[.\-_\s]+/).filter(p => p.length > 1);
-
-    if (parts.length === 0) return cleaned;
-
-    // 4. Capitalize and Join (No reversal, as per user request to fix "Vasisht Dhruv")
-    const capitalized = parts.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-
-    return capitalized.join(" ");
+    // 5. Capitalize and join for 1 or 3+ parts
+    return parts.map(part => {
+      // Remove trailing digits
+      const cleanPart = part.replace(/\d+/g, "");
+      return cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1).toLowerCase();
+    }).filter(p => p.length > 0).join(' ');
   }
 
   function addMedication(medName) {
@@ -494,6 +506,7 @@ export default function DentistDashboard() {
     if (!isLoaded || !session) return;
 
     async function fetchPatients() {
+      console.log("📂 Attempting to fetch patients...");
       try {
         const token = await session.getToken({ template: "default" });
         const res = await fetch(`${API}/api/patients/`, {
@@ -502,10 +515,11 @@ export default function DentistDashboard() {
 
         if (res.ok) {
           const data = await res.json();
+          console.log("✅ Patients loaded successfully:", data.length, "patients found.");
           setPatientsList(data);
         } else {
           const errData = await res.json().catch(() => ({}));
-          console.error("Patients Fetch Error:", res.status, errData);
+          console.error("❌ Patients Fetch Error:", res.status, errData);
           alert(`Failed to load patient list (Error ${res.status}: ${errData.detail || "Unknown"}). Please check console.`);
         }
       } catch (err) {
@@ -990,119 +1004,49 @@ export default function DentistDashboard() {
                 {history.length ? (
                   history.map((a) => (
                     <div className="appt-item" key={a.id} style={{ opacity: 1 }}>
-                      <b>
-                        {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: true
-                        })}
-                      </b>
-                      <div className="appt-patient">{capitalizeFullName(cleanName(a.patient_name))}
-                        <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
-                          {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
-                        </span>
-                        {a.latest_triage && (
-                          <div className={`triage-tag ${a.latest_triage.urgency}`} style={{
-                            display: 'inline-block',
-                            marginLeft: '15px',
-                            padding: '2px 8px',
-                            borderRadius: '12px',
-                            fontSize: '0.7rem',
-                            fontWeight: 'bold',
-                            textTransform: 'uppercase',
-                            background: a.latest_triage.urgency === 'emergency' ? '#ff3b30' : a.latest_triage.urgency === 'soon' ? '#ffcc00' : '#4cd964',
-                            color: a.latest_triage.urgency === 'soon' ? '#000' : '#fff',
-                            boxShadow: a.latest_triage.urgency === 'emergency' ? '0 0 10px rgba(255,59,48,0.4)' : 'none'
-                          }}>
-                            <i className="fas fa-robot" style={{ marginRight: '4px' }}></i>
-                            AI: {a.latest_triage.urgency} ({a.latest_triage.issue})
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                          <div style={{ fontWeight: "800", color: "#fff", fontSize: "1.1rem" }}>{capitalizeFullName(a.patient_name)}</div>
+                          <div style={{ fontSize: "0.85rem", color: "#f0b800", fontWeight: "600", marginTop: "2px" }}>
+                            {new Date(a.time).toLocaleDateString("en-IN", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                           </div>
-                        )}
-                      </div>
-                      <div className="appt-reason">{a.reason}</div>
-
-                      {/* Overdue/Past Scheduled items still actionable */}
-                      {(!a.status || !["completed", "missed", "follow_up"].includes(a.status)) && (
-                        <>
-                          <span style={{ color: "#e74c3c", fontWeight: "bold", display: "block", marginTop: "5px", marginBottom: "5px" }}>
-                            ⚠️ Overdue / Past Pending
-                          </span>
-                          <div className="action-buttons" style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                            <button
-                              className="done-btn"
-                              onClick={() => markCompleted(a.id)}
-                              style={{ height: "40px", padding: "0 12px", background: "#2ecc71", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}
-                            >
-                              <i className="fas fa-check" style={{ marginRight: "8px" }}></i> Completed
-                            </button>
-                            <button
-                              className="follow-up-btn"
-                              style={{ height: "40px", padding: "0 12px", background: "#f0b800", color: "#000", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}
-                              onClick={() => openFollowUpModal(a.id)}
-                            >
-                              <i className="fas fa-clock" style={{ marginRight: "8px" }}></i> Follow Up
-                            </button>
-                            <button
-                              className="missed-btn"
-                              style={{ height: "40px", padding: "0 12px", background: "#e74c3c", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}
-                              onClick={() => markNotVisited(a.id)}
-                            >
-                              <i className="fas fa-times" style={{ marginRight: "8px" }}></i> Not Visited
-                            </button>
-                          </div>
-                        </>
-                      )}
-
-                      {a.status === "completed" && (
-                        <span className="completed-tag" style={{ color: "#2ecc71", display: "block", marginTop: "5px" }}>
-                          <i className="fas fa-check-circle"></i> Completed
-                        </span>
-                      )}
-
-                      {a.status === "missed" && (
-                        <span className="missed-tag" style={{ color: "#e74c3c", display: "block", marginTop: "5px" }}>
-                          <i className="fas fa-times-circle"></i> Not Visited
-                        </span>
-                      )}
-
-                      {a.status === "follow_up" && (
-                        <div className="follow-up-tag" style={{ color: "#f0b800", marginTop: "5px" }}>
-                          <i className="fas fa-clock"></i> Follow Up Required
-                          <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>Note: {a.follow_up_reason}</div>
-                          {/* History Follow-ups can still be acted upon */}
-                          <div className="follow-up-actions" style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
-                            {!a.follow_up_status ? (
-                              <>
-                                <button
-                                  onClick={() => updateFollowUpStatus(a.id, "completed")}
-                                  style={{ fontSize: "0.75rem", background: "#28a745", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
-                                >Mark Done</button>
-                                <button
-                                  onClick={() => openMissedModal(a.id)}
-                                  style={{ fontSize: "0.75rem", background: "#dc3545", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
-                                >Mark Missed</button>
-                              </>
-                            ) : (
-                              <span style={{
-                                fontSize: "0.75rem",
-                                fontWeight: "bold",
-                                color: a.follow_up_status === "completed" ? "#28a745" : "#dc3545",
-                                textTransform: "capitalize"
-                              }}>
-                                Follow-up {a.follow_up_status}
-                              </span>
-                            )}
+                          <div style={{ fontSize: "0.9rem", color: "#888", fontWeight: "500" }}>{formatTime12h(new Date(a.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }))}</div>
+                          <div style={{ marginTop: "8px", fontSize: "0.9rem", color: "#ccc", background: "rgba(255,255,255,0.05)", padding: "10px", borderRadius: "8px", borderLeft: "3px solid #f0b800" }}>
+                            <i className="fas fa-notes-medical" style={{ marginRight: "8px", color: "#f0b800", opacity: 0.7 }}></i>
+                            {a.reason}
                           </div>
                         </div>
-                      )}
+                        <div style={{ textAlign: "right", display: "flex", flexDirection: "column", gap: "8px" }}>
+                          <span className={`status-badge ${a.status?.toLowerCase() || 'pending'}`} style={{
+                            padding: "6px 12px", borderRadius: "20px", fontSize: "0.75rem", fontWeight: "800", textTransform: "uppercase", letterSpacing: "1px",
+                            background: a.status === 'completed' ? 'rgba(46, 204, 113, 0.2)' : 'rgba(231, 76, 60, 0.2)',
+                            color: a.status === 'completed' ? '#2ecc71' : '#e74c3c',
+                            border: `1px solid ${a.status === 'completed' ? 'rgba(46, 204, 113, 0.3)' : 'rgba(231, 76, 60, 0.3)'}`
+                          }}>
+                            {a.status || 'Scheduled'}
+                          </span>
+                          {!a.status || !["completed", "missed", "follow_up"].includes(a.status) ? (
+                            <div className="action-buttons" style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
+                              <button onClick={() => markCompleted(a.id)} className="action-icon-btn green" title="Complete"><i className="fas fa-check"></i></button>
+                              <button onClick={() => openFollowUpModal(a.id)} className="action-icon-btn gold" title="Follow Up"><i className="fas fa-clock"></i></button>
+                              <button onClick={() => markNotVisited(a.id)} className="action-icon-btn red" title="Missed"><i className="fas fa-times"></i></button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
                   ))
                 ) : (
-                  <p className="empty-state">No appointment history found.</p>
+                  <div className="empty-state" style={{ padding: "40px", textAlign: "center", color: "#666" }}>
+                    <i className="fas fa-calendar-check" style={{ fontSize: "3rem", marginBottom: "15px", opacity: 0.2 }}></i>
+                    <p>No past appointments recorded yet.</p>
+                  </div>
                 )}
               </div>
             </div>
           </div>
+
+
 
           {/* ROW 1.7: DAILY CLOSURE REPORT */}
           <div className="row-stats" style={{ display: "flex", justifyContent: "center", width: "100%", marginBottom: "2rem" }}>
@@ -1303,6 +1247,64 @@ export default function DentistDashboard() {
                 <h3>Prescriptions</h3>
                 <i className="fas fa-file-prescription card-icon"></i>
               </div>
+
+              {/* AI SUMMARY RESULTS - PROMINENT SECTION */}
+              {aiSummaryResult && (
+                <div className="ai-summary-overlay-section" style={{
+                  margin: "1.5rem",
+                  padding: "1.5rem",
+                  borderRadius: "16px",
+                  background: "linear-gradient(135deg, rgba(240, 184, 0, 0.15) 0%, rgba(20, 20, 20, 0.6) 100%)",
+                  border: "1px solid var(--primary-gold)",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                  animation: "fadeInUp 0.5s ease"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <i className="fas fa-magic" style={{ color: "var(--primary-gold)" }}></i>
+                      <h4 style={{ margin: 0, color: "var(--primary-gold)", textTransform: "uppercase", letterSpacing: "1px" }}>AI Treatment Insight</h4>
+                    </div>
+                    <button onClick={() => setAiSummaryResult(null)} style={{ background: "transparent", border: "none", color: "#666", cursor: "pointer" }}>
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                    <div className="insight-box">
+                      <span style={{ fontSize: "0.7rem", color: "#888", display: "block", marginBottom: "5px" }}>CLINICAL SUMMARY</span>
+                      <p style={{ fontSize: "0.9rem", color: "#eee", margin: 0, lineHeight: "1.5" }}>{aiSummaryResult.clinical}</p>
+                    </div>
+                    <div className="insight-box">
+                      <span style={{ fontSize: "0.7rem", color: "#888", display: "block", marginBottom: "5px" }}>PATIENT EXPLANATION</span>
+                      <p style={{ fontSize: "0.9rem", color: "#ddd", margin: 0, lineHeight: "1.5", fontStyle: "italic" }}>"{aiSummaryResult.patient_friendly}"</p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+                    <button
+                      onClick={() => {
+                        setPrescRecommendations(prev => prev + (prev ? "\n\n" : "") + "AI Note: " + aiSummaryResult.patient_friendly);
+                        setAiSummaryResult(null);
+                      }}
+                      className="p-btn small"
+                      style={{ flex: 1, height: "40px" }}
+                    >
+                      Add to Instructions
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPrescDetails(aiSummaryResult.clinical);
+                        setAiSummaryResult(null);
+                      }}
+                      className="p-btn secondary small"
+                      style={{ flex: 1, height: "40px", background: "rgba(255,255,255,0.05)", border: "1px solid #444" }}
+                    >
+                      Refine Notes
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="prescription-form">
                 <div style={{ display: "flex", gap: "1rem" }}>
                   <div className="form-group" style={{ position: "relative", flex: 1 }}>

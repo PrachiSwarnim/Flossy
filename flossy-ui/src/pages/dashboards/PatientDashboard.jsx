@@ -127,11 +127,31 @@ export default function PatientDashboard() {
   // Sync voice messages logic removed (LiveKit handles its own state)
   // We can add a listener for LiveKit events later if needed to sync text log.
 
-  // Compute display name - filter out "None" or null surnames
-  const firstName = user?.firstName || "";
-  const lastName = user?.lastName;
-  const hasValidLastName = lastName && lastName !== "None" && lastName !== "null" && lastName !== "undefined";
-  const fullName = hasValidLastName ? `${firstName} ${lastName}` : firstName || "Patient";
+  // === Full Name ===
+  const capitalizeFullName = (name) => {
+    if (!name || typeof name !== 'string') return "";
+    const localPart = name.split('@')[0];
+    let parts = localPart.split(/[._-]/);
+    const titles = ['mr', 'ms', 'mrs', 'dr', 'prof'];
+    parts = parts.filter(part => !titles.includes(part.toLowerCase()));
+
+    if (parts.length === 0) return "";
+
+    if (parts.length === 2) {
+      const p1 = parts[0].replace(/\d+/g, "").charAt(0).toUpperCase() + parts[0].replace(/\d+/g, "").slice(1).toLowerCase();
+      const p2 = parts[1].replace(/\d+/g, "").charAt(0).toUpperCase() + parts[1].replace(/\d+/g, "").slice(1).toLowerCase();
+      return `${p2} ${p1}`;
+    }
+
+    return parts.map(part => {
+      const cleanPart = part.replace(/\d+/g, "");
+      return cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1).toLowerCase();
+    }).filter(p => p.length > 0).join(' ');
+  };
+
+  const userEmail = user?.primaryEmailAddress?.emailAddress || "";
+  const clerkName = user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : null;
+  const fullName = clerkName || capitalizeFullName(userEmail) || "Patient";
 
   useEffect(() => {
     if (fullName) {

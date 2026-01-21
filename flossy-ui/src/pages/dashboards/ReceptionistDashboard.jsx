@@ -112,7 +112,8 @@ export default function ReceptionistDashboard() {
     // === Full Name ===
     // USER REQUEST: Take name from email username
     const userEmail = user?.primaryEmailAddress?.emailAddress || "";
-    const fullName = capitalizeFullName(userEmail) || "Receptionist";
+    const clerkName = user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : null;
+    const fullName = clerkName || capitalizeFullName(userEmail) || "Receptionist";
 
     useEffect(() => {
         if (fullName) {
@@ -330,27 +331,33 @@ export default function ReceptionistDashboard() {
     }
 
     function capitalizeFullName(name) {
-        if (!name) return "";
+        if (!name || typeof name !== 'string') return "";
 
-        // 1. If it's a full email, extract the handle first
-        let target = name;
-        if (name.includes("@")) {
-            target = name.split("@")[0];
+        // 1. Get the local part (before @)
+        const localPart = name.split('@')[0];
+
+        // 2. Handle common formats (reverse/straight names)
+        // Split by dot, underscore, or dash
+        let parts = localPart.split(/[._-]/);
+
+        // 3. Clean up common titles/prefixes
+        const titles = ['mr', 'ms', 'mrs', 'dr', 'prof'];
+        parts = parts.filter(part => !titles.includes(part.toLowerCase()));
+
+        if (parts.length === 0) return "";
+
+        // 4. Reverse 2-part handles to "First Last" order (e.g. vasisht.dhruv -> Dhruv Vasisht)
+        if (parts.length === 2) {
+            const p1 = parts[0].replace(/\d+/g, "").charAt(0).toUpperCase() + parts[0].replace(/\d+/g, "").slice(1).toLowerCase();
+            const p2 = parts[1].replace(/\d+/g, "").charAt(0).toUpperCase() + parts[1].replace(/\d+/g, "").slice(1).toLowerCase();
+            return `${p2} ${p1}`;
         }
 
-        // 2. Remove None/null and numbers
-        let cleaned = target.replace(/\b(None|null|undefined)\b/gi, "").replace(/\d+/g, "").trim();
-        if (!cleaned) return "";
-
-        // 3. Split by space, dots, or dashes (like email parts)
-        let parts = cleaned.split(/[.\-_\s]+/).filter(p => p.length > 1);
-
-        if (parts.length === 0) return cleaned;
-
-        // 4. Capitalize and Join (No reversal, as per user request to fix "Vasisht Dhruv")
-        const capitalized = parts.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-
-        return capitalized.join(" ");
+        // 5. Capitalize and join for 1 or 3+ parts
+        return parts.map(part => {
+            const cleanPart = part.replace(/\d+/g, "");
+            return cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1).toLowerCase();
+        }).filter(p => p.length > 0).join(' ');
     }
 
     async function downloadInvoice(id, invNum, stamp = true, patientName = "") {

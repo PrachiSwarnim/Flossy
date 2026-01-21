@@ -10,6 +10,8 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, nullable=False)
+    first_name = Column(String(100), nullable=True)
+    last_name = Column(String(100), nullable=True)
     role = Column(String(50), nullable=True) # "dentist" or "patient"
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     
@@ -27,6 +29,8 @@ class Patient(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(120), nullable=False)
+    first_name = Column(String(100), nullable=True)
+    last_name = Column(String(100), nullable=True)
     phone = Column(String(20), unique=True, nullable=False)
     age = Column(Integer, nullable=True)
     contact_datetime = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
