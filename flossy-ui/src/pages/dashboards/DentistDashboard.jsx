@@ -833,7 +833,7 @@ export default function DentistDashboard() {
                     </b>
                     <div className="appt-patient">{capitalizeFullName(cleanName(a.patient_name))}
                       <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
-                        {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
+                        {a.patient_age && `(Age: ${a.patient_age})`} • 📞 {(!a.patient_phone || a.patient_phone.startsWith("TEMP_")) ? "null" : a.patient_phone}
                       </span>
                       {a.latest_triage && (
                         <div className={`triage-tag ${a.latest_triage.urgency}`} style={{
@@ -968,7 +968,7 @@ export default function DentistDashboard() {
                     </b>
                     <div className="appt-patient">{capitalizeFullName(cleanName(a.patient_name))}
                       <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
-                        {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
+                        {a.patient_age && `(Age: ${a.patient_age})`} • 📞 {(!a.patient_phone || a.patient_phone.startsWith("TEMP_")) ? "null" : a.patient_phone}
                       </span>
                       {a.latest_triage && (
                         <div className={`triage-tag ${a.latest_triage.urgency}`} style={{
@@ -1349,7 +1349,16 @@ export default function DentistDashboard() {
                           overflowY: "scroll", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
                         }}>
                           {patientsList
-                            .filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase()))
+                            .filter(p => {
+                              if (!p) return false;
+                              const search = (patientSearch || "").toLowerCase().trim();
+                              if (!search) return true;
+                              const rawName = (p.name || "").toLowerCase();
+                              const beautifiedName = capitalizeFullName(p.name).toLowerCase();
+                              const phone = (p.phone || "").toLowerCase();
+                              const email = (p.email || "").toLowerCase();
+                              return rawName.includes(search) || beautifiedName.includes(search) || phone.includes(search) || email.includes(search);
+                            })
                             .map((p, i) => (
                               <div
                                 key={p.id}
@@ -1374,7 +1383,7 @@ export default function DentistDashboard() {
                                   )}
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  {p.phone && <div style={{ fontSize: "0.75rem", color: "#888" }}>{p.phone}</div>}
+                                  <div style={{ fontSize: "0.75rem", color: "#888" }}>{(!p.phone || p.phone.startsWith("TEMP_")) ? "null" : p.phone}</div>
                                   {p.latest_triage && (
                                     <div style={{ fontSize: '0.65rem', color: p.latest_triage.urgency === 'emergency' ? '#ff3b30' : '#888' }}>
                                       AI Urgency: {p.latest_triage.urgency}
@@ -1383,9 +1392,18 @@ export default function DentistDashboard() {
                                 </div>
                               </div>
                             ))}
-                          {patientsList.filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase())).length === 0 && (
-                            <div style={{ padding: "15px", color: "#888", textAlign: "center" }}>No patients found.</div>
-                          )}
+                          {patientsList.filter(p => {
+                            if (!p) return false;
+                            const search = (patientSearch || "").toLowerCase().trim();
+                            if (!search) return true;
+                            const rawName = (p.name || "").toLowerCase();
+                            const beautifiedName = capitalizeFullName(p.name).toLowerCase();
+                            const phone = (p.phone || "").toLowerCase();
+                            const email = (p.email || "").toLowerCase();
+                            return rawName.includes(search) || beautifiedName.includes(search) || phone.includes(search) || email.includes(search);
+                          }).length === 0 && (
+                              <div style={{ padding: "15px", color: "#888", textAlign: "center" }}>No patients found.</div>
+                            )}
                         </div>
                       )}
                     </div>
@@ -1832,7 +1850,7 @@ export default function DentistDashboard() {
                         <tr key={p.id} style={{ borderBottom: "1px solid #222" }}>
                           <td style={{ padding: "12px" }}>{capitalizeFullName(p.name)}</td>
                           <td style={{ padding: "12px", color: "#ddd" }}>{p.age || "-"} / {p.sex || p.gender || "-"}</td>
-                          <td style={{ padding: "12px", color: "#888" }}>{p.phone}</td>
+                          <td style={{ padding: "12px", color: "#888" }}>{(!p.phone || p.phone.startsWith("TEMP_")) ? "null" : p.phone}</td>
                           <td style={{ padding: "12px", color: "#888" }}>{p.email || "-"}</td>
                           <td style={{ padding: "12px" }}>
                             <span style={{

@@ -61,6 +61,16 @@ def health_check():
 @app.on_event("startup")
 async def startup():
     logger.info("🚀 FLOSSY BACKEND STARTUP EVENT")
+    
+    # Ensure all tables exist (Auto-migration)
+    try:
+        from app.core.database import Base, engine
+        import app.models  # Import models to register them with Base
+        Base.metadata.create_all(bind=engine)
+        logger.info("✅ Database schema synchronized (tables created if missing).")
+    except Exception as e:
+        logger.error(f"❌ Database error during startup: {e}")
+
     try:
         from app.reminders import reminder_daemon
         asyncio.create_task(reminder_daemon())

@@ -559,7 +559,7 @@ export default function PatientDashboard() {
             </div>
             <div className="detail-row">
               <i className="fas fa-phone"></i>
-              <span>{(profile?.phone && !profile.phone.startsWith("TEMP_")) ? profile.phone : ""}</span>
+              <span>{(profile?.phone && !profile.phone.startsWith("TEMP_")) ? profile.phone : "null"}</span>
             </div>
             <div className="detail-row">
               <i className="fas fa-birthday-cake"></i>

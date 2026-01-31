@@ -299,7 +299,15 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                     overflowY: "scroll", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
                                 }}>
                                     {patientsList
-                                        .filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase()))
+                                        .filter(p => {
+                                            if (!p) return false;
+                                            const search = (patientSearch || "").toLowerCase().trim();
+                                            if (!search) return true;
+                                            const name = (p.name || "").toLowerCase();
+                                            const phone = (p.phone || "").toLowerCase();
+                                            const email = (p.email || "").toLowerCase();
+                                            return name.includes(search) || phone.includes(search) || email.includes(search);
+                                        })
                                         .map((p, i) => (
                                             <div
                                                 key={p.id}
@@ -319,9 +327,17 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                                 {p.phone && <div style={{ fontSize: "0.75rem", color: "#888" }}>{p.phone}</div>}
                                             </div>
                                         ))}
-                                    {patientsList.filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase())).length === 0 && (
-                                        <div style={{ padding: "15px", color: "#888", textAlign: "center" }}>No patients found.</div>
-                                    )}
+                                    {patientsList.filter(p => {
+                                        if (!p) return false;
+                                        const search = (patientSearch || "").toLowerCase().trim();
+                                        if (!search) return true;
+                                        const name = (p.name || "").toLowerCase();
+                                        const phone = (p.phone || "").toLowerCase();
+                                        const email = (p.email || "").toLowerCase();
+                                        return name.includes(search) || phone.includes(search) || email.includes(search);
+                                    }).length === 0 && (
+                                            <div style={{ padding: "15px", color: "#888", textAlign: "center" }}>No patients found.</div>
+                                        )}
                                 </div>
                             )}
                         </div>

@@ -9,7 +9,22 @@ from app.services.llm_client import groq_client
 # Models mapping
 GROQ_MODEL = "llama-3.3-70b-versatile" # Current supported model
 
-client = Client(api_key=GOOGLE_API_KEY)
+_client_cache = None
+
+def get_client():
+    global _client_cache
+    if _client_cache is None:
+        key = os.getenv("GOOGLE_API_KEY")
+        if not key:
+            print("⚠️ GOOGLE_API_KEY is missing from environment!")
+            return None
+        try:
+            _client_cache = Client(api_key=key)
+            print("✅ Gemini Client Initialized (Lazy)")
+        except Exception as e:
+            print(f"❌ Gemini Client Init Failed: {e}")
+            return None
+    return _client_cache
 
 def ai_generate(prompt, temperature=0.7, model="gemini-2.0-flash", client_override=None):
     # 1. Try Groq First (if available)
@@ -25,20 +40,48 @@ def ai_generate(prompt, temperature=0.7, model="gemini-2.0-flash", client_overri
             )
             return chat_completion.choices[0].message.content.strip()
         except Exception as e:
-             print(f"⚠️ Groq Error: {e}. Falling back to Gemini...")
+             print(f"⚠️ Groq Error: {e}")
 
     # 2. Fallback to Gemini
-    c = client_override or client
+    # Ensure we use a valid client (lazy load if needed)
+    c = client_override
+    if not c:
+        # 1. Try lazy client
+        c = get_client()
+    
+    if not c:
+        # 2. Try static client from llm_client
+        from app.services.llm_client import genai_client as _static_client
+        c = _static_client
+
+    if not c:
+        print("❌ AI Error: No GenAI client available (Check GOOGLE_API_KEY)")
+        return "I apologize, but I am currently having trouble connecting to my brain. Please try again later."
+
+    # Force model prefix if missing
+    full_model = model if model.startswith("models/") else f"models/{model}"
+
     try:
         res = c.models.generate_content(
-            model=model,
+            model=full_model,
             contents=prompt,
             config=GenerationConfig(temperature=temperature)
         )
+        if not res or not hasattr(res, 'text'):
+            print(f"❌ Gemini Error: Invalid response structure: {res}")
+            return "I apologize, but I am currently having trouble connecting to my brain. Please try again later."
+        
         return res.text.strip()
     except Exception as e:
-        print(f"❌ Both AI Providers Failed: {e}")
-        return "I apologize, but I am currently having trouble connecting to my brain. Please try again later."
+        err_msg = f"{type(e).__name__}: {str(e)}"
+        print(f"❌ Gemini Fatal Error: {err_msg}")
+        # Log more info if it's a 4xx error (quota/auth)
+        if "403" in str(e) or "401" in str(e):
+            print("🚨 Potential Auth/API Key Issue or API not enabled in GCP Console.")
+        elif "429" in str(e):
+            print("🚨 Rate limit exceeded.")
+            
+        return f"I'm having trouble connecting to my brain. Error: {err_msg}. Please try again later."
     
 def cos_sim(a, b):
     a = np.array(a, dtype=float)

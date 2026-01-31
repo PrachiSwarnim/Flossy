@@ -541,7 +541,7 @@ export default function ReceptionistDashboard() {
                                             <div className="appt-patient">
                                                 {capitalizeFullName(cleanName(a.patient_name))}
                                                 <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
-                                                    {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
+                                                    {a.patient_age && `(Age: ${a.patient_age})`} • 📞 {(!a.patient_phone || a.patient_phone.startsWith("TEMP_")) ? "null" : a.patient_phone}
                                                 </span>
                                             </div>
                                             <div className="appt-reason">{a.reason}</div>
@@ -745,7 +745,7 @@ export default function ReceptionistDashboard() {
                                             <div className="appt-patient">
                                                 {capitalizeFullName(cleanName(a.patient_name))}
                                                 <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
-                                                    {a.patient_age && `(Age: ${a.patient_age})`} {a.patient_phone && ` • 📞 ${a.patient_phone}`}
+                                                    {a.patient_age && `(Age: ${a.patient_age})`} • 📞 {(!a.patient_phone || a.patient_phone.startsWith("TEMP_")) ? "null" : a.patient_phone}
                                                 </span>
                                             </div>
                                             <div className="appt-reason">{a.reason}</div>
@@ -1259,7 +1259,7 @@ export default function ReceptionistDashboard() {
                                                 <tr key={p.id} style={{ borderBottom: "1px solid #222" }}>
                                                     <td style={{ padding: "12px" }}>{p.name}</td>
                                                     <td style={{ padding: "12px", color: "#ddd" }}>{p.age || "-"} / {p.sex || p.gender || "-"}</td>
-                                                    <td style={{ padding: "12px", color: "#888" }}>{p.phone}</td>
+                                                    <td style={{ padding: "12px", color: "#888" }}>{(!p.phone || p.phone.startsWith("TEMP_")) ? "null" : p.phone}</td>
                                                     <td style={{ padding: "12px", color: "#888" }}>{p.email || "-"}</td>
                                                     <td style={{ padding: "12px" }}>
                                                         <span style={{

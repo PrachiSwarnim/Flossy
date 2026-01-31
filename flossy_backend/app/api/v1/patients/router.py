@@ -53,18 +53,16 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
     skipped_test = 0
     
     for p in patients:
-        # Skip patients whose linked user is a dentist or receptionist (staff)
-        if p.user and p.user.role in ["dentist", "receptionist", "admin"]:
-            skipped_staff += 1
-            continue
-        
-        # Skip system/test accounts
+        # Skip system/test accounts (based on specific placeholder values)
         if p.phone and p.phone in ["0000000000", "0", "00000", "1234567890"]:
             skipped_test += 1
             continue
         if p.name and p.name.lower().strip() in ["system", "test", "admin", "unknown"]:
             skipped_test += 1
             continue
+        
+        # NOTE: Previously we filtered staff users here, but this was too aggressive
+        # and hid legitimate patients. Now we only filter obvious test accounts above.
             
         # USER REQUEST: Full name should be taken from email id username if user is linked
         if p.user and p.user.email:

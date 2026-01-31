@@ -73,11 +73,15 @@ async def doctor_ai(request: Request):
         chosen_action_id = -1
 
     qvec = np.array([query_emb], dtype="float32")
-    ctx_size = max(1, min(ctx_size, len(chunks)))
     try:
-        Dvals, I = index.search(qvec, ctx_size)
-        context = "\n\n".join(chunks[i] for i in I[0] if i < len(chunks))
-    except Exception:
+        if index is not None and len(chunks) > 0:
+            ctx_size = max(1, min(ctx_size, len(chunks)))
+            Dvals, I = index.search(qvec, ctx_size)
+            context = "\n\n".join(chunks[i] for i in I[0] if i < len(chunks))
+        else:
+            context = ""
+    except Exception as e:
+        print(f"⚠️ Index search failed: {e}")
         context = ""
 
     prompt = chosen_prompt_template.format(
@@ -284,6 +288,18 @@ async def ai_triage(request: Request, db: Session = Depends(get_db), user=Depend
         raw_ai_output = ai_generate(prompt)
         print(f"DEBUG: raw_ai_output={raw_ai_output[:100]}...") # Log first 100 chars
         
+        # Handle fallback message from ai_generate
+        if "I apologize" in raw_ai_output and "connecting to my brain" in raw_ai_output:
+            return {
+                "success": False,
+                "triage": {
+                    "urgency": "routine",
+                    "probable_issue": "System busy",
+                    "ai_reasoning": "I'm having trouble connecting to my analysis engine. Please try again in 1 minute.",
+                    "patient_guidance": "If you have severe pain, please call us directly."
+                }
+            }
+
         # Handle potential markdown wrapping
         if "```json" in raw_ai_output:
             raw_ai_output = raw_ai_output.split("```json")[1].split("```")[0].strip()
@@ -295,7 +311,16 @@ async def ai_triage(request: Request, db: Session = Depends(get_db), user=Depend
         except json.JSONDecodeError as json_err:
             print(f"❌ Triage JSON Parse Error: {json_err}")
             print(f"📝 Raw AI Output: {raw_ai_output}")
-            raise HTTPException(status_code=500, detail="AI returned an invalid response format")
+            # If AI returned text but not JSON, try to salvage urgency at least
+            return {
+                "success": True,
+                "triage": {
+                    "urgency": "soon" if "pain" in raw_ai_output.lower() else "routine",
+                    "probable_issue": "Manual review needed",
+                    "ai_reasoning": "The AI provided a text-only response. Your symptoms have been recorded.",
+                    "patient_guidance": "Please book an appointment for a proper diagnosis."
+                }
+            }
 
         # Save to DB
         try:
@@ -332,7 +357,16 @@ async def ai_triage(request: Request, db: Session = Depends(get_db), user=Depend
         print(f"❌ Triage Fatal Error: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return the error in the reasoning so the user can see it
+        return {
+            "success": False,
+            "triage": {
+                "urgency": "routine",
+                "probable_issue": "System Error",
+                "ai_reasoning": f"INTERNAL ERROR: {str(e)}",
+                "patient_guidance": "Please check the server logs or try again."
+            }
+        }
 
 @router.post("/summarize_visit")
 async def summarize_visit(request: Request, db: Session = Depends(get_db), user=Depends(require_role("dentist"))):
