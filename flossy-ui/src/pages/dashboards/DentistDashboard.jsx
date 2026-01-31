@@ -2,77 +2,75 @@ import { useEffect, useState } from "react";
 import { useUser, useSession } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { PropagateLoader } from "react-spinners";
+
 import Header from "./DashboardHeader";
 import Footer from "../../components/Footer";
 import InvoiceForm from "../../components/InvoiceForm";
+
 import { TIME_SLOTS, formatTime12h } from "../../utils/timeSlots";
+
 import "../../styles/dentist_dashboard.css";
 import "../../styles/dashboard_extras.css";
+import "../../styles/patient_dashboard.css";
 
-const API = import.meta.env.VITE_API_BASE_URL?.replace("http://", "https://");
+/* ==============================
+   CONFIG
+================================ */
+
+const API = import.meta.env.VITE_API_BASE_URL?.replace(
+  "http://",
+  "https://"
+);
+
+/* ==============================
+   MEDICATION CONSTANTS
+================================ */
 
 const DENTAL_MEDICATIONS = [
-  // Antibiotics
   { name: "Amoxicillin 500mg", type: "Antibiotic" },
   { name: "Augmentin 625mg", type: "Antibiotic" },
   { name: "Metronidazole 400mg", type: "Antibiotic" },
   { name: "Clindamycin 300mg", type: "Antibiotic" },
   { name: "Azithromycin 500mg", type: "Antibiotic" },
-  { name: "Oflox-OZ (Oflox + Ornidazole)", type: "Antibiotic" },
-  { name: "Doxycycline 100mg", type: "Antibiotic" },
 
-  // Pain Relief / NSAIDs
   { name: "Ibuprofen 400mg", type: "Pain Relief" },
-  { name: "Ibuprofen 600mg", type: "Pain Relief" },
-  { name: "Paracetamol 500mg", type: "Pain Relief" },
   { name: "Paracetamol 650mg", type: "Pain Relief" },
-  { name: "Zerodol-P (Aceclofenac + PCM)", type: "Pain Relief" },
-  { name: "Zerodol-SP (Aceclo + PCM + Serato)", type: "Pain Relief" },
-  { name: "Ketorolac (Ketanov) 10mg", type: "Pain Relief" },
-  { name: "Ketorol DT (Dr. Reddy's)", type: "Pain Relief" },
-  { name: "Combiflam (Ibu + PCM)", type: "Pain Relief" },
 
-  // Antacids (to be given with NSAIDs)
-  { name: "Pantoprazole 40mg (Pan-40)", type: "Antacid" },
-  { name: "Ranitidine 150mg (Rantac)", type: "Antacid" },
-  { name: "Omeprazole 20mg", type: "Antacid" },
+  { name: "Pantoprazole 40mg", type: "Antacid" },
 
-  // Steroids & Anti-inflammatory
-  { name: "Dexamethasone 4mg", type: "Steroid" },
-  { name: "Chymoral Forte", type: "Anti-inflammatory" },
-  { name: "Prednisolone 5mg", type: "Steroid" },
-  { name: "Wysolone 10mg", type: "Steroid" },
-
-  // Mouthwashes & Topical
   { name: "Chlorhexidine Mouthwash", type: "Mouthwash" },
-  { name: "Senquel AD Mouthwash", type: "Mouthwash" },
-  { name: "Hexidine Mouthwash", type: "Mouthwash" },
-  { name: "Lidocaine Topical Ointment", type: "Anesthetic" },
-  { name: "Kenacort Oral Paste", type: "Topical Steroid" },
-  { name: "Orasore Gel", type: "Ulcer Gel" },
-  { name: "Candid Mouth Paint", type: "Antifungal" },
-  { name: "Rexidin M Forte Gel", type: "Antiseptic Gel" },
-  { name: "Omnigel (Topical Gel)", type: "Pain Relief" },
-
-  // Hemostatics (Stop Bleeding)
-  { name: "Tranexamic Acid 500mg (Pause)", type: "Hemostatic" },
-  { name: "Ethamsylate 500mg (Revitostept)", type: "Hemostatic" },
-
-  // Supplements & Specialized
-  { name: "Vitamin C (Celin) 500mg", type: "Supplement" },
-  { name: "Vitamin B-Complex (Becosules)", type: "Supplement" },
-  { name: "Calcium + Vitamin D3 (Shelcal)", type: "Supplement" },
-  { name: "Sensodyne Repair and Protect Toothpaste", type: "Toothpaste" },
-  { name: "Thermoseal Toothpaste", type: "Toothpaste" },
-  { name: "Vantej Toothpaste", type: "Toothpaste" },
+  { name: "Hexigel", type: "Topical" }
 ];
+
+/* ==============================
+   COMPONENT
+================================ */
 
 export default function DentistDashboard() {
   const { user, isLoaded } = useUser();
   const { session } = useSession();
   const navigate = useNavigate();
 
-  // 🔒 SECURE ROLE ACCESS
+  /* ==============================
+     STATE
+  ================================ */
+
+  const [pageLoading, setPageLoading] = useState(true);
+
+  const [today, setToday] = useState([]);
+  const [upcoming, setUpcoming] = useState([]);
+  const [history, setHistory] = useState([]);
+
+  const [aiOpen, setAiOpen] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
+  const [profileVisible, setProfileVisible] = useState(true);
+
+  /* ==============================
+     AUTH & ACCESS CONTROL
+  ================================ */
+
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -84,708 +82,75 @@ export default function DentistDashboard() {
     const role = user.publicMetadata?.role;
     const email = user.primaryEmailAddress?.emailAddress?.toLowerCase();
 
-    // Authority check: Only dentists or the core team can be here
-    const isDentist = role === "dentist" ||
-      ["prachi.swarnim@gmail.com", "choudhary.shruti01@gmail.com"].includes(email);
+    const allowedEmails = [
+      "prachi.swarnim@gmail.com",
+      "choudhary.shruti01@gmail.com"
+    ];
+
+    const isDentist = role === "dentist" || allowedEmails.includes(email);
 
     if (!isDentist) {
-      console.warn("🔐 Access Denied: User is not a dentist.", { email, role });
-      // Clear any stale local roles to prevent redirect loops
       sessionStorage.removeItem("flossy_role");
-
-      if (role === "receptionist") {
-        navigate("/receptionist", { replace: true });
-      } else {
-        // Default for patients or anyone else
-        navigate("/patient", { replace: true });
-      }
+      navigate(role === "receptionist" ? "/receptionist" : "/patient", {
+        replace: true
+      });
     }
   }, [isLoaded, user, navigate]);
 
-  // === Missing State (RESTORED) ===
-  const [pageLoading, setPageLoading] = useState(true);
-  const [today, setToday] = useState([]);
-  const [upcoming, setUpcoming] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [aiOpen, setAiOpen] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [typing, setTyping] = useState(false);
+  /* ==============================
+     DATA LOADERS
+  ================================ */
 
-  // Follow Up State
-  const [followUpOpen, setFollowUpOpen] = useState(false);
-  const [selectedApptId, setSelectedApptId] = useState(null);
-  const [followUpReason, setFollowUpReason] = useState("");
-  const [followUpDate, setFollowUpDate] = useState("");
-  const [followUpTime, setFollowUpTime] = useState("");
-
-  // Completion with Remarks State
-  const [completionModalOpen, setCompletionModalOpen] = useState(false);
-  const [selectedCompletionId, setSelectedCompletionId] = useState(null);
-  const [completionRemarks, setCompletionRemarks] = useState("");
-
-  // Missed Follow-up Reason State
-  const [missedReasonModalOpen, setMissedReasonModalOpen] = useState(false);
-  const [selectedMissedId, setSelectedMissedId] = useState(null);
-  const [missedReason, setMissedReason] = useState("");
-  const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
-  const [reportView, setReportView] = useState("daily");
-
-  async function refreshAll() {
-    console.log("🔄 AI Action detected: Refreshing Dentist Dashboard...");
-    await loadAppointments();
-    await loadHistoryPrescriptions();
-  }
-
-
-  // === Fetch Appointments ===
   async function loadAppointments() {
     const token = await session.getToken({ template: "default" });
-    const res = await fetch(`${API}/api/appointments/dentist_upcoming`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+
+    const res = await fetch(
+      `${API}/api/appointments/dentist_upcoming`,
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
 
     const data = await res.json();
+
     setToday(data.today || []);
     setUpcoming(data.upcoming || []);
     setHistory(data.history || []);
   }
 
-  // === Load Data ===
-  useEffect(() => {
-    if (!isLoaded || !session) {
-      console.log("⏳ Waiting for Clerk to load...", { isLoaded, hasSession: !!session });
-      return;
-    }
-
-    // Check permission (Redundant with top-level check but safe)
-    const role = user?.publicMetadata?.role;
-    const email = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
-
-    console.log("🔍 Dentist Dashboard: Checking access", { role, email });
-
-    // Allow dentists by role OR by hardcoded emails
-    const allowedDentistEmails = ["prachi.swarnim@gmail.com", "choudhary.shruti01@gmail.com", "smileartistsdental@gmail.com"];
-    if (role !== "dentist" && !allowedDentistEmails.includes(email)) {
-      console.log("❌ Access denied - not a dentist", { role, email });
-      setPageLoading(false); // Stop loading even if access is denied
-      return;
-    }
-
-    console.log("✅ Access granted - loading dashboard data...");
-
-    // Default report date to today
-    setReportDate(new Date().toISOString().split('T')[0]);
-
-    // Start loading
-    loadAppointments()
-      .then(() => console.log("✅ Appointments loaded"))
-      .catch(e => console.error("❌ Failed to load appointments:", e))
-      .finally(() => {
-        console.log("🏁 Setting pageLoading to false");
-        setPageLoading(false);
-      });
-
-    // Safety timeout: forced stop after 5 seconds
-    const timer = setTimeout(() => {
-      console.log("⏰ Safety timeout triggered");
-      setPageLoading(false);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [isLoaded, user, session]);
-
-  // === Name Cleaning Helper ===
-  const cleanName = (name) => {
-    if (!name) return "";
-    return name
-      .replace(/\b(None|null|undefined)\b/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
-  };
-
-  // === Full Name ===
-  // USER REQUEST: Take name from email username
-  const userEmail = user?.primaryEmailAddress?.emailAddress || "";
-  const clerkName = user?.fullName || (user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : null);
-  const fullName = clerkName || capitalizeFullName(userEmail) || "Doctor";
-
-  useEffect(() => {
-    if (fullName) {
-      document.title = `Dr. ${fullName} | Smile Artists Dental Studio`;
-    }
-  }, [fullName]);
-
-  function markCompleted(id) {
-    setSelectedCompletionId(id);
-    setCompletionModalOpen(true);
-  }
-
-  async function submitCompletion() {
-    if (!selectedCompletionId) return;
-
-    const token = await session.getToken({ template: "default" });
-
-    await fetch(`${API}/api/appointments/mark_completed/${selectedCompletionId}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ remarks: completionRemarks })
-    });
-
-    // Reset and Refresh
-    setCompletionModalOpen(false);
-    setCompletionRemarks("");
-    setSelectedCompletionId(null);
-    loadAppointments();
-  }
-
-  async function markFollowUp() {
-    if (!followUpReason) return alert("Please enter a reason.");
-    if (!followUpDate || !followUpTime) return alert("Please select date and time.");
-    const token = await session.getToken({ template: "default" });
-
-    // 1. Mark current appointment as completed (Record keeping)
-    await fetch(`${API}/api/appointments/mark_completed/${selectedApptId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ follow_up_reason: followUpReason })
-    });
-
-    // 2. Schedule New Appointment
-    const currentAppt = [...today, ...upcoming, ...history].find(a => a.id === selectedApptId);
-    if (currentAppt) {
-      const isoDateTime = new Date(`${followUpDate}T${followUpTime}`).toISOString();
-      try {
-        await fetch(`${API}/api/appointments`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            datetime: isoDateTime,
-            reason: "Follow-up: " + followUpReason,
-            phone: currentAppt.patient_phone || "0000000000",
-            age: parseInt(currentAppt.patient_age) || 0,
-            sex: currentAppt.patient_sex || "M"
-          })
-        });
-        alert("Follow-up appointment scheduled successfully!");
-      } catch (err) {
-        console.error("Failed to schedule follow-up", err);
-        alert("Follow-up marked, but failed to schedule next appointment automatically.");
-      }
-    }
-
-    setFollowUpOpen(false);
-    setFollowUpReason("");
-    setFollowUpDate("");
-    setFollowUpTime("");
-    setSelectedApptId(null);
-    loadAppointments();
-  }
-
-  function openFollowUpModal(id) {
-    setSelectedApptId(id);
-    setFollowUpOpen(true);
-  }
-
-  async function markNotVisited(id) {
-    if (!window.confirm("Mark this patient as 'Not Visited'?")) return;
-    const token = await session.getToken({ template: "default" });
-    await fetch(`${API}/api/appointments/mark_completed/${id}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ status: "missed" })
-    });
-    loadAppointments();
-  }
-
-  function openMissedModal(apptId) {
-    setSelectedMissedId(apptId);
-    setMissedReasonModalOpen(true);
-  }
-
-  async function submitMissedStatus() {
-    if (!selectedMissedId) return;
-    if (!missedReason) return alert("Please provide a reason.");
-
-    const token = await session.getToken({ template: "default" });
-    try {
-      const res = await fetch(`${API}/api/appointments/${selectedMissedId}/follow_up_status`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          status: "missed",
-          reason: missedReason
-        })
-      });
-      if (res.ok) {
-        setMissedReasonModalOpen(false);
-        setMissedReason("");
-        setSelectedMissedId(null);
-        loadAppointments();
-      } else {
-        alert("Failed to update follow-up status.");
-      }
-    } catch (err) {
-      console.error("Error updating follow-up status:", err);
-    }
-  }
-
-  async function updateFollowUpStatus(apptId, status) {
-    const token = await session.getToken({ template: "default" });
-    try {
-      const res = await fetch(`${API}/api/appointments/${apptId}/follow_up_status`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ status })
-      });
-      if (res.ok) {
-        loadAppointments();
-      } else {
-        alert("Failed to update follow-up status.");
-      }
-    } catch (err) {
-      console.error("Error updating follow-up status:", err);
-    }
-  }
-
-  function downloadPatientData() {
-    if (!patientsList.length) return alert("No patient data to download.");
-
-    const headers = ["Name", "Age", "Sex", "Phone", "Email", "Source"];
-    const rows = patientsList.map(p => [
-      p.name,
-      p.age || "",
-      p.sex || p.gender || "",
-      p.phone || "",
-      p.email || "",
-      p.source || "website"
-    ]);
-
-    let csvContent = "data:text/csv;charset=utf-8,"
-      + headers.join(",") + "\n"
-      + rows.map(e => e.join(",")).map(row => row.replace(/#/g, '')).join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "patient_data_export.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-
-  function capitalizeFullName(name) {
-    if (!name || typeof name !== 'string') return "";
-
-    // 1. Get the local part (before @)
-    const localPart = name.split('@')[0];
-
-    // 2. Handle common formats (reverse/straight names)
-    // Split by dot, underscore, or dash
-    let parts = localPart.split(/[._-]/);
-
-    // 3. Clean up common titles/prefixes
-    const titles = ['mr', 'ms', 'mrs', 'dr', 'prof'];
-    parts = parts.filter(part => !titles.includes(part.toLowerCase()));
-
-    if (parts.length === 0) return "";
-
-    // 4. Determine if it's likely "Last.First" or "First.Last"
-    // Heuristic: If we have 2 parts, we follow the user's request for "Vasisht Dhruv" -> "Dhruv Vasisht"
-    // For many handles, the second part is the given name.
-    if (parts.length >= 2) {
-      // Return First Last in order (DO NOT REVERSE)
-      const formatted = parts.map(part => {
-        const cleanPart = part.replace(/\d+/g, "");
-        return cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1).toLowerCase();
-      }).filter(p => p.length > 0).join(' ');
-      return formatted;
-    }
-
-    // 5. Capitalize and join for 1 or 3+ parts
-    return parts.map(part => {
-      // Remove trailing digits
-      const cleanPart = part.replace(/\d+/g, "");
-      return cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1).toLowerCase();
-    }).filter(p => p.length > 0).join(' ');
-  }
-
-  function addMedication(medName) {
-    if (!medName) return;
-    setPrescRecommendations(prev => {
-      const newLine = prev && !prev.endsWith("\n") ? "\n• " : (prev ? "• " : "• ");
-      return prev + newLine + medName;
-    });
-  }
-
-
-  // === Prescription State ===
-  const [prescPatient, setPrescPatient] = useState("");
-  const [editingPrescId, setEditingPrescId] = useState(null);
-  const [prescDate, setPrescDate] = useState(new Date().toISOString().split('T')[0]);
-  const [prescDetails, setPrescDetails] = useState("");
-  const [prescDiagnosis, setPrescDiagnosis] = useState("");
-  const [prescTreatment, setPrescTreatment] = useState("");
-  const [prescRecommendations, setPrescRecommendations] = useState("");
-  const [medSearch, setMedSearch] = useState("");
-  const [complaintType, setComplaintType] = useState("manual");
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [patientSearch, setPatientSearch] = useState("");
-  const [showPatientSuggestions, setShowPatientSuggestions] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [patientsList, setPatientsList] = useState([]);
-  const [historyPrescriptions, setHistoryPrescriptions] = useState([]);
-  const [invoices, setInvoices] = useState([]);
-  const [editingInvoice, setEditingInvoice] = useState(null);
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [aiSummaryResult, setAiSummaryResult] = useState(null);
-
-  async function generateAISummary() {
-    if (!prescDetails && !prescDiagnosis) return alert("Please enter some clinical notes or diagnosis first.");
-    setIsSummarizing(true);
-    try {
-      const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/ai/summarize_visit`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ notes: `${prescDetails}\n${prescDiagnosis}\n${prescTreatment}` })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAiSummaryResult(data);
-        // Optionally auto-inject patient record into recommendations or just show it
-      }
-    } catch (e) {
-      console.error("Summarization error", e);
-    } finally {
-      setIsSummarizing(false);
-    }
-  }
-
-  async function startEditingInvoice(inv) {
-    if (!inv || !inv.id) return;
-    try {
-      const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/invoices/${inv.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setEditingInvoice(data);
-        // Scroll to form
-        document.querySelector('.row-billing')?.scrollIntoView({ behavior: 'smooth' });
-      } else {
-        alert("Failed to load invoice details.");
-      }
-    } catch (e) {
-      console.error("Error loading invoice:", e);
-      alert("Error loading invoice.");
-    }
-  }
-
-  // Load Real Patients from DB
   useEffect(() => {
     if (!isLoaded || !session) return;
 
-    async function fetchPatients() {
-      console.log("📂 Attempting to fetch patients...");
-      try {
-        const token = await session.getToken({ template: "default" });
-        const res = await fetch(`${API}/api/patients/`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          console.log("✅ Patients loaded successfully:", data.length, "patients found.");
-          setPatientsList(data);
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          console.error("❌ Patients Fetch Error:", res.status, errData);
-          alert(`Failed to load patient list (Error ${res.status}: ${errData.detail || "Unknown"}). Please check console.`);
-        }
-      } catch (err) {
-        console.error("Failed to load patients", err);
-      }
-    }
-
-    fetchPatients();
-    loadHistoryPrescriptions();
-    fetchInvoices();
-    migrateLegacyPrescriptions();
+    loadAppointments()
+      .catch(console.error)
+      .finally(() => setPageLoading(false));
   }, [isLoaded, session]);
 
-  async function fetchInvoices() {
-    if (!session) return;
-    try {
-      const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/invoices/history`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setInvoices(data.invoices);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  /* ==============================
+     HELPERS
+  ================================ */
+
+  function capitalizeFullName(email = "") {
+    const name = email.split("@")[0];
+    return name
+      .split(/[._-]/)
+      .map(
+        p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+      )
+      .join(" ");
   }
 
-  async function downloadInvoice(id, invNum, stamp = true, patientName = "") {
-    if (!session) return;
-    try {
-      const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/invoices/${id}/pdf?stamp=${stamp}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        const safeName = patientName ? patientName.replace(/[^a-zA-Z0-9]/g, "_") : "";
-        a.download = `${safeName}_invoice_${invNum}${stamp ? "" : "_plain"}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
+  const fullName =
+    user?.fullName ||
+    capitalizeFullName(
+      user?.primaryEmailAddress?.emailAddress
+    ) ||
+    "Doctor";
 
-  async function migrateLegacyPrescriptions() {
-    if (!session) return;
-    const legacy = localStorage.getItem("flossy_prescriptions");
-    if (!legacy) return;
+  /* ==============================
+     LOADING STATE
+  ================================ */
 
-    try {
-      const prescList = JSON.parse(legacy);
-      if (!Array.isArray(prescList) || prescList.length === 0) {
-        localStorage.removeItem("flossy_prescriptions");
-        return;
-      }
-
-      console.log("🛠️ Migrating legacy prescriptions to backend...");
-      const token = await session.getToken({ template: "default" });
-
-      for (const p of prescList) {
-        // We only migrate if we have a patient name and details
-        if (!p.patient || !p.details) continue;
-
-        await fetch(`${API}/api/prescriptions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            patient_name: p.patient,
-            details: p.details
-          })
-        });
-      }
-
-      localStorage.removeItem("flossy_prescriptions");
-      console.log("✅ Migration complete.");
-      loadHistoryPrescriptions();
-    } catch (err) {
-      console.error("Migration failed", err);
-    }
-  }
-
-  async function loadHistoryPrescriptions() {
-    if (!session) return;
-    try {
-      const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/prescriptions/dentist`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setHistoryPrescriptions(data.prescriptions || []);
-      }
-    } catch (err) {
-      console.error("Failed to load prescription history", err);
-    }
-  }
-
-  async function downloadPrescription(id, stamp = true, patientName = "") {
-    if (!session) return;
-    try {
-      const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/prescriptions/${id}/pdf?stamp=${stamp}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        const safeName = patientName ? patientName.replace(/[^a-zA-Z0-9]/g, "_") : "";
-        a.download = `${safeName}_prescription${stamp ? "" : "_plain"}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      } else {
-        alert("Download failed.");
-      }
-    } catch (err) {
-      console.error("Download error:", err);
-    }
-  }
-
-  // === Prescription Handling ===
-  const handleBulletInput = (e, setter) => {
-    setter(e.target.value);
-  };
-
-  const handleFocus = (setter, currentVal) => {
-    if (!currentVal || currentVal.trim() === "") {
-      setter("• ");
-    }
-  };
-
-  const handleKeyDown = (e, setter, currentVal) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const cursor = e.target.selectionStart;
-      const before = currentVal.substring(0, cursor);
-      const after = currentVal.substring(cursor);
-
-      const newVal = before + "\n• " + after;
-      setter(newVal);
-
-      // Auto-focus the cursor after the new bullet
-      setTimeout(() => {
-        e.target.selectionStart = e.target.selectionEnd = cursor + 3;
-      }, 0);
-    }
-  };
-
-  function startEditing(p) {
-    setEditingPrescId(p.id);
-    setPrescPatient(p.patient);
-    setPatientSearch(p.patient);
-    setPrescDate(p.date ? p.date.split('T')[0] : new Date().toISOString().split('T')[0]);
-    setPrescDetails(p.details || "");
-    setPrescDiagnosis(p.diagnosis || "");
-    setPrescTreatment(p.treatment_plan || "");
-    setPrescRecommendations(p.recommendations || "");
-    // Scroll to form
-    document.querySelector('.prescription-form')?.scrollIntoView({ behavior: 'smooth' });
-  }
-
-  function cancelEditing() {
-    setEditingPrescId(null);
-    setPrescPatient("");
-    setPatientSearch("");
-    setPrescDetails("");
-    setPrescDiagnosis("");
-    setPrescTreatment("");
-    setPrescRecommendations("");
-    setPrescDate(new Date().toISOString().split('T')[0]);
-  }
-
-  async function handlePrescriptionUpload() {
-    if (!prescPatient) return alert("Select a patient first.");
-    if (!prescDiagnosis && !prescTreatment && !prescRecommendations && !prescDetails)
-      return alert("Please fill at least one prescription section.");
-
-    setIsUploading(true);
-
-    try {
-      const token = await session.getToken({ template: "default" });
-      const url = editingPrescId
-        ? `${API}/api/prescriptions/${editingPrescId}`
-        : `${API}/api/prescriptions`;
-
-      const method = editingPrescId ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          patient_name: prescPatient,
-          details: prescDetails,
-          diagnosis: prescDiagnosis,
-          treatment_plan: prescTreatment,
-          recommendations: prescRecommendations,
-          created_at: prescDate
-        })
-      });
-
-      if (res.ok) {
-        setPrescPatient("");
-        setPatientSearch("");
-        setPrescDetails("");
-        setPrescDiagnosis("");
-        setPrescTreatment("");
-        setPrescRecommendations("");
-        setEditingPrescId(null); // Reset edit mode
-
-        alert(`Prescription ${editingPrescId ? "updated" : "uploaded"} successfully!`);
-        loadHistoryPrescriptions();
-      } else {
-        const err = await res.json();
-        alert((editingPrescId ? "Update" : "Upload") + " failed: " + (err.detail || "Unknown error"));
-      }
-    } catch (err) {
-      console.error("Prescription upload error:", err);
-      alert("System error during upload.");
-    } finally {
-      setIsUploading(false);
-    }
-  }
-
-  // === AI Chat ===
-  async function sendMessage() {
-    if (!input.trim()) return;
-
-    const text = input;
-    setInput("");
-    setMessages((prev) => [...prev, { from: "user", text }]);
-    setTyping(true);
-
-    const token = await session.getToken();
-    const res = await fetch(`${API}/api/doctor_ai/query`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ query: text }),
-    });
-
-    const data = await res.json();
-    setMessages((prev) => [...prev, { from: "ai", text: data.answer }]);
-    setTyping(false);
-  }
-
-  // 🔄 STILL LOADING → show loader only
   if (!isLoaded || pageLoading) {
     return (
       <>
@@ -798,1234 +163,101 @@ export default function DentistDashboard() {
     );
   }
 
-  const isNewUser = sessionStorage.getItem("flossy_is_new_user") === "true";
+  /* ==============================
+     RENDER
+  ================================ */
 
-  // === Render Dashboard ===
   return (
-    <>
-      <Header openAI={() => setAiOpen(true)} />
-
-      <main className="dentist-main">
-        <h2 id="Message">
-          {isNewUser ? "Welcome" : "Welcome back"}, {user?.publicMetadata?.role === "dentist" ? "Dr. " : ""}{fullName}!
-        </h2>
-
-        <div className="dashboard-layout" style={{ display: "flex", flexDirection: "column", gap: "2rem", paddingBottom: "3rem" }}>
-
-          {/* ROW 1: APPOINTMENTS (SIDE BY SIDE) */}
-          <div className="row-appointments" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "1.5rem" }}>
-
-            {/* TODAY */}
-            <div className="card animate-fade-up" style={{ animationDelay: "0.1s", flex: "1", minWidth: "400px", maxWidth: "600px" }}>
-              <div className="card-header">
-                <h3>Today’s Appointments</h3>
-                <i className="fas fa-calendar-check card-icon"></i>
-              </div>
-              {today.length ? (
-                today.map((a) => (
-                  <div className="appt-item" key={a.id}>
-                    <b>
-                      {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true
-                      })}
-                    </b>
-                    <div className="appt-patient">{capitalizeFullName(cleanName(a.patient_name))}
-                      <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
-                        {a.patient_age && `(Age: ${a.patient_age})`} • 📞 {(!a.patient_phone || a.patient_phone.startsWith("TEMP_")) ? "null" : a.patient_phone}
-                      </span>
-                      {a.latest_triage && (
-                        <div className={`triage-tag ${a.latest_triage.urgency}`} style={{
-                          display: 'inline-block',
-                          marginLeft: '15px',
-                          padding: '2px 8px',
-                          borderRadius: '12px',
-                          fontSize: '0.7rem',
-                          fontWeight: 'bold',
-                          textTransform: 'uppercase',
-                          background: a.latest_triage.urgency === 'emergency' ? '#ff3b30' : a.latest_triage.urgency === 'soon' ? '#ffcc00' : '#4cd964',
-                          color: a.latest_triage.urgency === 'soon' ? '#000' : '#fff',
-                          boxShadow: a.latest_triage.urgency === 'emergency' ? '0 0 10px rgba(255,59,48,0.4)' : 'none'
-                        }}>
-                          <i className="fas fa-robot" style={{ marginRight: '4px' }}></i>
-                          AI: {a.latest_triage.urgency} ({a.latest_triage.issue})
-                        </div>
-                      )}
-
-                      {/* 🧠 PREDICTIVE RISK BADGE */}
-                      {a.no_show_risk && a.no_show_risk !== "Low" && (
-                        <div style={{
-                          display: 'inline-block',
-                          marginLeft: '8px',
-                          padding: '2px 8px',
-                          borderRadius: '12px',
-                          fontSize: '0.7rem',
-                          fontWeight: 'bold',
-                          background: 'rgba(231, 76, 60, 0.1)',
-                          border: '1px solid #e74c3c',
-                          color: '#e74c3c'
-                        }}>
-                          <i className="fas fa-user-clock" style={{ marginRight: '4px' }}></i>
-                          CANCELLATION RISK: {a.no_show_risk}
-                        </div>
-                      )}
-                    </div>
-                    <div className="appt-reason">{a.reason}</div>
-
-                    {/* 🔥 Buttons */}
-                    {a.status === "scheduled" && new Date() >= new Date(a.time) && (
-                      <div className="action-buttons" style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                        <button
-                          className="done-btn"
-                          onClick={() => markCompleted(a.id)}
-                          style={{ height: "40px", padding: "0 12px", background: "#2ecc71", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}
-                        >
-                          <i className="fas fa-check" style={{ marginRight: "8px" }}></i> Completed
-                        </button>
-                        <button
-                          className="follow-up-btn"
-                          style={{ height: "40px", padding: "0 12px", background: "#f0b800", color: "#000", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}
-                          onClick={() => openFollowUpModal(a.id)}
-                        >
-                          <i className="fas fa-clock" style={{ marginRight: "8px" }}></i> Follow Up
-                        </button>
-                        <button
-                          className="missed-btn"
-                          style={{ height: "40px", padding: "0 12px", background: "#e74c3c", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}
-                          onClick={() => markNotVisited(a.id)}
-                        >
-                          <i className="fas fa-times" style={{ marginRight: "8px" }}></i> Not Visited
-                        </button>
-                      </div>
-                    )}
-
-                    {a.status === "completed" && (
-                      <span className="completed-tag" style={{ color: "#2ecc71", display: "block", marginTop: "5px" }}>
-                        <i className="fas fa-check-circle"></i> Completed
-                      </span>
-                    )}
-
-                    {a.status === "missed" && (
-                      <span className="missed-tag" style={{ color: "#e74c3c", display: "block", marginTop: "5px" }}>
-                        <i className="fas fa-times-circle"></i> Not Visited
-                      </span>
-                    )}
-
-                    {a.status === "follow_up" && (
-                      <div className="follow-up-tag" style={{ color: "#f0b800", marginTop: "5px" }}>
-                        <i className="fas fa-clock"></i> Follow Up Required
-                        <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>Note: {a.follow_up_reason}</div>
-
-                        {/* Follow-up Status Tracking */}
-                        <div className="follow-up-actions" style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
-                          {!a.follow_up_status ? (
-                            <>
-                              <button
-                                onClick={() => updateFollowUpStatus(a.id, "completed")}
-                                style={{ fontSize: "0.75rem", background: "#28a745", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
-                              >Mark Done</button>
-                              <button
-                                onClick={() => openMissedModal(a.id)}
-                                style={{ fontSize: "0.75rem", background: "#dc3545", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
-                              >Mark Missed</button>
-                            </>
-                          ) : (
-                            <span style={{
-                              fontSize: "0.75rem",
-                              fontWeight: "bold",
-                              color: a.follow_up_status === "completed" ? "#28a745" : "#dc3545",
-                              textTransform: "capitalize"
-                            }}>
-                              Follow-up {a.follow_up_status}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <p className="empty-state">No appointments remaining today.</p>
-              )}
-            </div>
-
-            {/* UPCOMING */}
-            <div className="card animate-fade-up" style={{ animationDelay: "0.15s", flex: "1", minWidth: "400px", maxWidth: "600px" }}>
-              <div className="card-header">
-                <h3>Upcoming Appointments</h3>
-                <i className="fas fa-calendar-alt card-icon"></i>
-              </div>
-              {upcoming.length ? (
-                upcoming.map((a) => (
-                  <div className="appt-item" key={a.id} style={{ opacity: 0.8 }}>
-                    <b>
-                      {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true
-                      })}
-                    </b>
-                    <div className="appt-patient">{capitalizeFullName(cleanName(a.patient_name))}
-                      <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
-                        {a.patient_age && `(Age: ${a.patient_age})`} • 📞 {(!a.patient_phone || a.patient_phone.startsWith("TEMP_")) ? "null" : a.patient_phone}
-                      </span>
-                      {a.latest_triage && (
-                        <div className={`triage-tag ${a.latest_triage.urgency}`} style={{
-                          display: 'inline-block',
-                          marginLeft: '15px',
-                          padding: '2px 8px',
-                          borderRadius: '12px',
-                          fontSize: '0.7rem',
-                          fontWeight: 'bold',
-                          textTransform: 'uppercase',
-                          background: a.latest_triage.urgency === 'emergency' ? '#ff3b30' : a.latest_triage.urgency === 'soon' ? '#ffcc00' : '#4cd964',
-                          color: a.latest_triage.urgency === 'soon' ? '#000' : '#fff'
-                        }}>
-                          AI: {a.latest_triage.urgency}
-                        </div>
-                      )}
-                    </div>
-                    <div className="appt-reason">{a.reason}</div>
-                    <div className="appt-status status-upcoming">Scheduled</div>
-                  </div>
-                ))
-              ) : (
-                <p className="empty-state">No upcoming appointments.</p>
-              )}
-            </div>
-
-          </div>
-
-          {/* ROW 1.5: HISTORY (CENTERED) */}
-          <div className="row-history" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-            <div className="card animate-fade-up" style={{ animationDelay: "0.2s", width: "100%", maxWidth: "1000px" }}>
-              <div className="card-header">
-                <h3>Appointment History</h3>
-                <i className="fas fa-history card-icon"></i>
-              </div>
-              <div className="history-list elegant-scroll" style={{ maxHeight: "400px", overflowY: "auto", paddingRight: "5px" }}>
-                {history.length ? (
-                  history.map((a) => (
-                    <div className="appt-item" key={a.id} style={{ opacity: 1 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div>
-                          <div style={{ fontWeight: "800", color: "#fff", fontSize: "1.1rem" }}>{capitalizeFullName(a.patient_name)}</div>
-                          <div style={{ fontSize: "0.85rem", color: "#f0b800", fontWeight: "600", marginTop: "2px" }}>
-                            {new Date(a.time).toLocaleDateString("en-IN", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                          </div>
-                          <div style={{ fontSize: "0.9rem", color: "#888", fontWeight: "500" }}>{formatTime12h(new Date(a.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }))}</div>
-                          <div style={{ marginTop: "8px", fontSize: "0.9rem", color: "#ccc", background: "rgba(255,255,255,0.05)", padding: "10px", borderRadius: "8px", borderLeft: "3px solid #f0b800" }}>
-                            <i className="fas fa-notes-medical" style={{ marginRight: "8px", color: "#f0b800", opacity: 0.7 }}></i>
-                            {a.reason}
-                          </div>
-                        </div>
-                        <div style={{ textAlign: "right", display: "flex", flexDirection: "column", gap: "8px" }}>
-                          <span className={`status-badge ${a.status?.toLowerCase() || 'pending'}`} style={{
-                            padding: "6px 12px", borderRadius: "20px", fontSize: "0.75rem", fontWeight: "800", textTransform: "uppercase", letterSpacing: "1px",
-                            background: a.status === 'completed' ? 'rgba(46, 204, 113, 0.2)' : 'rgba(231, 76, 60, 0.2)',
-                            color: a.status === 'completed' ? '#2ecc71' : '#e74c3c',
-                            border: `1px solid ${a.status === 'completed' ? 'rgba(46, 204, 113, 0.3)' : 'rgba(231, 76, 60, 0.3)'}`
-                          }}>
-                            {a.status || 'Scheduled'}
-                          </span>
-                          {!a.status || !["completed", "missed", "follow_up"].includes(a.status) ? (
-                            <div className="action-buttons" style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
-                              <button onClick={() => markCompleted(a.id)} className="action-icon-btn green" title="Complete"><i className="fas fa-check"></i></button>
-                              <button onClick={() => openFollowUpModal(a.id)} className="action-icon-btn gold" title="Follow Up"><i className="fas fa-clock"></i></button>
-                              <button onClick={() => markNotVisited(a.id)} className="action-icon-btn red" title="Missed"><i className="fas fa-times"></i></button>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty-state" style={{ padding: "40px", textAlign: "center", color: "#666" }}>
-                    <i className="fas fa-calendar-check" style={{ fontSize: "3rem", marginBottom: "15px", opacity: 0.2 }}></i>
-                    <p>No past appointments recorded yet.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-
-
-          {/* ROW 1.7: DAILY CLOSURE REPORT */}
-          <div className="row-stats" style={{ display: "flex", justifyContent: "center", width: "100%", marginBottom: "2rem" }}>
-            <div className="card animate-fade-up" style={{ animationDelay: "0.2s", width: "100%", maxWidth: "1000px" }}>
-              <div className="card-header">
-                <div style={{ display: "flex", alignItems: "center", gap: "15px", flexWrap: "wrap" }}>
-                  <h3 style={{ margin: 0 }}>Daily Closure Report</h3>
-                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                    <input
-                      type="date"
-                      value={reportDate}
-                      onChange={(e) => setReportDate(e.target.value)}
-                      style={{
-                        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
-                        border: "2px solid #f0b800",
-                        color: "#fff",
-                        padding: "10px 15px",
-                        borderRadius: "8px",
-                        fontSize: "0.95rem",
-                        cursor: "pointer",
-                        colorScheme: "dark",
-                        fontWeight: "500",
-                        boxShadow: "0 2px 10px rgba(240, 184, 0, 0.15)",
-                        transition: "all 0.3s ease",
-                        outline: "none"
-                      }}
-                    />
-                    <select
-                      value={reportView}
-                      onChange={(e) => setReportView(e.target.value)}
-                      style={{
-                        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
-                        border: "2px solid #f0b800",
-                        color: "#fff",
-                        padding: "10px 20px",
-                        borderRadius: "8px",
-                        fontSize: "0.95rem",
-                        cursor: "pointer",
-                        outline: "none",
-                        colorScheme: "dark",
-                        fontWeight: "500",
-                        boxShadow: "0 2px 10px rgba(240, 184, 0, 0.15)",
-                        transition: "all 0.3s ease",
-                        appearance: "none",
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23f0b800' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                        backgroundRepeat: "no-repeat",
-                        backgroundPosition: "right 10px center",
-                        paddingRight: "35px"
-                      }}
-                    >
-                      <option value="daily" style={{ background: "#1a1a2e", color: "#fff", padding: "10px" }}>📅 Daily</option>
-                      <option value="monthly" style={{ background: "#1a1a2e", color: "#fff", padding: "10px" }}>📆 Monthly</option>
-                      <option value="yearly" style={{ background: "#1a1a2e", color: "#fff", padding: "10px" }}>🗓️ Yearly</option>
-                    </select>
-                  </div>
-                </div>
-                <i className="fas fa-chart-line card-icon"></i>
-              </div>
-              <div style={{ padding: "1rem" }}>
-                {/* METRICS CARDS */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
-                  <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", textAlign: "center", border: "1px solid #333" }}>
-                    <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Appointments Done</h4>
-                    <div style={{ fontSize: "2rem", color: "#2ecc71", fontWeight: "bold" }}>
-                      {[...today, ...history].filter(a => {
-                        const d = new Date(a.time);
-                        const r = new Date(reportDate);
-                        if (a.status !== 'completed') return false;
-                        if (reportView === 'daily') return d.toDateString() === r.toDateString();
-                        if (reportView === 'monthly') return d.getMonth() === r.getMonth() && d.getFullYear() === r.getFullYear();
-                        if (reportView === 'yearly') return d.getFullYear() === r.getFullYear();
-                        return false;
-                      }).length}
-                    </div>
-                  </div>
-                  <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", textAlign: "center", border: "1px solid #333" }}>
-                    <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Revenue Generated</h4>
-                    <div style={{ fontSize: "2rem", color: "#f0b800", fontWeight: "bold" }}>
-                      ₹{invoices
-                        .filter(inv => {
-                          const d = new Date(inv.date);
-                          const r = new Date(reportDate);
-                          if (reportView === 'daily') return d.toDateString() === r.toDateString();
-                          if (reportView === 'monthly') return d.getMonth() === r.getMonth() && d.getFullYear() === r.getFullYear();
-                          if (reportView === 'yearly') return d.getFullYear() === r.getFullYear();
-                          return false;
-                        })
-                        .reduce((sum, inv) => sum + (parseFloat(inv.total) || 0), 0)
-                        .toLocaleString()}
-                    </div>
-                  </div>
-                  <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", textAlign: "center", border: "1px solid #333" }}>
-                    <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Avg. Invoice</h4>
-                    <div style={{ fontSize: "2rem", color: "#3498db", fontWeight: "bold" }}>
-                      ₹{(() => {
-                        const dailyInvoices = invoices.filter(inv => {
-                          const d = new Date(inv.date);
-                          const r = new Date(reportDate);
-                          if (reportView === 'daily') return d.toDateString() === r.toDateString();
-                          if (reportView === 'monthly') return d.getMonth() === r.getMonth() && d.getFullYear() === r.getFullYear();
-                          if (reportView === 'yearly') return d.getFullYear() === r.getFullYear();
-                          return false;
-                        });
-                        const totalRev = dailyInvoices.reduce((sum, inv) => sum + (parseFloat(inv.total) || 0), 0);
-                        return dailyInvoices.length ? Math.round(totalRev / dailyInvoices.length).toLocaleString() : 0;
-                      })()}
-                    </div>
-                  </div>
-                  <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", textAlign: "center", border: "1px solid #333" }}>
-                    <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Missed / Cancelled</h4>
-                    <div style={{ fontSize: "2rem", color: "#e74c3c", fontWeight: "bold" }}>
-                      {[...today, ...history].filter(a => {
-                        const d = new Date(a.time);
-                        const r = new Date(reportDate);
-                        if (!['missed', 'cancelled'].includes(a.status)) return false;
-                        if (reportView === 'daily') return d.toDateString() === r.toDateString();
-                        if (reportView === 'monthly') return d.getMonth() === r.getMonth() && d.getFullYear() === r.getFullYear();
-                        if (reportView === 'yearly') return d.getFullYear() === r.getFullYear();
-                        return false;
-                      }).length}
-                    </div>
-                  </div>
-                </div>
-
-                {/* GRAPHS (COMPARISON) */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }}>
-                  {/* VISITS GRAPH - Simple Mock Visuals */}
-                  <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", border: "1px solid #333" }}>
-                    <h4 style={{ color: "#fff", marginBottom: "1rem" }}>Visits Comparison</h4>
-                    <div style={{ marginBottom: "1rem" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "5px", color: "#ccc" }}>
-                        <span>{reportView === 'daily' ? 'Selected Date' : reportView === 'monthly' ? 'Selected Month' : 'Selected Year'}</span>
-                        <span>{[...today, ...history].filter(a => {
-                          const d = new Date(a.time);
-                          const r = new Date(reportDate);
-                          if (reportView === 'daily') return d.toDateString() === r.toDateString();
-                          if (reportView === 'monthly') return d.getMonth() === r.getMonth() && d.getFullYear() === r.getFullYear();
-                          if (reportView === 'yearly') return d.getFullYear() === r.getFullYear();
-                          return false;
-                        }).length}</span>
-                      </div>
-                      <div style={{ height: "8px", background: "#333", borderRadius: "4px", overflow: "hidden" }}>
-                        <div style={{ width: "70%", height: "100%", background: "#3498db" }}></div>
-                      </div>
-                    </div>
-                    <div style={{ marginBottom: "1rem" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "5px", color: "#ccc" }}>
-                        <span>Yesterday</span>
-                        <span>{history.length > 5 ? Math.floor(history.length / 2) : 2}</span> {/* Mock logic for demo */}
-                      </div>
-                      <div style={{ height: "8px", background: "#333", borderRadius: "4px", overflow: "hidden" }}>
-                        <div style={{ width: "50%", height: "100%", background: "#555" }}></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* REVENUE GRAPH */}
-                  <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", border: "1px solid #333" }}>
-                    <h4 style={{ color: "#fff", marginBottom: "1rem" }}>Revenue Comparison</h4>
-                    <div style={{ marginBottom: "1rem" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "5px", color: "#ccc" }}>
-                        <span>{reportView === 'daily' ? 'Selected Date' : reportView === 'monthly' ? 'Selected Month' : 'Selected Year'}</span>
-                        <span>₹{invoices
-                          .filter(inv => {
-                            const d = new Date(inv.date);
-                            const r = new Date(reportDate);
-                            if (reportView === 'daily') return d.toDateString() === r.toDateString();
-                            if (reportView === 'monthly') return d.getMonth() === r.getMonth() && d.getFullYear() === r.getFullYear();
-                            if (reportView === 'yearly') return d.getFullYear() === r.getFullYear();
-                            return false;
-                          })
-                          .reduce((sum, inv) => sum + (parseFloat(inv.total) || 0), 0)
-                          .toLocaleString()}</span>
-                      </div>
-                      <div style={{ height: "8px", background: "#333", borderRadius: "4px", overflow: "hidden" }}>
-                        <div style={{ width: "65%", height: "100%", background: "#f0b800" }}></div>
-                      </div>
-                    </div>
-                    <div style={{ marginBottom: "1rem" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "5px", color: "#ccc" }}>
-                        <span>Last Month Avg</span>
-                        <span>₹1,200</span>
-                      </div>
-                      <div style={{ height: "8px", background: "#333", borderRadius: "4px", overflow: "hidden" }}>
-                        <div style={{ width: "45%", height: "100%", background: "#555" }}></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ROW 2: PRESCRIPTIONS (CENTERED) */}
-          <div className="row-prescriptions" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-            <div className="card animate-fade-up" style={{ animationDelay: "0.2s", width: "100%", maxWidth: "1000px" }}>
-              <div className="card-header">
-                <h3>Prescriptions</h3>
-                <i className="fas fa-file-prescription card-icon"></i>
-              </div>
-
-              {/* AI SUMMARY RESULTS - PROMINENT SECTION */}
-              {aiSummaryResult && (
-                <div className="ai-summary-overlay-section" style={{
-                  margin: "1.5rem",
-                  padding: "1.5rem",
-                  borderRadius: "16px",
-                  background: "linear-gradient(135deg, rgba(240, 184, 0, 0.15) 0%, rgba(20, 20, 20, 0.6) 100%)",
-                  border: "1px solid var(--primary-gold)",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-                  animation: "fadeInUp 0.5s ease"
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <i className="fas fa-magic" style={{ color: "var(--primary-gold)" }}></i>
-                      <h4 style={{ margin: 0, color: "var(--primary-gold)", textTransform: "uppercase", letterSpacing: "1px" }}>AI Treatment Insight</h4>
-                    </div>
-                    <button onClick={() => setAiSummaryResult(null)} style={{ background: "transparent", border: "none", color: "#666", cursor: "pointer" }}>
-                      <i className="fas fa-times"></i>
-                    </button>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-                    <div className="insight-box">
-                      <span style={{ fontSize: "0.7rem", color: "#888", display: "block", marginBottom: "5px" }}>CLINICAL SUMMARY</span>
-                      <p style={{ fontSize: "0.9rem", color: "#eee", margin: 0, lineHeight: "1.5" }}>{aiSummaryResult.clinical}</p>
-                    </div>
-                    <div className="insight-box">
-                      <span style={{ fontSize: "0.7rem", color: "#888", display: "block", marginBottom: "5px" }}>PATIENT EXPLANATION</span>
-                      <p style={{ fontSize: "0.9rem", color: "#ddd", margin: 0, lineHeight: "1.5", fontStyle: "italic" }}>"{aiSummaryResult.patient_friendly}"</p>
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                    <button
-                      onClick={() => {
-                        setPrescRecommendations(prev => prev + (prev ? "\n\n" : "") + "AI Note: " + aiSummaryResult.patient_friendly);
-                        setAiSummaryResult(null);
-                      }}
-                      className="p-btn small"
-                      style={{ flex: 1, height: "40px" }}
-                    >
-                      Add to Instructions
-                    </button>
-                    <button
-                      onClick={() => {
-                        setPrescDetails(aiSummaryResult.clinical);
-                        setAiSummaryResult(null);
-                      }}
-                      className="p-btn secondary small"
-                      style={{ flex: 1, height: "40px", background: "rgba(255,255,255,0.05)", border: "1px solid #444" }}
-                    >
-                      Refine Notes
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="prescription-form">
-                <div style={{ display: "flex", gap: "1rem" }}>
-                  <div className="form-group" style={{ position: "relative", flex: 1 }}>
-                    <label>Select Patient</label>
-                    <div className="patient-search-container" style={{ position: "relative" }}>
-                      <div style={{ position: "relative" }}>
-                        <input
-                          type="text"
-                          placeholder="Search patient name..."
-                          value={patientSearch || prescPatient}
-                          onChange={(e) => {
-                            setPatientSearch(e.target.value);
-                            setShowPatientSuggestions(true);
-                            if (prescPatient) setPrescPatient(""); // Clear selection if typing
-                          }}
-                          onFocus={() => setShowPatientSuggestions(true)}
-                          className="dashboard-input"
-                          style={{ paddingLeft: "35px" }}
-                        />
-                        <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#f0b800", opacity: 0.7 }}></i>
-                        {(patientSearch || prescPatient) && (
-                          <i
-                            className="fas fa-times-circle"
-                            style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#888", cursor: "pointer" }}
-                            onClick={() => {
-                              setPatientSearch("");
-                              setPrescPatient("");
-                            }}
-                          ></i>
-                        )}
-                      </div>
-
-                      {showPatientSuggestions && (patientSearch.trim() !== "" || patientsList.length > 0) && (
-                        <div className="patient-suggestions elegant-scroll" style={{
-                          position: "absolute", top: "100%", left: 0, right: 0,
-                          zIndex: 101, background: "#1a1a1a", border: "1px solid #444",
-                          borderRadius: "8px", marginTop: "5px", maxHeight: "180px",
-                          overflowY: "scroll", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
-                        }}>
-                          {patientsList
-                            .filter(p => {
-                              if (!p) return false;
-                              const search = (patientSearch || "").toLowerCase().trim();
-                              if (!search) return true;
-                              const rawName = (p.name || "").toLowerCase();
-                              const beautifiedName = capitalizeFullName(p.name).toLowerCase();
-                              const phone = (p.phone || "").toLowerCase();
-                              const email = (p.email || "").toLowerCase();
-                              return rawName.includes(search) || beautifiedName.includes(search) || phone.includes(search) || email.includes(search);
-                            })
-                            .map((p, i) => (
-                              <div
-                                key={p.id}
-                                onClick={() => {
-                                  setPrescPatient(p.name);
-                                  setPatientSearch(p.name);
-                                  setShowPatientSuggestions(false);
-                                }}
-                                style={{
-                                  padding: "10px 15px", cursor: "pointer", borderBottom: "1px solid #333",
-                                  background: prescPatient === p.name ? "#2a2a2a" : "transparent"
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = "#2a2a2a"}
-                                onMouseLeave={(e) => e.currentTarget.style.background = prescPatient === p.name ? "#2a2a2a" : "transparent"}
-                              >
-                                <div style={{ fontWeight: "600", color: "#fff", display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                  {capitalizeFullName(p.name)}
-                                  {p.risk_profile?.level && p.risk_profile?.level !== "Low" && (
-                                    <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: p.risk_profile.level === 'Critical' ? '#ff3b30' : '#ffcc00', color: p.risk_profile.level === 'Critical' ? '#fff' : '#000' }}>
-                                      {p.risk_profile.level} Risk
-                                    </span>
-                                  )}
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <div style={{ fontSize: "0.75rem", color: "#888" }}>{(!p.phone || p.phone.startsWith("TEMP_")) ? "null" : p.phone}</div>
-                                  {p.latest_triage && (
-                                    <div style={{ fontSize: '0.65rem', color: p.latest_triage.urgency === 'emergency' ? '#ff3b30' : '#888' }}>
-                                      AI Urgency: {p.latest_triage.urgency}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          {patientsList.filter(p => {
-                            if (!p) return false;
-                            const search = (patientSearch || "").toLowerCase().trim();
-                            if (!search) return true;
-                            const rawName = (p.name || "").toLowerCase();
-                            const beautifiedName = capitalizeFullName(p.name).toLowerCase();
-                            const phone = (p.phone || "").toLowerCase();
-                            const email = (p.email || "").toLowerCase();
-                            return rawName.includes(search) || beautifiedName.includes(search) || phone.includes(search) || email.includes(search);
-                          }).length === 0 && (
-                              <div style={{ padding: "15px", color: "#888", textAlign: "center" }}>No patients found.</div>
-                            )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Close suggestions when clicking outside */}
-                    {showPatientSuggestions && (
-                      <div
-                        style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}
-                        onClick={() => setShowPatientSuggestions(false)}
-                      ></div>
-                    )}
-                  </div>
-                  <div className="form-group" style={{ width: "180px" }}>
-                    <label>Date</label>
-                    <input type="date" value={prescDate} onChange={e => setPrescDate(e.target.value)} className="dashboard-input" />
-                  </div>
-                </div>
-
-                <div className="form-group" style={{ marginBottom: "1rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                    <label style={{ margin: 0 }}>Chief Complaint</label>
-                    <div className="complaint-toggle" style={{ display: "flex", background: "#222", borderRadius: "20px", padding: "2px", border: "1px solid #444" }}>
-                      <button
-                        type="button"
-                        onClick={() => { setComplaintType("manual"); if (!prescDetails || prescDetails === "Follow-up Visit") setPrescDetails(""); }}
-                        style={{
-                          padding: "4px 12px", borderRadius: "18px", border: "none", fontSize: "0.75rem", cursor: "pointer",
-                          background: complaintType === "manual" ? "#f0b800" : "transparent",
-                          color: complaintType === "manual" ? "#000" : "#888",
-                          fontWeight: "bold", transition: "all 0.2s"
-                        }}
-                      >Clinical</button>
-                      <button
-                        type="button"
-                        onClick={() => { setComplaintType("followup"); setPrescDetails("Follow-up Visit"); }}
-                        style={{
-                          padding: "4px 12px", borderRadius: "18px", border: "none", fontSize: "0.75rem", cursor: "pointer",
-                          background: complaintType === "followup" ? "#f0b800" : "transparent",
-                          color: complaintType === "followup" ? "#000" : "#888",
-                          fontWeight: "bold", transition: "all 0.2s"
-                        }}
-                      >Follow-up</button>
-                    </div>
-                  </div>
-                  <textarea
-                    placeholder="e.g. Severe toothache..."
-                    value={prescDetails}
-                    onChange={e => setPrescDetails(e.target.value)}
-                    className="dashboard-textarea"
-                    rows="2"
-                  ></textarea>
-                </div>
-
-                <div className="structured-presc-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div className="form-group">
-                    <label>Diagnosis</label>
-                    <textarea
-                      placeholder="e.g. Chronic Gingivitis..."
-                      value={prescDiagnosis}
-                      onChange={(e) => handleBulletInput(e, setPrescDiagnosis)}
-                      onFocus={() => handleFocus(setPrescDiagnosis, prescDiagnosis)}
-                      onKeyDown={e => handleKeyDown(e, setPrescDiagnosis, prescDiagnosis)}
-                      className="dashboard-textarea"
-                      rows="3"
-                    ></textarea>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Treatment Plan</label>
-                    <textarea
-                      placeholder="e.g. Scaling and Root Planing..."
-                      value={prescTreatment}
-                      onChange={(e) => handleBulletInput(e, setPrescTreatment)}
-                      onFocus={() => handleFocus(setPrescTreatment, prescTreatment)}
-                      onKeyDown={e => handleKeyDown(e, setPrescTreatment, prescTreatment)}
-                      className="dashboard-textarea"
-                      rows="3"
-                    ></textarea>
-                  </div>
-
-                  <div className="form-group" style={{ gridColumn: "span 2", position: "relative" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                      <label style={{ margin: 0 }}>Recommendations / Medications</label>
-
-                      {/* Search Bar for Medications */}
-                      <div className="med-search-container" style={{ position: "relative", width: "100%", maxWidth: "350px" }}>
-                        <div style={{ position: "relative" }}>
-                          <input
-                            type="text"
-                            placeholder="Search medications..."
-                            value={medSearch}
-                            onChange={(e) => {
-                              setMedSearch(e.target.value);
-                              setShowSuggestions(true);
-                            }}
-                            onFocus={() => setShowSuggestions(true)}
-                            className="dashboard-input"
-                            style={{
-                              padding: "8px 12px 8px 35px",
-                              height: "38px",
-                              fontSize: "0.9rem",
-                              borderRadius: "8px",
-                              border: "1px solid #444",
-                              background: "#222"
-                            }}
-                          />
-                          <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#f0b800", opacity: 0.7 }}></i>
-                        </div>
-
-                        {showSuggestions && medSearch.trim() !== "" && (
-                          <div className="med-suggestions elegant-scroll" style={{
-                            position: "absolute", top: "100%", left: 0, right: 0,
-                            zIndex: 100, background: "#1a1a1a", border: "1px solid #444",
-                            borderRadius: "8px", marginTop: "5px", maxHeight: "250px",
-                            overflowY: "scroll", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
-                          }}>
-                            {DENTAL_MEDICATIONS.filter(m =>
-                              m.name.toLowerCase().includes(medSearch.toLowerCase()) ||
-                              m.type.toLowerCase().includes(medSearch.toLowerCase())
-                            ).map((m, i) => (
-                              <div
-                                key={i}
-                                onClick={() => {
-                                  addMedication(m.name);
-                                  setMedSearch("");
-                                  setShowSuggestions(false);
-                                }}
-                                style={{
-                                  padding: "10px 15px", cursor: "pointer", borderBottom: "1px solid #333",
-                                  transition: "background 0.2s"
-                                }}
-                                onMouseEnter={(e) => e.target.style.background = "#2a2a2a"}
-                                onMouseLeave={(e) => e.target.style.background = "transparent"}
-                              >
-                                <div style={{ fontWeight: "bold", color: "#fff" }}>{m.name}</div>
-                                <div style={{ fontSize: "0.75rem", color: "#f0b800" }}>{m.type}</div>
-                              </div>
-                            ))}
-                            {DENTAL_MEDICATIONS.filter(m =>
-                              m.name.toLowerCase().includes(medSearch.toLowerCase()) ||
-                              m.type.toLowerCase().includes(medSearch.toLowerCase())
-                            ).length === 0 && (
-                                <div style={{ padding: "15px", color: "#888", textAlign: "center" }}>No medications found.</div>
-                              )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <textarea
-                      placeholder="e.g. Warm salt water rinses, twice daily..."
-                      value={prescRecommendations}
-                      onChange={(e) => handleBulletInput(e, setPrescRecommendations)}
-                      onFocus={() => handleFocus(setPrescRecommendations, prescRecommendations)}
-                      onKeyDown={e => handleKeyDown(e, setPrescRecommendations, prescRecommendations)}
-                      className="dashboard-textarea"
-                      rows="4"
-                    ></textarea>
-
-                    {/* Close suggestions when clicking outside */}
-                    {showSuggestions && (
-                      <div
-                        style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 90 }}
-                        onClick={() => setShowSuggestions(false)}
-                      ></div>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: editingPrescId ? '1fr 1fr 0.5fr' : '1fr 1fr',
-                  gap: '15px',
-                  marginTop: '1.5rem',
-                  width: '100%'
-                }}>
-                  <button
-                    className="upload-btn"
-                    onClick={handlePrescriptionUpload}
-                    disabled={isUploading}
-                    style={{
-                      width: "100%",
-                      height: '52px',
-                      borderRadius: '12px',
-                      fontSize: '0.9rem',
-                      fontWeight: '800',
-                      letterSpacing: '1px',
-                      background: editingPrescId ? "#2ecc71" : "var(--primary-gold)",
-                      color: editingPrescId ? "#fff" : "#000",
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '10px',
-                      transition: 'all 0.3s ease',
-                      boxShadow: '0 4px 15px rgba(240, 184, 0, 0.2)',
-                      padding: "0 10px",
-                      margin: "0"
-                    }}
-                  >
-                    {isUploading ? <i className="fas fa-spinner fa-spin"></i> : <i className={`fas ${editingPrescId ? "fa-save" : "fa-upload"}`}></i>}
-                    <span style={{ whiteSpace: 'nowrap' }}>
-                      {isUploading ? (editingPrescId ? "UPDATING..." : "SAVING...") : (editingPrescId ? "SAVE PRESCRIPTION" : "SAVE PRESCRIPTION")}
-                    </span>
-                  </button>
-
-                  <button
-                    className="p-btn"
-                    onClick={generateAISummary}
-                    disabled={isSummarizing || (!prescDetails && !prescDiagnosis)}
-                    style={{
-                      width: "100%",
-                      height: '52px',
-                      borderRadius: '12px',
-                      background: 'rgba(240, 184, 0, 0.12)',
-                      border: '2px solid var(--primary-gold)',
-                      color: 'var(--primary-gold)',
-                      fontWeight: '800',
-                      letterSpacing: '1px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '10px',
-                      transition: 'all 0.3s ease',
-                      padding: "0 10px",
-                      margin: "0"
-                    }}
-                  >
-                    {isSummarizing ? (
-                      <><i className="fas fa-circle-notch fa-spin"></i> <span style={{ whiteSpace: 'nowrap' }}>ANALYZING...</span></>
-                    ) : (
-                      <><i className="fas fa-magic"></i> <span style={{ whiteSpace: 'nowrap' }}>AI SUMMARY</span></>
-                    )}
-                  </button>
-
-                  {editingPrescId && (
-                    <button
-                      onClick={cancelEditing}
-                      style={{
-                        width: "100%",
-                        height: '52px',
-                        background: 'rgba(255,255,255,0.05)',
-                        border: "1px solid #444",
-                        color: "#888",
-                        borderRadius: "12px",
-                        cursor: "pointer",
-                        fontSize: '0.8rem',
-                        fontWeight: '700',
-                        transition: 'all 0.3s ease',
-                        margin: "0"
-                      }}
-                    >
-                      CANCEL
-                    </button>
-                  )}
-                </div>
-
-              </div>
-            </div>
-          </div>
-
-          {/* ROW 3: PATIENT CLINICAL HISTORY & AI INSIGHTS */}
-          {(prescPatient || aiSummaryResult) && (
-            <div className="row-clinical-history" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-              <div className="card animate-fade-up" style={{ animationDelay: "0.2s", width: "100%", maxWidth: "1000px" }}>
-                <div className="card-header">
-                  <h3>Clinical History & AI Insights: {prescPatient ? capitalizeFullName(prescPatient) : "General"}</h3>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <i className="fas fa-microscope card-icon"></i>
-                  </div>
-                </div>
-
-                <div className="history-grid" style={{
-                  display: "grid",
-                  gridTemplateColumns: aiSummaryResult ? "1.2fr 1fr" : "1fr",
-                  gap: "20px",
-                  padding: "1.5rem"
-                }}>
-
-                  {/* LEFT COLUMN: AI INSIGHTS */}
-                  {aiSummaryResult && (
-                    <div className="ai-insights-panel" style={{
-                      padding: "20px",
-                      borderRadius: "16px",
-                      background: "linear-gradient(135deg, rgba(240, 184, 0, 0.1) 0%, rgba(30, 30, 30, 0.4) 100%)",
-                      border: "1px solid rgba(240, 184, 0, 0.3)",
-                      boxShadow: "0 10px 30px rgba(0,0,0,0.2)"
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "15px" }}>
-                        <i className="fas fa-robot" style={{ color: "#f0b800", fontSize: "1.2rem" }}></i>
-                        <h4 style={{ margin: 0, color: "#f0b800", letterSpacing: "0.5px" }}>Visit Analysis</h4>
-                      </div>
-
-                      <div style={{ display: "grid", gap: "15px" }}>
-                        <div style={{ padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px" }}>
-                          <span style={{ color: "#f0b800", fontSize: "0.7rem", textTransform: "uppercase", fontWeight: "bold", display: "block", marginBottom: "5px", opacity: 0.8 }}>Clinical Summary</span>
-                          <div style={{ fontSize: "0.9rem", color: "#eee", lineHeight: "1.6" }}>{aiSummaryResult.clinical}</div>
-                        </div>
-
-                        <div style={{ padding: "12px", background: "rgba(255,255,255,0.03)", borderRadius: "8px" }}>
-                          <span style={{ color: "#f0b800", fontSize: "0.7rem", textTransform: "uppercase", fontWeight: "bold", display: "block", marginBottom: "5px", opacity: 0.8 }}>Patient Communication</span>
-                          <div style={{ fontSize: "0.9rem", color: "#ddd", lineHeight: "1.6", fontStyle: "italic" }}>"{aiSummaryResult.patient_friendly}"</div>
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                        <button
-                          onClick={() => {
-                            setPrescRecommendations(prev => prev + (prev ? "\n\n" : "") + "Note for Patient: " + aiSummaryResult.patient_friendly);
-                            setAiSummaryResult(null);
-                          }}
-                          style={{
-                            flex: 1, padding: "12px", borderRadius: "8px", background: "#f0b800", border: "none", color: "#000",
-                            fontWeight: "bold", fontSize: "0.8rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
-                          }}
-                        >
-                          <i className="fas fa-plus"></i> Append to Rx
-                        </button>
-                        <button
-                          onClick={() => {
-                            setPrescDetails(aiSummaryResult.clinical);
-                            setAiSummaryResult(null);
-                          }}
-                          style={{
-                            flex: 1, padding: "12px", borderRadius: "8px", background: "rgba(255,255,255,0.1)", border: "1px solid #444", color: "#fff",
-                            fontWeight: "bold", fontSize: "0.8rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
-                          }}
-                        >
-                          <i className="fas fa-sync"></i> Replace Notes
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* RIGHT COLUMN: PREVIOUS RECORDS */}
-                  <div className="records-history-panel">
-                    <div style={{ marginBottom: "20px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "15px" }}>
-                        <i className="fas fa-history" style={{ color: "#f0b800" }}></i>
-                        <h4 style={{ margin: 0, color: "#fff" }}>Medical History</h4>
-                      </div>
-
-                      <div className="elegant-scroll" style={{ maxHeight: "400px", overflowY: "auto", paddingRight: "5px" }}>
-                        {/* Tab Headers if you want to split Rx/Invoices, but combining them for a "Timeline" feel */}
-                        <div className="timeline-title" style={{ fontSize: "0.75rem", color: "#666", textTransform: "uppercase", marginBottom: "10px", fontWeight: "bold" }}>Prescriptions</div>
-                        {historyPrescriptions.length > 0 && prescPatient ? (
-                          historyPrescriptions
-                            .filter(p => !prescPatient || p.patient.toLowerCase() === prescPatient.toLowerCase())
-                            .map(p => (
-                              <div key={p.id} style={{
-                                background: "rgba(255,255,255,0.03)", padding: "12px", borderRadius: "10px", marginBottom: "10px",
-                                borderLeft: "3px solid #f0b800", display: "flex", justifyContent: "space-between", alignItems: "center"
-                              }}>
-                                <div>
-                                  <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: "2px" }}>{new Date(p.date).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                                  <div style={{ fontSize: "0.85rem", color: "#fff", fontWeight: "600" }}>
-                                    {p.diagnosis ? p.diagnosis.replace(/•/g, "").split("\n")[0].substring(0, 30) : "Clinical Visit"}
-                                  </div>
-                                </div>
-                                <div style={{ display: "flex", gap: "5px" }}>
-                                  <button onClick={() => startEditing(p)} className="action-icon-btn" title="Edit"><i className="fas fa-edit"></i></button>
-                                  <button onClick={() => downloadPrescription(p.id, true, p.patient)} className="action-icon-btn gold" title="Download"><i className="fas fa-file-pdf"></i></button>
-                                </div>
-                              </div>
-                            ))
-                        ) : (
-                          <div style={{ padding: "10px", color: "#555", fontSize: "0.85rem", fontStyle: "italic" }}>No previous prescriptions.</div>
-                        )}
-
-                        <div className="timeline-title" style={{ fontSize: "0.75rem", color: "#666", textTransform: "uppercase", marginTop: "20px", marginBottom: "10px", fontWeight: "bold" }}>Billing Records</div>
-                        {invoices.length > 0 && prescPatient ? (
-                          invoices
-                            .filter(inv => !prescPatient || (inv.patient_name || "").toLowerCase() === prescPatient.toLowerCase())
-                            .map(inv => (
-                              <div key={inv.id} style={{
-                                background: "rgba(255,255,255,0.03)", padding: "12px", borderRadius: "10px", marginBottom: "10px",
-                                borderLeft: "3px solid #2ecc71", display: "flex", justifyContent: "space-between", alignItems: "center"
-                              }}>
-                                <div>
-                                  <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: "2px" }}>{new Date(inv.date).toLocaleDateString("en-IN")}</div>
-                                  <div style={{ fontSize: "0.85rem", color: "#2ecc71" }}>₹ {inv.total.toLocaleString()} ({inv.invoice_number})</div>
-                                </div>
-                                <div style={{ display: "flex", gap: "5px" }}>
-                                  <button onClick={() => downloadInvoice(inv.id, inv.invoice_number, true, inv.patient_name)} className="action-icon-btn green"><i className="fas fa-receipt"></i></button>
-                                </div>
-                              </div>
-                            ))
-                        ) : (
-                          <div style={{ padding: "10px", color: "#555", fontSize: "0.85rem", fontStyle: "italic" }}>No billing history.</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ROW 3: BILLING & INVOICES (CENTERED) */}
-          <div className="row-billing" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-            <div className="card animate-fade-up" style={{ animationDelay: "0.3s", width: "100%", maxWidth: "1000px" }}>
-              <div className="card-header">
-                <h3>Billing & Invoices</h3>
-                <i className="fas fa-file-invoice-dollar card-icon"></i>
-              </div>
-              <InvoiceForm
-                patientsList={patientsList}
-                onInvoiceCreated={() => { fetchInvoices(); setEditingInvoice(null); }}
-                downloadInvoice={downloadInvoice}
-                editingInvoice={editingInvoice}
-                onCancelEdit={() => setEditingInvoice(null)}
-                preSelectedPatient={prescPatient}
-              />
-            </div>
-          </div>
-
-          {/* ROW 4: ALL REGISTERED PATIENTS (CENTERED) */}
-          <div className="row-patients" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-            <div className="card animate-fade-up" style={{ animationDelay: "0.4s", width: "100%", maxWidth: "1000px" }}>
-              <div className="card-header">
-                <h3>All Registered Patients</h3>
-                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                  <button onClick={downloadPatientData} style={{ background: "#2ecc71", border: "none", padding: "5px 10px", borderRadius: "5px", color: "#fff", cursor: "pointer", fontSize: "0.8rem", fontWeight: "bold" }}>
-                    <i className="fas fa-file-excel" style={{ marginRight: "5px" }}></i> Export CSV
-                  </button>
-                  <i className="fas fa-users card-icon"></i>
-                </div>
-              </div>
-              <div className="elegant-scroll" style={{ padding: "1rem", overflowX: "auto", maxHeight: "300px", overflowY: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", color: "#fff", textAlign: "left" }}>
-                  <thead>
-                    < tr style={{ borderBottom: "1px solid #333" }}>
-                      <th style={{ padding: "12px", color: "#f0b800" }}>Name</th>
-                      <th style={{ padding: "12px", color: "#f0b800" }}>Age/Sex</th>
-                      <th style={{ padding: "12px", color: "#f0b800" }}>Phone</th>
-                      <th style={{ padding: "12px", color: "#f0b800" }}>Email</th>
-                      <th style={{ padding: "12px", color: "#f0b800" }}>Source</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {patientsList.length > 0 ? (
-                      patientsList.map(p => (
-                        <tr key={p.id} style={{ borderBottom: "1px solid #222" }}>
-                          <td style={{ padding: "12px" }}>{capitalizeFullName(p.name)}</td>
-                          <td style={{ padding: "12px", color: "#ddd" }}>{p.age || "-"} / {p.sex || p.gender || "-"}</td>
-                          <td style={{ padding: "12px", color: "#888" }}>{(!p.phone || p.phone.startsWith("TEMP_")) ? "null" : p.phone}</td>
-                          <td style={{ padding: "12px", color: "#888" }}>{p.email || "-"}</td>
-                          <td style={{ padding: "12px" }}>
-                            <span style={{
-                              padding: "4px 8px",
-                              borderRadius: "4px",
-                              fontSize: "0.75rem",
-                              background: p.source === "website" ? "#3498db33" : p.source === "manual" ? "#e67e2233" : "#9b59b633",
-                              color: p.source === "website" ? "#3498db" : p.source === "manual" ? "#e67e22" : "#9b59b6",
-                              textTransform: "uppercase",
-                              fontWeight: "bold"
-                            }}>
-                              {p.source || "website"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="4" style={{ textAlign: "center", padding: "2rem", color: "#888" }}>No patients found.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </main>
-
-      <div id="open-ai-panel" onClick={() => setAiOpen(true)}>
-        FlossyAI
-      </div>
-
-      <div className={`ai-panel ${aiOpen ? "open" : ""}`}>
-        <div className="ai-header">
-          🦷 FlossyAI Assistant
-          <button className="close" onClick={() => setAiOpen(false)}>✖</button>
+    <div className={`dashboard-shell ${!profileVisible ? "sidebar-collapsed" : "sidebar-expanded"}`}>
+      {/* DOCTOR PROFILE SIDEBAR */}
+      <aside className="profile-sidebar">
+        {/* Toggle button */}
+        <div
+          className="sidebar-expand-toggle"
+          onClick={() => setProfileVisible(!profileVisible)}
+          title={profileVisible ? "Hide Sidebar" : "Show Sidebar"}
+        >
+          <i className={`fas fa-${profileVisible ? 'chevron-left' : 'bars'}`}></i>
         </div>
 
-        <div className="ai-content">
-          {messages.map((m, i) => (
-            <div key={i} className={m.from === "user" ? "msg-user" : "msg-ai"}>
-              <b>{m.from === "user" ? "You" : "FlossyAI"}:</b> {m.text}
-            </div>
-          ))}
-          {typing && <div className="typing">FlossyAI is typing<span className="dot-one">.</span><span className="dot-two">.</span><span className="dot-three">.</span></div>}
-        </div>
-
-        <div className="ai-input-area">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="Ask FlossyAI..."
-          />
+        {/* Close button - only when expanded */}
+        {profileVisible && (
           <button
-            onClick={() => setIsVoiceActive(true)}
-            title="Start Clinical Voice Assistant"
-            style={{ background: "#ffcb05", borderRadius: "50%", width: "40px", height: "40px", border: "none" }}
+            className="sidebar-close-btn"
+            onClick={() => setProfileVisible(false)}
+            title="Close Sidebar"
+            style={{ top: '5.5rem' }}
           >
-            🎤
+            <i className="fas fa-times"></i>
           </button>
-          <button onClick={sendMessage}>Send</button>
+        )}
+
+        <div className="profile-sidebar-content">
+          <div className="profile-avatar">
+            {user?.imageUrl ? (
+              <img src={user.imageUrl} alt="Profile" />
+            ) : (
+              <div className="avatar-placeholder">
+                <i className="fas fa-user-md"></i>
+              </div>
+            )}
+          </div>
+
+          <div className="profile-header-text">
+            <h3 className="profile-name">Dr. {fullName}</h3>
+            <span className="profile-role">Dentist</span>
+          </div>
+
+          <div className="profile-info-grid" style={{ justifyContent: 'center', textAlign: 'center' }}>
+            <div className="profile-stat">
+              <span className="stat-value">{today.length}</span>
+              <span className="stat-label">Today</span>
+            </div>
+            <div className="profile-stat">
+              <span className="stat-value">{upcoming.length}</span>
+              <span className="stat-label">Upcoming</span>
+            </div>
+            <div className="profile-stat">
+              <span className="stat-value">{history.length}</span>
+              <span className="stat-label">History</span>
+            </div>
+          </div>
+
+          <div className="profile-details-compact">
+            <div className="detail-row" title={user?.primaryEmailAddress?.emailAddress}>
+              <i className="fas fa-envelope"></i>
+              <span>{user?.primaryEmailAddress?.emailAddress || "No email"}</span>
+            </div>
+            <div className="detail-row">
+              <i className="fas fa-stethoscope"></i>
+              <span>General Dentistry</span>
+            </div>
+            <div className="detail-row">
+              <i className="fas fa-clinic-medical"></i>
+              <span>Smile Artists Dental Studio</span>
+            </div>
+          </div>
+
+          <div className="sidebar-actions">
+            <button className="p-btn sidebar-book-btn" onClick={() => setAiOpen(true)}>
+              <i className="fas fa-robot"></i> <span>FlossyAI</span>
+            </button>
+          </div>
         </div>
+      </aside>
+
+      <div className="dashboard-main-content">
+        <Header openAI={() => setAiOpen(true)} />
+
+        <main className="dentist-main">
+          <h2>Welcome back, Dr. {fullName}</h2>
+
+          {/* DASHBOARD CONTENT */}
+          {/* Appointments / Prescriptions / Billing */}
+        </main>
+
+        <Footer />
       </div>
-
-      <Footer />
-
-      {/* FOLLOW UP MODAL */}
-      {
-        followUpOpen && (
-          <div className="modal-overlay" style={{
-            position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-            background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 10000
-          }}>
-            <div className="modal-content" style={{
-              background: "#1a1a1a", padding: "2rem", borderRadius: "15px", width: "90%", maxWidth: "500px", border: "1px solid #333"
-            }}>
-              <h3 style={{ color: "#fff", marginBottom: "1rem" }}>Mark for Follow Up</h3>
-              <p style={{ color: "#888", marginBottom: "1rem" }}>Why does this patient need to return?</p>
-              <textarea
-                value={followUpReason}
-                onChange={e => setFollowUpReason(e.target.value)}
-                placeholder="e.g. Needs gum checking in 2 weeks..."
-                style={{ width: "100%", height: "100px", background: "#333", border: "none", color: "#fff", padding: "10px", borderRadius: "5px", marginBottom: "1rem" }}
-              ></textarea>
-
-              <div style={{ display: "flex", gap: "10px", marginBottom: "1rem" }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: "block", color: "#888", marginBottom: "5px", fontSize: "0.9rem" }}>Next Visit Date</label>
-                  <input
-                    type="date"
-                    value={followUpDate}
-                    onChange={e => setFollowUpDate(e.target.value)}
-                    style={{ width: "100%", padding: "10px", background: "#333", border: "none", color: "#fff", borderRadius: "5px" }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: "block", color: "#888", marginBottom: "5px", fontSize: "0.9rem" }}>Time</label>
-                  <select
-                    value={followUpTime}
-                    onChange={e => setFollowUpTime(e.target.value)}
-                    style={{ width: "100%", padding: "10px", background: "#333", border: "none", color: "#fff", borderRadius: "5px" }}
-                  >
-                    <option value="" disabled>Slot</option>
-                    {TIME_SLOTS.map(slot => (
-                      <option key={slot} value={slot}>{formatTime12h(slot)}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-                <button onClick={() => setFollowUpOpen(false)} style={{ padding: "10px 20px", background: "transparent", border: "1px solid #555", color: "#fff", borderRadius: "5px", cursor: "pointer" }}>Cancel</button>
-                <button onClick={markFollowUp} style={{ padding: "10px 20px", background: "#f0b800", border: "none", color: "#000", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}>Confirm Follow Up</button>
-              </div>
-            </div>
-          </div>
-        )
-      }
-
-      {/* COMPLETION MODAL */}
-      {
-        completionModalOpen && (
-          <div className="modal-overlay" style={{
-            position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-            background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 10000
-          }}>
-            <div className="modal-content" style={{
-              background: "#1a1a1a", padding: "2rem", borderRadius: "15px", width: "90%", maxWidth: "500px", border: "1px solid #333"
-            }}>
-              <h3 style={{ color: "#fff", marginBottom: "1rem" }}>Mark as Completed</h3>
-              <p style={{ color: "#888", marginBottom: "1rem" }}>Add any final remarks or notes for this visit (optional):</p>
-              <textarea
-                value={completionRemarks}
-                onChange={e => setCompletionRemarks(e.target.value)}
-                placeholder="e.g. Patient advised to floss daily..."
-                style={{ width: "100%", height: "100px", background: "#333", border: "none", color: "#fff", padding: "10px", borderRadius: "5px", marginBottom: "1rem" }}
-              ></textarea>
-              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-                <button onClick={() => setCompletionModalOpen(false)} style={{ padding: "10px 20px", background: "transparent", border: "1px solid #555", color: "#fff", borderRadius: "5px", cursor: "pointer" }}>Cancel</button>
-                <button onClick={submitCompletion} style={{ padding: "10px 20px", background: "#2ecc71", border: "none", color: "#fff", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}>Complete Appointment</button>
-              </div>
-            </div>
-          </div>
-        )
-      }
-
-      {/* MISSED FOLLOW UP MODAL */}
-      {
-        missedReasonModalOpen && (
-          <div className="modal-overlay" style={{
-            position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-            background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 10000
-          }}>
-            <div className="modal-content" style={{
-              background: "#1a1a1a", padding: "2rem", borderRadius: "15px", width: "90%", maxWidth: "500px", border: "1px solid #333"
-            }}>
-              <h3 style={{ color: "#fff", marginBottom: "1rem" }}>Mark Follow Up as Missed</h3>
-              <p style={{ color: "#888", marginBottom: "1rem" }}>Please provide a reason why this follow-up was missed:</p>
-              <textarea
-                value={missedReason}
-                onChange={e => setMissedReason(e.target.value)}
-                placeholder="e.g. Patient did not show up..."
-                style={{ width: "100%", height: "100px", background: "#333", border: "none", color: "#fff", padding: "10px", borderRadius: "5px", marginBottom: "1rem" }}
-              ></textarea>
-              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-                <button onClick={() => setMissedReasonModalOpen(false)} style={{ padding: "10px 20px", background: "transparent", border: "1px solid #555", color: "#fff", borderRadius: "5px", cursor: "pointer" }}>Cancel</button>
-                <button onClick={submitMissedStatus} style={{ padding: "10px 20px", background: "#e74c3c", border: "none", color: "#fff", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}>Confirm Missed</button>
-              </div>
-            </div>
-          </div>
-        )
-      }
-    </>
+    </div>
   );
 }

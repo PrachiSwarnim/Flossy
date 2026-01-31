@@ -80,15 +80,6 @@ export default function Carousel() {
 
   return (
     <div className="carousel">
-      {/* LEFT ARROW */}
-      <button className="carousel-arrow left" onClick={() => setIndex((i) => i === 0 ? images.length - 1 : i - 1)}>
-        <i className="fas fa-chevron-left"></i>
-      </button>
-
-      {/* RIGHT ARROW */}
-      <button className="carousel-arrow right" onClick={() => setIndex((i) => i + 1)}>
-        <i className="fas fa-chevron-right"></i>
-      </button>
 
       <div className="carousel-inner">
         <div

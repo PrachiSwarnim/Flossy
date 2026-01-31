@@ -64,12 +64,14 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
         # NOTE: Previously we filtered staff users here, but this was too aggressive
         # and hid legitimate patients. Now we only filter obvious test accounts above.
             
-        # USER REQUEST: Full name should be taken from email id username if user is linked
-        if p.user and p.user.email:
+        # Display name priority: patient's actual first_name > email extraction > name field
+        if p.first_name:
+            # Use patient's actual name fields
+            display_name = f"{p.first_name} {p.last_name or ''}".strip()
+        elif p.user and p.user.email:
+            # Fall back to extracting from linked user's email
             fname, lname = extract_names_from_email(p.user.email)
             display_name = f"{fname} {lname}".strip()
-        elif p.first_name:
-            display_name = f"{p.first_name} {p.last_name or ''}".strip()
         else:
             display_name = clean_name(p.name).title() if p.name else "Unknown Patient"
         

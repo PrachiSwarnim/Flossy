@@ -324,7 +324,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                                 onMouseLeave={(e) => e.currentTarget.style.background = patientName === p.name ? "#2a2a2a" : "transparent"}
                                             >
                                                 <div style={{ fontWeight: "600", color: "#fff" }}>{p.name}</div>
-                                                {p.phone && <div style={{ fontSize: "0.75rem", color: "#888" }}>{p.phone}</div>}
+                                                {p.phone && p.phone !== "null" && !p.phone.startsWith("TEMP_") && <div style={{ fontSize: "0.75rem", color: "#888" }}>{p.phone}</div>}
                                             </div>
                                         ))}
                                     {patientsList.filter(p => {
