@@ -1,0 +1,45 @@
+name: Fix User Names Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "RUN" to confirm you want to run this migration'
+        required: true
+        default: ''
+
+jobs:
+  migrate:
+    name: Fix User Names in Database
+    runs-on: ubuntu-latest
+    
+    # Only run if the user explicitly confirms
+    if: github.event.inputs.confirm == 'RUN'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install sqlalchemy psycopg2-binary python-dotenv
+
+      - name: Run migration script
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          cd flossy_backend
+          python fix_user_names.py
+
+      - name: Migration Summary
+        run: |
+          echo "✅ Migration completed successfully!"
+          echo "The following users have been updated with correct names:"
+          echo "  - prachi.swarnim@gmail.com → Prachi Swarnim"
+          echo "  - choudhary.shruti01@gmail.com → Shruti Choudhary"
+          echo "  - prachiswarnim03@gmail.com → Prachi Swarnim"

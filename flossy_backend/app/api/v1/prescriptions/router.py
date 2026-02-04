@@ -67,6 +67,33 @@ def create_prescription(data: PrescriptionCreate, db: Session = Depends(get_db),
     db.refresh(new_presc)
     return {"success": True, "prescription_id": new_presc.id}
 
+# Alias for /create endpoint (used by frontend)
+@router.post("/create")
+def create_prescription_alias(data: PrescriptionCreate, db: Session = Depends(get_db), user = Depends(require_role("dentist"))):
+    return create_prescription(data, db, user)
+
+@router.get("/recent")
+def get_recent_prescriptions(db: Session = Depends(get_db), user = Depends(require_role(["dentist", "receptionist"]))):
+    """
+    Get recent prescriptions for the dashboard (last 10).
+    """
+    prescs = db.query(Prescription).order_by(Prescription.created_at.desc()).limit(10).all()
+    return {
+        "prescriptions": [
+            {
+                "id": p.id,
+                "patient_name": p.patient.name if p.patient else "Unknown",
+                "doctor": p.doctor.email.split("@")[0].title() if p.doctor else "Dentist",
+                "details": p.details,
+                "diagnosis": p.diagnosis,
+                "treatment_plan": p.treatment_plan,
+                "recommendations": p.recommendations,
+                "date": p.created_at.isoformat()
+            }
+            for p in prescs
+        ]
+    }
+
 @router.get("/my")
 def get_my_prescriptions(db: Session = Depends(get_db), user = Depends(require_role("patient"))):
     patient = db.query(Patient).filter(Patient.user_id == user.id).first()
@@ -97,6 +124,42 @@ def get_dentist_prescriptions(db: Session = Depends(get_db), user = Depends(requ
             {
                 "id": p.id,
                 "patient": p.patient.name,
+                "details": p.details,
+                "diagnosis": p.diagnosis,
+                "treatment_plan": p.treatment_plan,
+                "recommendations": p.recommendations,
+                "date": p.created_at.isoformat()
+            }
+            for p in prescs
+        ]
+    }
+
+@router.get("/patient/{patient_name}")
+def get_patient_prescriptions_by_name(patient_name: str, db: Session = Depends(get_db), user = Depends(require_role(["dentist", "receptionist"]))):
+    """
+    Get all prescriptions for a specific patient by name.
+    Used by dentist dashboard to show prescription history when selecting a patient.
+    """
+    import urllib.parse
+    decoded_name = urllib.parse.unquote(patient_name).strip()
+    
+    # Find patient by name (case-insensitive)
+    patient = db.query(Patient).filter(Patient.name.ilike(decoded_name)).first()
+    
+    if not patient:
+        # Try matching with title case
+        patient = db.query(Patient).filter(Patient.name.ilike(decoded_name.title())).first()
+    
+    if not patient:
+        return {"prescriptions": []}
+    
+    prescs = db.query(Prescription).filter(Prescription.patient_id == patient.id).order_by(Prescription.created_at.desc()).all()
+    
+    return {
+        "prescriptions": [
+            {
+                "id": p.id,
+                "doctor": p.doctor.email.split("@")[0].title() if p.doctor else "Dentist",
                 "details": p.details,
                 "diagnosis": p.diagnosis,
                 "treatment_plan": p.treatment_plan,

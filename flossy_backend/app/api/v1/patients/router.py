@@ -61,8 +61,12 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
             skipped_test += 1
             continue
         
+        # Skip patients who are actually staff members (dentists, receptionists, admins)
+        if p.user and p.user.role in ["dentist", "receptionist", "admin"]:
+            skipped_staff += 1
+            continue
+            
         # NOTE: Previously we filtered staff users here, but this was too aggressive
-        # and hid legitimate patients. Now we only filter obvious test accounts above.
             
         # Display name priority: patient's actual first_name > email extraction > name field
         if p.first_name:

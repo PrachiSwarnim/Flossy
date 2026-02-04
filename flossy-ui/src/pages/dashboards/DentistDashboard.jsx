@@ -74,6 +74,7 @@ export default function DentistDashboard() {
 
   // ===== ALL PATIENTS STATE =====
   const [patientsList, setPatientsList] = useState([]);
+  const [patientPrescriptions, setPatientPrescriptions] = useState([]);
 
   // ===== PRESCRIPTIONS STATE =====
   const [prescPatient, setPrescPatient] = useState("");
@@ -82,6 +83,9 @@ export default function DentistDashboard() {
   const [prescNotes, setPrescNotes] = useState("");
   const [prescSubmitting, setPrescSubmitting] = useState(false);
   const [recentPrescriptions, setRecentPrescriptions] = useState([]);
+  const [prescTreatmentPlan, setPrescTreatmentPlan] = useState("");
+  const [prescRecommendations, setPrescRecommendations] = useState("");
+  const [prescMedSearch, setPrescMedSearch] = useState("");
 
   // ===== ANALYTICS STATE =====
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
@@ -119,6 +123,9 @@ export default function DentistDashboard() {
         replace: true
       });
     }
+
+    // Set page title
+    document.title = `Dr. ${user.firstName || 'Dentist'} | Dentist Dashboard - Smile Artists`;
   }, [isLoaded, user, navigate]);
 
   /* ==============================
@@ -144,12 +151,34 @@ export default function DentistDashboard() {
 
   async function fetchPatients() {
     const token = await session.getToken({ template: "default" });
-    const res = await fetch(`${API}/api/patients/`, {
+    const res = await fetch(`${API}/api/patients/?role=patient`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (res.ok) {
       const data = await res.json();
-      setPatientsList(data);
+      // Filter only patients (not doctors/receptionists)
+      const onlyPatients = data.filter(p => p.role === 'patient' || !p.role);
+      setPatientsList(onlyPatients);
+    }
+  }
+
+  async function fetchPatientPrescriptions(patientName) {
+    if (!patientName) {
+      setPatientPrescriptions([]);
+      return;
+    }
+    const token = await session.getToken({ template: "default" });
+    try {
+      const res = await fetch(`${API}/api/prescriptions/patient/${encodeURIComponent(patientName)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPatientPrescriptions(data.prescriptions || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch patient prescriptions:", err);
+      setPatientPrescriptions([]);
     }
   }
 
@@ -234,7 +263,6 @@ export default function DentistDashboard() {
 
   async function submitPrescription() {
     if (!prescPatient) return alert("Please select a patient.");
-    if (!prescMedications.some(m => m.name)) return alert("Please add at least one medication.");
 
     setPrescSubmitting(true);
     try {
@@ -247,18 +275,23 @@ export default function DentistDashboard() {
         },
         body: JSON.stringify({
           patient_name: prescPatient,
+          diagnosis: prescNotes,
+          treatment_plan: prescTreatmentPlan,
+          recommendations: prescRecommendations,
           medications: prescMedications.filter(m => m.name),
-          notes: prescNotes,
           doctor_name: fullName
         })
       });
 
       if (res.ok) {
-        alert("Prescription created successfully!");
+        alert("Prescription uploaded successfully!");
         setPrescPatient("");
         setPrescPatientSearch("");
         setPrescMedications([{ name: "", dosage: "", duration: "" }]);
         setPrescNotes("");
+        setPrescTreatmentPlan("");
+        setPrescRecommendations("");
+        setPrescMedSearch("");
         fetchRecentPrescriptions();
       } else {
         const errData = await res.json();
@@ -648,146 +681,181 @@ export default function DentistDashboard() {
 
             {/* ROW 4: PRESCRIPTIONS */}
             <div className="row-prescriptions" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-              <div className="card animate-fade-up" style={{ animationDelay: "0.5s", width: "100%", maxWidth: "1020px" }}>
-                <div className="card-header">
-                  <h3>Write Prescription</h3>
-                  <i className="fas fa-prescription card-icon"></i>
-                </div>
-                <div style={{ padding: "1rem" }}>
-                  {/* Patient Search */}
-                  <div style={{ marginBottom: "1rem" }}>
-                    <label style={{ color: "#888", marginBottom: "5px", display: "block" }}>Select Patient</label>
-                    <input
-                      type="text"
-                      placeholder="Search patient by name..."
-                      value={prescPatientSearch}
+              <div className="card animate-fade-up" style={{ animationDelay: "0.5s", width: "100%", maxWidth: "1020px", background: "#1a1a1a", borderRadius: "10px", border: "1px solid #333" }}>
+                <div style={{ padding: "1.5rem" }}>
+
+                  {/* SELECT PATIENT */}
+                  <div style={{ marginBottom: "1.5rem" }}>
+                    <label style={{ color: "#f0b800", fontWeight: "bold", marginBottom: "10px", display: "block", textTransform: "uppercase", letterSpacing: "1px" }}>Select Patient</label>
+                    <select
+                      value={prescPatient}
                       onChange={(e) => {
-                        setPrescPatientSearch(e.target.value);
-                        setPrescPatient("");
+                        setPrescPatient(e.target.value);
+                        fetchPatientPrescriptions(e.target.value);
                       }}
-                      style={{ width: "100%", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff" }}
-                    />
-                    {prescPatientSearch && !prescPatient && filteredPatients.length > 0 && (
-                      <div style={{ background: "#222", border: "1px solid #333", borderRadius: "8px", marginTop: "5px", maxHeight: "150px", overflowY: "auto" }}>
-                        {filteredPatients.slice(0, 5).map(p => (
-                          <div
-                            key={p.id}
-                            onClick={() => {
-                              setPrescPatient(p.name);
-                              setPrescPatientSearch(p.name);
-                            }}
-                            style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff" }}
-                          >
-                            {p.name} {p.age && `(${p.age})`}
+                      style={{
+                        width: "100%",
+                        padding: "15px",
+                        background: "#222",
+                        border: "1px solid #444",
+                        borderRadius: "8px",
+                        color: "#fff",
+                        fontSize: "1rem",
+                        cursor: "pointer"
+                      }}
+                    >
+                      <option value="">-- Choose Patient --</option>
+                      {patientsList.map(p => (
+                        <option key={p.id} value={p.name}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* PATIENT PRESCRIPTION HISTORY */}
+                  {prescPatient && patientPrescriptions.length > 0 && (
+                    <div style={{ marginBottom: "1.5rem", background: "#222", borderRadius: "8px", border: "1px solid #444", padding: "1rem" }}>
+                      <h4 style={{ color: "#f0b800", marginBottom: "10px" }}>
+                        <i className="fas fa-history" style={{ marginRight: "8px" }}></i>
+                        Prescription History for {prescPatient}
+                      </h4>
+                      <div style={{ maxHeight: "150px", overflowY: "auto" }} className="elegant-scroll">
+                        {patientPrescriptions.map(presc => (
+                          <div key={presc.id} style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "8px",
+                            borderBottom: "1px solid #333",
+                            fontSize: "0.9rem"
+                          }}>
+                            <div>
+                              <span style={{ color: "#fff" }}>{new Date(presc.date).toLocaleDateString()}</span>
+                              {presc.diagnosis && <span style={{ color: "#888", marginLeft: "10px" }}>{presc.diagnosis.slice(0, 50)}...</span>}
+                            </div>
+                            <button
+                              onClick={() => downloadPrescription(presc.id, prescPatient)}
+                              style={{ background: "#333", border: "none", color: "#f0b800", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "0.8rem" }}
+                            >
+                              <i className="fas fa-download"></i>
+                            </button>
                           </div>
                         ))}
                       </div>
-                    )}
-                    {prescPatient && (
-                      <div style={{ marginTop: "5px", color: "#2ecc71", fontSize: "0.85rem" }}>
-                        <i className="fas fa-check-circle"></i> Selected: {prescPatient}
-                      </div>
-                    )}
+                    </div>
+                  )}
+
+                  {/* DIAGNOSIS & TREATMENT PLAN - Side by Side */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
+                    <div>
+                      <label style={{ color: "#fff", fontWeight: "bold", marginBottom: "10px", display: "block", textTransform: "uppercase", letterSpacing: "1px" }}>Diagnosis</label>
+                      <textarea
+                        placeholder="e.g. Chronic Gingivitis..."
+                        value={prescNotes}
+                        onChange={(e) => setPrescNotes(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "15px",
+                          background: "#222",
+                          border: "1px solid #444",
+                          borderRadius: "8px",
+                          color: "#fff",
+                          fontSize: "0.95rem",
+                          minHeight: "120px",
+                          resize: "vertical"
+                        }}
+                      ></textarea>
+                    </div>
+                    <div>
+                      <label style={{ color: "#fff", fontWeight: "bold", marginBottom: "10px", display: "block", textTransform: "uppercase", letterSpacing: "1px" }}>Treatment Plan</label>
+                      <textarea
+                        placeholder="e.g. Scaling and Root Planing..."
+                        value={prescTreatmentPlan || ""}
+                        onChange={(e) => setPrescTreatmentPlan(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "15px",
+                          background: "#222",
+                          border: "1px solid #444",
+                          borderRadius: "8px",
+                          color: "#fff",
+                          fontSize: "0.95rem",
+                          minHeight: "120px",
+                          resize: "vertical"
+                        }}
+                      ></textarea>
+                    </div>
                   </div>
 
-                  {/* Medications */}
-                  <div style={{ marginBottom: "1rem" }}>
-                    <label style={{ color: "#888", marginBottom: "5px", display: "block" }}>Medications</label>
-                    {prescMedications.map((med, idx) => (
-                      <div key={idx} style={{ display: "flex", gap: "10px", marginBottom: "10px", alignItems: "center" }}>
-                        <select
-                          value={med.name}
-                          onChange={(e) => updateMedication(idx, "name", e.target.value)}
-                          style={{ flex: 2, padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
-                        >
-                          <option value="">Select Medication</option>
-                          {DENTAL_MEDICATIONS.map(m => (
-                            <option key={m.name} value={m.name}>{m.name} ({m.type})</option>
-                          ))}
-                        </select>
+                  {/* RECOMMENDATIONS / MEDICATIONS */}
+                  <div style={{ marginBottom: "1.5rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                      <label style={{ color: "#fff", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}>Recommendations / Medications</label>
+                      <div style={{ position: "relative", width: "250px" }}>
+                        <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#666" }}></i>
                         <input
                           type="text"
-                          placeholder="Dosage (e.g., 1-0-1)"
-                          value={med.dosage}
-                          onChange={(e) => updateMedication(idx, "dosage", e.target.value)}
-                          style={{ flex: 1, padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
+                          placeholder="Search medication..."
+                          value={prescMedSearch || ""}
+                          onChange={(e) => setPrescMedSearch(e.target.value)}
+                          style={{
+                            width: "100%",
+                            padding: "10px 10px 10px 35px",
+                            background: "#333",
+                            border: "1px solid #555",
+                            borderRadius: "5px",
+                            color: "#fff",
+                            fontSize: "0.9rem"
+                          }}
                         />
-                        <input
-                          type="text"
-                          placeholder="Duration (e.g., 5 days)"
-                          value={med.duration}
-                          onChange={(e) => updateMedication(idx, "duration", e.target.value)}
-                          style={{ flex: 1, padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
-                        />
-                        {prescMedications.length > 1 && (
-                          <button
-                            onClick={() => removeMedication(idx)}
-                            style={{ background: "#e74c3c", border: "none", color: "#fff", padding: "10px 15px", borderRadius: "5px", cursor: "pointer" }}
-                          >
-                            <i className="fas fa-times"></i>
-                          </button>
-                        )}
                       </div>
-                    ))}
-                    <button
-                      onClick={addMedication}
-                      style={{ background: "transparent", border: "1px dashed #555", color: "#888", padding: "10px 20px", borderRadius: "5px", cursor: "pointer", marginTop: "5px" }}
-                    >
-                      <i className="fas fa-plus"></i> Add Medication
-                    </button>
-                  </div>
-
-                  {/* Notes */}
-                  <div style={{ marginBottom: "1rem" }}>
-                    <label style={{ color: "#888", marginBottom: "5px", display: "block" }}>Additional Notes</label>
+                    </div>
                     <textarea
-                      placeholder="Any special instructions..."
-                      value={prescNotes}
-                      onChange={(e) => setPrescNotes(e.target.value)}
-                      style={{ width: "100%", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff", minHeight: "80px" }}
+                      placeholder="e.g. Warm salt water rinses, twice daily..."
+                      value={prescRecommendations || ""}
+                      onChange={(e) => setPrescRecommendations(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "15px",
+                        background: "#222",
+                        border: "1px solid #444",
+                        borderRadius: "8px",
+                        color: "#fff",
+                        fontSize: "0.95rem",
+                        minHeight: "120px",
+                        resize: "vertical"
+                      }}
                     ></textarea>
                   </div>
 
+                  {/* UPLOAD PRESCRIPTION BUTTON */}
                   <button
                     onClick={submitPrescription}
                     disabled={prescSubmitting || !prescPatient}
                     style={{
-                      padding: "15px 30px",
-                      background: prescPatient ? "#f0b800" : "#555",
-                      color: prescPatient ? "#000" : "#888",
+                      width: "100%",
+                      padding: "18px",
+                      background: "#f0b800",
+                      color: "#000",
                       border: "none",
-                      borderRadius: "10px",
+                      borderRadius: "0 0 10px 10px",
                       fontWeight: "bold",
+                      fontSize: "1rem",
                       cursor: prescPatient ? "pointer" : "not-allowed",
-                      fontSize: "1rem"
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "10px",
+                      marginTop: "1rem",
+                      marginLeft: "-1.5rem",
+                      marginRight: "-1.5rem",
+                      marginBottom: "-1.5rem",
+                      width: "calc(100% + 3rem)"
                     }}
                   >
-                    {prescSubmitting ? "Creating..." : "Create Prescription"}
+                    <i className="fas fa-upload"></i>
+                    {prescSubmitting ? "UPLOADING..." : "UPLOAD PRESCRIPTION"}
                   </button>
                 </div>
-
-                {/* Recent Prescriptions */}
-                {recentPrescriptions.length > 0 && (
-                  <div style={{ borderTop: "1px solid #333", padding: "1rem", marginTop: "1rem" }}>
-                    <h4 style={{ color: "#f0b800", marginBottom: "1rem" }}>Recent Prescriptions</h4>
-                    <div style={{ maxHeight: "200px", overflowY: "auto" }} className="elegant-scroll">
-                      {recentPrescriptions.slice(0, 5).map(presc => (
-                        <div key={presc.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px", background: "#222", borderRadius: "8px", marginBottom: "10px" }}>
-                          <div>
-                            <b style={{ color: "#fff" }}>{presc.patient_name}</b>
-                            <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(presc.date).toLocaleDateString()}</div>
-                          </div>
-                          <button
-                            onClick={() => downloadPrescription(presc.id, presc.patient_name)}
-                            style={{ background: "#f0b800", border: "none", color: "#000", padding: "5px 15px", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}
-                          >
-                            <i className="fas fa-download"></i> Download
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 

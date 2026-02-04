@@ -69,6 +69,13 @@ def sync_clerk_role(user_payload: dict, role: str):
     except Exception as e:
         print("Failed to update Clerk metadata:", e)
 
+# Known users with correct names (to prevent Clerk/email extraction errors)
+KNOWN_USERS = {
+    "prachi.swarnim@gmail.com": {"first_name": "Prachi", "last_name": "Swarnim"},
+    "choudhary.shruti01@gmail.com": {"first_name": "Shruti", "last_name": "Choudhary"},
+    "prachiswarnim03@gmail.com": {"first_name": "Prachi", "last_name": "Swarnim"},
+}
+
 def fetch_clerk_email(user_payload: dict) -> str:
     """
     Fallback to get email from Clerk API using the user ID (sub) 
@@ -167,12 +174,20 @@ def sync_user_to_db(db: Session, user_payload: dict, email_hint: str = None, fna
             return ""
         return str(val).strip()
 
-    # PRIORITIZE CLERK
-    # 1. Clerk API/JWT
-    # 2. Frontend Hints (fname_hint, lname_hint)
-    # 3. Email Extraction
-    final_fname = sanitize(clerk_fname) or sanitize(fname_hint) or extracted_fname
-    final_lname = sanitize(clerk_lname) or sanitize(lname_hint) or extracted_lname
+    # PRIORITY ORDER:
+    # 1. KNOWN_USERS mapping (highest priority - prevents incorrect Clerk data)
+    # 2. Clerk API/JWT
+    # 3. Frontend Hints (fname_hint, lname_hint)
+    # 4. Email Extraction
+    
+    if email.lower() in KNOWN_USERS:
+        known = KNOWN_USERS[email.lower()]
+        final_fname = known["first_name"]
+        final_lname = known["last_name"]
+        print(f"✅ Using KNOWN_USERS mapping for {email}: {final_fname} {final_lname}")
+    else:
+        final_fname = sanitize(clerk_fname) or sanitize(fname_hint) or extracted_fname
+        final_lname = sanitize(clerk_lname) or sanitize(lname_hint) or extracted_lname
 
     # 3. Create or Update User
     user = db.query(User).filter(User.email.ilike(email)).first()
