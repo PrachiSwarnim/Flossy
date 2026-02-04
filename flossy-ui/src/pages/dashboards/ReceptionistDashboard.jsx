@@ -59,6 +59,10 @@ export default function ReceptionistDashboard() {
     const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
     const [reportView, setReportView] = useState("daily");
 
+    // HISTORY FILTER STATE
+    const [historyNameFilter, setHistoryNameFilter] = useState("");
+    const [historyDateFilter, setHistoryDateFilter] = useState("");
+
 
     async function handleApprove(id) {
         if (!window.confirm("Approve this appointment?")) return;
@@ -731,66 +735,114 @@ export default function ReceptionistDashboard() {
                                 <h3>Appointment History</h3>
                                 <i className="fas fa-history card-icon"></i>
                             </div>
+
+                            {/* HISTORY FILTERS */}
+                            <div style={{ display: "flex", gap: "10px", padding: "1rem", flexWrap: "wrap", borderBottom: "1px solid #333" }}>
+                                <div style={{ flex: 1, minWidth: "200px" }}>
+                                    <label style={{ color: "#888", fontSize: "0.8rem", display: "block", marginBottom: "5px" }}>Search by Name</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Patient name..."
+                                        value={historyNameFilter}
+                                        onChange={(e) => setHistoryNameFilter(e.target.value)}
+                                        style={{ width: "100%", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
+                                    />
+                                </div>
+                                <div style={{ flex: 1, minWidth: "200px" }}>
+                                    <label style={{ color: "#888", fontSize: "0.8rem", display: "block", marginBottom: "5px" }}>Filter by Date</label>
+                                    <input
+                                        type="date"
+                                        value={historyDateFilter}
+                                        onChange={(e) => setHistoryDateFilter(e.target.value)}
+                                        style={{ width: "100%", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff", colorScheme: "dark" }}
+                                    />
+                                </div>
+                                {(historyNameFilter || historyDateFilter) && (
+                                    <button
+                                        onClick={() => { setHistoryNameFilter(""); setHistoryDateFilter(""); }}
+                                        style={{ alignSelf: "flex-end", padding: "10px 15px", background: "#555", border: "none", borderRadius: "5px", color: "#fff", cursor: "pointer" }}
+                                    >
+                                        <i className="fas fa-times"></i> Clear
+                                    </button>
+                                )}
+                            </div>
+
                             <div className="history-list elegant-scroll" style={{ maxHeight: "400px", overflowY: "auto", paddingRight: "5px" }}>
                                 {history.length ? (
-                                    history.map((a) => (
-                                        <div className="appt-item" key={a.id} style={{ opacity: 0.85 }}>
-                                            <b>
-                                                {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
-                                                    hour: "2-digit",
-                                                    minute: "2-digit",
-                                                    hour12: true
-                                                })}
-                                            </b>
-                                            <div className="appt-patient">
-                                                {capitalizeFullName(cleanName(a.patient_name))}
-                                                <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
-                                                    {a.patient_age && `(Age: ${a.patient_age})`} • 📞 {(!a.patient_phone || a.patient_phone.startsWith("TEMP_")) ? "null" : a.patient_phone}
-                                                </span>
-                                            </div>
-                                            <div className="appt-reason">{a.reason}</div>
-                                            <div style={{ color: "#f0b800", fontSize: "0.8rem", marginTop: "4px" }}>
-                                                <i className="fas fa-user-md"></i> {a.doctor_name}
-                                            </div>
-
-                                            {a.status === "completed" && (
-                                                <span style={{ color: "#2ecc71", display: "block", marginTop: "5px" }}>
-                                                    <i className="fas fa-check-circle"></i> Completed
-                                                </span>
-                                            )}
-
-                                            {a.status === "missed" && (
-                                                <span style={{ color: "#e74c3c", display: "block", marginTop: "5px" }}>
-                                                    <i className="fas fa-times-circle"></i> Not Visited
-                                                </span>
-                                            )}
-
-                                            {a.status === "follow_up" && (
-                                                <div style={{ color: "#f0b800", marginTop: "5px" }}>
-                                                    <i className="fas fa-clock"></i> Follow Up Required
-                                                    <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>Note: {a.follow_up_reason}</div>
-                                                    <div className="follow-up-actions" style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
-                                                        {!a.follow_up_status ? (
-                                                            <>
-                                                                <button
-                                                                    onClick={() => updateFollowUpStatus(a.id, "completed")}
-                                                                    style={{ fontSize: "0.75rem", background: "#28a745", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
-                                                                >Mark Done</button>
-                                                                <button
-                                                                    onClick={() => updateFollowUpStatus(a.id, "missed")}
-                                                                    style={{ fontSize: "0.75rem", background: "#dc3545", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
-                                                                >Mark Missed</button>
-                                                            </>
-                                                        ) : (
-                                                            <span style={{ fontSize: "0.75rem", fontWeight: "bold", color: a.follow_up_status === "completed" ? "#28a745" : "#dc3545", textTransform: "capitalize" }}>
-                                                                Follow-up {a.follow_up_status}
-                                                            </span>
-                                                        )}
+                                    history
+                                        .filter(a => {
+                                            const nameMatch = !historyNameFilter || (a.patient_name || "").toLowerCase().includes(historyNameFilter.toLowerCase());
+                                            const dateMatch = !historyDateFilter || new Date(a.time).toISOString().split('T')[0] === historyDateFilter;
+                                            return nameMatch && dateMatch;
+                                        })
+                                        .length > 0 ? (
+                                        history
+                                            .filter(a => {
+                                                const nameMatch = !historyNameFilter || (a.patient_name || "").toLowerCase().includes(historyNameFilter.toLowerCase());
+                                                const dateMatch = !historyDateFilter || new Date(a.time).toISOString().split('T')[0] === historyDateFilter;
+                                                return nameMatch && dateMatch;
+                                            })
+                                            .map((a) => (
+                                                <div className="appt-item" key={a.id} style={{ opacity: 0.85 }}>
+                                                    <b>
+                                                        {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                            hour12: true
+                                                        })}
+                                                    </b>
+                                                    <div className="appt-patient">
+                                                        {capitalizeFullName(cleanName(a.patient_name))}
+                                                        <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
+                                                            {a.patient_age && `(Age: ${a.patient_age})`} • 📞 {(!a.patient_phone || a.patient_phone.startsWith("TEMP_")) ? "null" : a.patient_phone}
+                                                        </span>
                                                     </div>
+                                                    <div className="appt-reason">{a.reason}</div>
+                                                    <div style={{ color: "#f0b800", fontSize: "0.8rem", marginTop: "4px" }}>
+                                                        <i className="fas fa-user-md"></i> {a.doctor_name}
+                                                    </div>
+
+                                                    {a.status === "completed" && (
+                                                        <span style={{ color: "#2ecc71", display: "block", marginTop: "5px" }}>
+                                                            <i className="fas fa-check-circle"></i> Completed
+                                                        </span>
+                                                    )}
+
+                                                    {a.status === "missed" && (
+                                                        <span style={{ color: "#e74c3c", display: "block", marginTop: "5px" }}>
+                                                            <i className="fas fa-times-circle"></i> Not Visited
+                                                        </span>
+                                                    )}
+
+                                                    {a.status === "follow_up" && (
+                                                        <div style={{ color: "#f0b800", marginTop: "5px" }}>
+                                                            <i className="fas fa-clock"></i> Follow Up Required
+                                                            <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>Note: {a.follow_up_reason}</div>
+                                                            <div className="follow-up-actions" style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
+                                                                {!a.follow_up_status ? (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => updateFollowUpStatus(a.id, "completed")}
+                                                                            style={{ fontSize: "0.75rem", background: "#28a745", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
+                                                                        >Mark Done</button>
+                                                                        <button
+                                                                            onClick={() => updateFollowUpStatus(a.id, "missed")}
+                                                                            style={{ fontSize: "0.75rem", background: "#dc3545", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
+                                                                        >Mark Missed</button>
+                                                                    </>
+                                                                ) : (
+                                                                    <span style={{ fontSize: "0.75rem", fontWeight: "bold", color: a.follow_up_status === "completed" ? "#28a745" : "#dc3545", textTransform: "capitalize" }}>
+                                                                        Follow-up {a.follow_up_status}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                        </div>
-                                    ))
+                                            ))
+                                    ) : (
+                                        <p className="empty-state">No matching appointments found.</p>
+                                    )
                                 ) : (
                                     <p className="empty-state">No appointment history yet.</p>
                                 )}
