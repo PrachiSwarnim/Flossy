@@ -11,6 +11,32 @@ body {
   width: 100%;
 }
 
+/* =============== Dentist Dashboard Sidebar Override =============== */
+/* Make sidebar start BELOW the header (80px) */
+.dentist-main~.profile-sidebar,
+.dashboard-shell .profile-sidebar {
+  top: 80px !important;
+  /* Start below header */
+  height: calc(100vh - 80px) !important;
+  padding-top: 2rem !important;
+  z-index: 1000 !important;
+  /* Lower z-index so header stays on top */
+}
+
+.dashboard-shell .sidebar-close-btn {
+  top: 1rem !important;
+}
+
+.dashboard-shell .sidebar-expand-toggle {
+  top: 20px !important;
+}
+
+/* Ensure header stays above sidebar */
+.main-header,
+header {
+  z-index: 10000 !important;
+}
+
 /* ===== PAGE LOAD OVERLAY ===== */
 .page-loader {
   position: fixed;

@@ -250,10 +250,95 @@ export default function DentistDashboard() {
         <Header openAI={() => setAiOpen(true)} />
 
         <main className="dentist-main">
-          <h2>Welcome back, Dr. {fullName}</h2>
+          <h2 id="Message">Welcome back, Dr. {fullName}</h2>
 
-          {/* DASHBOARD CONTENT */}
-          {/* Appointments / Prescriptions / Billing */}
+          <div className="dashboard-layout" style={{ display: "flex", flexDirection: "column", gap: "2rem", paddingBottom: "3rem" }}>
+
+            {/* ROW 1: APPOINTMENTS (SIDE BY SIDE) */}
+            <div className="row-appointments" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "1.5rem" }}>
+
+              {/* TODAY */}
+              <div className="card animate-fade-up" style={{ animationDelay: "0.1s", flex: "1", minWidth: "350px", maxWidth: "500px" }}>
+                <div className="card-header">
+                  <h3>Today's Appointments</h3>
+                  <i className="fas fa-calendar-check card-icon"></i>
+                </div>
+                {today.length ? (
+                  today.map((a) => (
+                    <div className="appt-item" key={a.id}>
+                      <b>
+                        {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true
+                        })}
+                      </b>
+                      <div className="appt-patient">{a.patient}</div>
+                      <div className="appt-reason">{a.reason}</div>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ color: "#888", fontStyle: "italic" }}>No appointments today</p>
+                )}
+              </div>
+
+              {/* UPCOMING */}
+              <div className="card animate-fade-up" style={{ animationDelay: "0.2s", flex: "1", minWidth: "350px", maxWidth: "500px" }}>
+                <div className="card-header">
+                  <h3>Upcoming Appointments</h3>
+                  <i className="fas fa-calendar-alt card-icon"></i>
+                </div>
+                {upcoming.length ? (
+                  upcoming.slice(0, 5).map((a) => (
+                    <div className="appt-item" key={a.id}>
+                      <b>
+                        {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true
+                        })}
+                      </b>
+                      <div className="appt-patient">{a.patient}</div>
+                      <div className="appt-reason">{a.reason}</div>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ color: "#888", fontStyle: "italic" }}>No upcoming appointments</p>
+                )}
+              </div>
+            </div>
+
+            {/* ROW 2: HISTORY */}
+            <div className="row-history" style={{ display: "flex", justifyContent: "center" }}>
+              <div className="card animate-fade-up" style={{ animationDelay: "0.3s", width: "100%", maxWidth: "1020px" }}>
+                <div className="card-header">
+                  <h3>Appointment History</h3>
+                  <i className="fas fa-history card-icon"></i>
+                </div>
+                {history.length ? (
+                  <div style={{ maxHeight: "300px", overflowY: "auto" }} className="elegant-scroll">
+                    {history.slice(0, 10).map((a) => (
+                      <div className="appt-item" key={a.id} style={{ opacity: 0.8 }}>
+                        <b>
+                          {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true
+                          })}
+                        </b>
+                        <div className="appt-patient">{a.patient}</div>
+                        <div className="appt-reason">{a.reason}</div>
+                        {a.completed && <span className="completed-tag">Completed</span>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: "#888", fontStyle: "italic" }}>No past appointments</p>
+                )}
+              </div>
+            </div>
+
+          </div>
         </main>
 
         <Footer />
