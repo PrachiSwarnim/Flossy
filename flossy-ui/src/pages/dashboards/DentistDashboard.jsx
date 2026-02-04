@@ -124,8 +124,9 @@ export default function DentistDashboard() {
       });
     }
 
-    // Set page title
-    document.title = `Dr. ${user.firstName || 'Dentist'} | Dentist Dashboard - Smile Artists`;
+    // Set page title with full name
+    const fullNameTitle = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Dentist';
+    document.title = `Dr. ${fullNameTitle} | Dentist Dashboard - Smile Artists`;
   }, [isLoaded, user, navigate]);
 
   /* ==============================
@@ -151,14 +152,16 @@ export default function DentistDashboard() {
 
   async function fetchPatients() {
     const token = await session.getToken({ template: "default" });
-    const res = await fetch(`${API}/api/patients/?role=patient`, {
+    const res = await fetch(`${API}/api/patients/`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (res.ok) {
       const data = await res.json();
-      // Filter only patients (not doctors/receptionists)
-      const onlyPatients = data.filter(p => p.role === 'patient' || !p.role);
-      setPatientsList(onlyPatients);
+      console.log("📊 Patients fetched:", data.length, data);
+      // Backend already filters out staff members, just use the data
+      setPatientsList(data);
+    } else {
+      console.error("❌ Failed to fetch patients:", res.status);
     }
   }
 

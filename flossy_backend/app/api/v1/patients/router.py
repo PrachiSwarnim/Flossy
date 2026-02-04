@@ -112,6 +112,7 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
             "phone": phone_display,
             "age": p.age,
             "email": p.user.email if p.user else None,
+            "role": p.user.role if p.user else "patient",  # Include role from linked user
             "source": p.source or "website",
             "sex": p.sex,
             "risk_profile": {
