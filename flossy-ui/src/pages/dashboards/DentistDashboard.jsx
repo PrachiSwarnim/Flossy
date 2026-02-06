@@ -28,19 +28,43 @@ const API = import.meta.env.VITE_API_BASE_URL?.replace(
 ================================ */
 
 const DENTAL_MEDICATIONS = [
+  // Antibiotics
   { name: "Amoxicillin 500mg", type: "Antibiotic" },
   { name: "Augmentin 625mg", type: "Antibiotic" },
   { name: "Metronidazole 400mg", type: "Antibiotic" },
   { name: "Clindamycin 300mg", type: "Antibiotic" },
   { name: "Azithromycin 500mg", type: "Antibiotic" },
+  { name: "Doxycycline 100mg", type: "Antibiotic" },
 
+  // Pain Relief / NSAIDs
   { name: "Ibuprofen 400mg", type: "Pain Relief" },
+  { name: "Ibuprofen 600mg", type: "Pain Relief" },
   { name: "Paracetamol 650mg", type: "Pain Relief" },
+  { name: "Paracetamol 500mg", type: "Pain Relief" },
+  { name: "Ketorol DT 10mg", type: "Pain Relief" },
+  { name: "Ketorol 10mg", type: "Pain Relief" },
+  { name: "Ketorolac 10mg", type: "Pain Relief" },
+  { name: "Diclofenac 50mg", type: "Pain Relief" },
+  { name: "Zerodol SP", type: "Pain Relief" },
+  { name: "Combiflam", type: "Pain Relief" },
+  { name: "Brufen 400mg", type: "Pain Relief" },
+  { name: "Nimesulide 100mg", type: "Pain Relief" },
 
+  // Antacids
   { name: "Pantoprazole 40mg", type: "Antacid" },
+  { name: "Omeprazole 20mg", type: "Antacid" },
+  { name: "Ranitidine 150mg", type: "Antacid" },
 
+  // Topical & Mouthwash
   { name: "Chlorhexidine Mouthwash", type: "Mouthwash" },
-  { name: "Hexigel", type: "Topical" }
+  { name: "Hexigel", type: "Topical" },
+  { name: "Betadine Gargle", type: "Mouthwash" },
+  { name: "Dentogel", type: "Topical" },
+  { name: "Orajel", type: "Topical" },
+
+  // Steroids
+  { name: "Dexamethasone 0.5mg", type: "Steroid" },
+  { name: "Prednisolone 5mg", type: "Steroid" }
 ];
 
 /* ==============================
@@ -827,7 +851,7 @@ export default function DentistDashboard() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                       <label style={{ color: "#fff", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}>Recommendations / Medications</label>
                       <div style={{ position: "relative", width: "250px" }}>
-                        <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#666" }}></i>
+                        <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#666", zIndex: 1 }}></i>
                         <input
                           type="text"
                           placeholder="Search medication..."
@@ -843,6 +867,63 @@ export default function DentistDashboard() {
                             fontSize: "0.9rem"
                           }}
                         />
+                        {/* Medication Suggestions Dropdown */}
+                        {prescMedSearch && prescMedSearch.length > 0 && (
+                          <div style={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 0,
+                            right: 0,
+                            background: "#2a2a2a",
+                            border: "1px solid #555",
+                            borderTop: "none",
+                            borderRadius: "0 0 5px 5px",
+                            maxHeight: "200px",
+                            overflowY: "auto",
+                            zIndex: 100,
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
+                          }}>
+                            {DENTAL_MEDICATIONS
+                              .filter(med => med.name.toLowerCase().includes(prescMedSearch.toLowerCase()))
+                              .map((med, idx) => (
+                                <div
+                                  key={idx}
+                                  onClick={() => {
+                                    // Add medication to recommendations
+                                    setPrescRecommendations(prev =>
+                                      prev ? `${prev}\n• ${med.name}` : `• ${med.name}`
+                                    );
+                                    setPrescMedSearch("");
+                                  }}
+                                  style={{
+                                    padding: "10px 15px",
+                                    cursor: "pointer",
+                                    borderBottom: "1px solid #444",
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center"
+                                  }}
+                                  onMouseOver={(e) => e.currentTarget.style.background = "#3a3a3a"}
+                                  onMouseOut={(e) => e.currentTarget.style.background = "transparent"}
+                                >
+                                  <span style={{ color: "#fff" }}>{med.name}</span>
+                                  <span style={{
+                                    color: "#f0b800",
+                                    fontSize: "0.75rem",
+                                    background: "#333",
+                                    padding: "2px 8px",
+                                    borderRadius: "10px"
+                                  }}>{med.type}</span>
+                                </div>
+                              ))
+                            }
+                            {DENTAL_MEDICATIONS.filter(med => med.name.toLowerCase().includes(prescMedSearch.toLowerCase())).length === 0 && (
+                              <div style={{ padding: "10px 15px", color: "#888", fontSize: "0.85rem" }}>
+                                No matching medications. You can still type in the recommendations.
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <textarea
