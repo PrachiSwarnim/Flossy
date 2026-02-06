@@ -148,6 +148,28 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
     results.sort(key=lambda x: x["name"])
     return results
 
+@router.get("/debug")
+def debug_patients(db: Session = Depends(get_db), user = Depends(require_role(["dentist", "admin"]))):
+    """
+    Debug endpoint to see raw patient and user data.
+    """
+    from app.models import User
+    
+    # Get all users
+    users = db.query(User).all()
+    users_data = [{"id": u.id, "email": u.email, "role": u.role, "first_name": u.first_name, "last_name": u.last_name} for u in users]
+    
+    # Get all patients (NO FILTERING)
+    patients = db.query(Patient).all()
+    patients_data = [{"id": p.id, "name": p.name, "phone": p.phone, "user_id": p.user_id, "is_archived": p.is_archived} for p in patients]
+    
+    return {
+        "users_count": len(users_data),
+        "users": users_data,
+        "patients_count": len(patients_data),
+        "patients": patients_data
+    }
+
 @router.patch("/{id}")
 def update_patient(id: int, data: PatientUpdate, db: Session = Depends(get_db), user = Depends(require_role("receptionist"))):
     patient = db.query(Patient).filter(Patient.id == id).first()
