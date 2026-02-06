@@ -60,8 +60,13 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
     all_patients = db.query(Patient).all()
     print(f"📊 Total patients in DB (all): {len(all_patients)}")
     
-    # Filter out archived patients (handle NULL, 0, False as "not archived")
-    patients = [p for p in all_patients if not p.is_archived or p.is_archived == 0]
+    # Debug: show is_archived values for all patients
+    for p in all_patients:
+        print(f"   - RAW Patient {p.id}: name={p.name}, is_archived={p.is_archived} (type: {type(p.is_archived).__name__})")
+    
+    # Filter out archived patients - ONLY exclude if is_archived is explicitly True or 1
+    # Include if: None, False, 0, or any other falsy value
+    patients = [p for p in all_patients if p.is_archived not in [True, 1]]
     print(f"📊 After removing archived: {len(patients)}")
     
     # Debug: Show all patients before filtering
