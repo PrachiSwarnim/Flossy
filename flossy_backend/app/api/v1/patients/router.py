@@ -56,9 +56,13 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
             print(f"   ✅ Patient record exists for user {pu.id}: patient_id={existing.id}")
     db.commit()
     
-    # Query all non-archived patients
-    patients = db.query(Patient).filter(or_(Patient.is_archived == 0, Patient.is_archived == None)).all()
-    print(f"📊 Total patients in DB (non-archived): {len(patients)}")
+    # Query ALL patients first, then filter in Python (PostgreSQL might have issues with NULL comparison)
+    all_patients = db.query(Patient).all()
+    print(f"📊 Total patients in DB (all): {len(all_patients)}")
+    
+    # Filter out archived patients (handle NULL, 0, False as "not archived")
+    patients = [p for p in all_patients if not p.is_archived or p.is_archived == 0]
+    print(f"📊 After removing archived: {len(patients)}")
     
     # Debug: Show all patients before filtering
     for p in patients:
@@ -95,10 +99,15 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
         else:
             display_name = clean_name(p.name).title() if p.name else "Unknown Patient"
         
-        # Hide TEMP_ placeholder phone numbers
+        # Hide placeholder and invalid phone numbers - show null in dashboard
         phone_display = p.phone
-        if phone_display and phone_display.startswith("TEMP_"):
-            phone_display = None  # Hide placeholder
+        if phone_display:
+            # Check for various placeholder patterns
+            if (phone_display.startswith("TEMP_") or 
+                phone_display in ["0000000000", "0", "00000", "1234567890", "N/A", "NA", "null", "None"] or
+                len(phone_display) < 7 or  # Too short to be real
+                not any(c.isdigit() for c in phone_display)):  # No digits at all
+                phone_display = None  # Show as null/empty in dashboard
         
         # Fetch latest triage
         latest_triage = db.query(TriageResult).filter(TriageResult.patient_id == p.id).order_by(desc(TriageResult.created_at)).first()

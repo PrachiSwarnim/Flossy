@@ -137,6 +137,62 @@ async def doctor_ai(request: Request):
         "groundedness": groundedness
     }
 
+@router.post("/chat")
+async def ai_chat(request: Request, user=Depends(require_role(["dentist", "receptionist", "patient"]))):
+    """
+    General chat endpoint for FlossyAI panel in dashboards.
+    Works for all authenticated users.
+    """
+    payload = await request.json()
+    message = payload.get("message", "").strip()
+    context = payload.get("context", "general")  # "dentist_dashboard", "patient_dashboard", etc.
+    
+    if not message:
+        return {"response": "I didn't receive any message. How can I help you?"}
+    
+    # Get user info
+    user_name = user.first_name or user.email.split("@")[0].title() if user else "there"
+    user_role = user.role if user else "user"
+    
+    # Context-aware system prompts
+    if context == "dentist_dashboard" or user_role == "dentist":
+        system_context = f"""You are FlossyAI, an intelligent dental practice assistant for Dr. {user_name} at Smile Artists Dental Studio.
+        You help with:
+        - Summarizing patient histories and appointments
+        - Generating prescription templates
+        - Providing clinical suggestions
+        - Answering dental practice management questions
+        - Patient follow-up reminders
+        Keep responses concise (max 3 sentences) and professional."""
+    elif user_role == "receptionist":
+        system_context = f"""You are FlossyAI, a helpful assistant for {user_name} at Smile Artists Dental Studio reception.
+        You help with:
+        - Appointment scheduling and management
+        - Patient record lookups
+        - Answering clinic information questions
+        Keep responses concise (max 3 sentences) and friendly."""
+    else:
+        system_context = f"""You are FlossyAI, a friendly dental health assistant for {user_name} at Smile Artists Dental Studio.
+        You help with:
+        - Answering dental health questions
+        - Explaining procedures
+        - Appointment guidance
+        Keep responses concise (max 3 sentences) and empathetic."""
+    
+    prompt = f"{system_context}\n\nUser: {message}\n\nFlossyAI:"
+    
+    try:
+        response = ai_generate(prompt, temperature=0.7)
+        response = response.strip()
+    except Exception as e:
+        print(f"❌ AI Chat Error: {e}")
+        response = f"I'm having trouble connecting right now, {user_name}. Please try again in a moment."
+    
+    return {
+        "response": response,
+        "context": context
+    }
+
 @router.post("/ai_response")
 async def ai_response(request: Request, user=Depends(require_role("patient"))):
     payload = await request.json()
