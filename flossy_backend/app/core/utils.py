@@ -62,10 +62,11 @@ def ai_generate(prompt, temperature=0.7, model="gemini-2.0-flash", client_overri
     full_model = model if model.startswith("models/") else f"models/{model}"
 
     try:
+        # Use simpler config dict to avoid SDK version issues with GenerationConfig
         res = c.models.generate_content(
             model=full_model,
             contents=prompt,
-            config=GenerationConfig(temperature=temperature)
+            config={"temperature": temperature, "max_output_tokens": 1024}
         )
         if not res or not hasattr(res, 'text'):
             print(f"❌ Gemini Error: Invalid response structure: {res}")
