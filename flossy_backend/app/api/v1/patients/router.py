@@ -24,12 +24,22 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
     
     
     print(f"🔍 Fetching patients for user: {user.email}")
+    
+    # Debug: Check all users first
+    all_users = db.query(User).all()
+    print(f"📋 Total users in DB: {len(all_users)}")
+    for u in all_users:
+        print(f"   - User {u.id}: {u.email}, role={u.role}")
+    
     # First, ensure all users with role='patient' have a Patient record
     patient_users = db.query(User).filter(User.role == "patient").all()
+    print(f"👥 Users with role='patient': {len(patient_users)}")
+    
     for pu in patient_users:
         existing = db.query(Patient).filter(Patient.user_id == pu.id).first()
         if not existing:
             # Auto-create patient record for this user
+            print(f"   ➕ Creating patient record for user {pu.id}: {pu.email}")
             fname, lname = extract_names_from_email(pu.email)
             extracted_name = f"{fname} {lname}".strip()
             unique_placeholder = f"TEMP_{pu.id}_{int(time.time()) % 100000}"
@@ -42,11 +52,17 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
                 source="website"
             )
             db.add(new_patient)
+        else:
+            print(f"   ✅ Patient record exists for user {pu.id}: patient_id={existing.id}")
     db.commit()
     
     # Query all non-archived patients
     patients = db.query(Patient).filter(or_(Patient.is_archived == 0, Patient.is_archived == None)).all()
-    print(f"📊 Total patients in DB: {len(patients)}")
+    print(f"📊 Total patients in DB (non-archived): {len(patients)}")
+    
+    # Debug: Show all patients before filtering
+    for p in patients:
+        print(f"   - Patient {p.id}: name={p.name}, phone={p.phone}, user_id={p.user_id}, is_archived={p.is_archived}")
     
     results = []
     skipped_staff = 0

@@ -12,6 +12,7 @@ import { TIME_SLOTS, formatTime12h } from "../../utils/timeSlots";
 import "../../styles/dentist_dashboard.css";
 import "../../styles/dashboard_extras.css";
 import "../../styles/patient_dashboard.css";
+import "../../styles/ai_features.css";
 
 /* ==============================
    CONFIG
@@ -65,7 +66,7 @@ export default function DentistDashboard() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [profileVisible, setProfileVisible] = useState(true);
+  const [profileVisible, setProfileVisible] = useState(false);
 
   // ===== INVOICES & BILLING STATE =====
   const [invoices, setInvoices] = useState([]);
@@ -351,6 +352,38 @@ export default function DentistDashboard() {
   const filteredPatients = patientsList.filter(p =>
     p.name?.toLowerCase().includes(prescPatientSearch.toLowerCase())
   );
+
+  /* ==============================
+     AI CHAT HANDLER
+  ================================ */
+
+  async function sendAiMessage(customMsg = null) {
+    const msg = customMsg || input.trim();
+    if (!msg) return;
+
+    setMessages(prev => [...prev, { from: "user", text: msg }]);
+    setInput("");
+    setTyping(true);
+
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/ai/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ message: msg, context: "dentist_dashboard" })
+      });
+      const data = await res.json();
+      setMessages(prev => [...prev, { from: "ai", text: data.response || data.message || "I'm here to help!" }]);
+    } catch (err) {
+      console.error("AI Error:", err);
+      setMessages(prev => [...prev, { from: "ai", text: "Sorry, I couldn't process that. Please try again." }]);
+    } finally {
+      setTyping(false);
+    }
+  }
 
   /* ==============================
      LOADING STATE
@@ -988,6 +1021,48 @@ export default function DentistDashboard() {
 
           </div>
         </main>
+
+        {/* AI SIDE PANEL */}
+        <aside className={`ai-panel ${aiOpen ? "open" : ""}`}>
+          <div className="ai-header">
+            <span>FlossyAI Assistant</span>
+            <button className="close" onClick={() => setAiOpen(false)}>×</button>
+          </div>
+
+          <div className="ai-content">
+            {messages.length === 0 && (
+              <div className="ai-welcome">
+                <p>
+                  Hi <b>Dr. {user.firstName}</b>! How can FlossyAI assist you today?
+                </p>
+                <div className="ai-chips">
+                  <button onClick={() => sendAiMessage("Summarize today's appointments")}>📅 Today's Schedule</button>
+                  <button onClick={() => sendAiMessage("Patient follow-up reminders")}>🔔 Follow-ups</button>
+                  <button onClick={() => sendAiMessage("Generate a prescription template")}>💊 Prescription</button>
+                  <button onClick={() => sendAiMessage("Analyze patient risk profiles")}>📊 Risk Analysis</button>
+                </div>
+              </div>
+            )}
+
+            {messages.map((m, i) => (
+              <div key={i} className={m.from === "ai" ? "msg-ai" : "msg-user"}>
+                <b>{m.from === "ai" ? "FlossyAI" : "You"}:</b> {m.text}
+              </div>
+            ))}
+            {typing && <div className="typing">FlossyAI is typing<span className="dot-one">.</span><span className="dot-two">.</span><span className="dot-three">.</span></div>}
+          </div>
+
+          <div className="ai-input-area">
+            <input
+              type="text"
+              placeholder="Ask something..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendAiMessage()}
+            />
+            <button onClick={() => sendAiMessage()}>Send</button>
+          </div>
+        </aside>
 
         <Footer />
       </div>
