@@ -42,11 +42,12 @@ def get_automatic_role(email: str) -> str:
         return "dentist"
     
     # Receptionist emails
-    if email in [
-        "anyhting.handmade1@gmail.com", 
+    if email in [ 
         "anything.handmade1@gmail.com",
-        
-        "smileartists.reception@gmail.com" # Added fallback
+        "prachi.swarnim07@gmail.com",
+        "purviraj236@gmail.com",
+        "aartikumari0975@gmail.com",
+        "shruti@smileartists.in"
     ]:
         return "receptionist"
     
