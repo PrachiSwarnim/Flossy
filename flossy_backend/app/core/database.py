@@ -21,6 +21,7 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
 # Track which DB is actually being used
 ACTIVE_DB_TYPE = "unknown"
 ACTIVE_DB_URL_MASKED = "unknown"
+LAST_DB_ERRORS = []
 
 def create_resilient_engine(url):
     global ACTIVE_DB_TYPE, ACTIVE_DB_URL_MASKED
@@ -69,6 +70,7 @@ def create_resilient_engine(url):
             return temp_engine
         except Exception as e:
             last_error = e
+            LAST_DB_ERRORS.append(f"Attempt {i+1}: {str(e)}")
             print(f"❌ DB Connection attempt {i+1} failed: {e}")
     
     # ALL STRATEGIES FAILED — DO NOT silently fall back to SQLite!

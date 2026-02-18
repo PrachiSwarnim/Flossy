@@ -61,24 +61,24 @@ def health_check():
 @app.get("/health/db")
 def health_db():
     """Diagnostic endpoint to check which database is being used."""
-    from app.core.database import ACTIVE_DB_TYPE, ACTIVE_DB_URL_MASKED, get_engine
-    from sqlalchemy import text
+    from app.core.database import ACTIVE_DB_TYPE, ACTIVE_DB_URL_MASKED, LAST_DB_ERRORS, get_engine, DATABASE_URL
+    from sqlalchemy import text, create_engine as sa_create_engine
     
     db_info = {
         "db_type": ACTIVE_DB_TYPE,
         "db_url": ACTIVE_DB_URL_MASKED,
         "database_url_env_set": bool(os.getenv("DATABASE_URL")),
-        "database_url_prefix": (os.getenv("DATABASE_URL") or "NOT_SET")[:30] + "...",
+        "database_url_prefix": (os.getenv("DATABASE_URL") or "NOT_SET")[:40] + "...",
+        "connection_errors": LAST_DB_ERRORS,
     }
     
-    # Test actual connection
+    # Test current active connection
     try:
         engine = get_engine()
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1"))
             db_info["connection_test"] = "OK"
             
-            # Check if tables exist and have data
             try:
                 patients = conn.execute(text("SELECT count(*) FROM patients")).fetchone()
                 appointments = conn.execute(text("SELECT count(*) FROM appointments")).fetchone()
@@ -92,6 +92,27 @@ def health_db():
                 db_info["table_error"] = str(e)
     except Exception as e:
         db_info["connection_test"] = f"FAILED: {str(e)}"
+    
+    # Try live Postgres connection (separate from active engine)
+    pg_url = os.getenv("DATABASE_URL", "")
+    if pg_url and "sqlite" not in pg_url:
+        if pg_url.startswith("postgres://"):
+            pg_url = pg_url.replace("postgres://", "postgresql://")
+        try:
+            test_engine = sa_create_engine(pg_url, connect_args={"connect_timeout": 10, "sslmode": "require"})
+            with test_engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+                # Count rows in Supabase
+                pg_patients = conn.execute(text("SELECT count(*) FROM patients")).fetchone()
+                pg_appts = conn.execute(text("SELECT count(*) FROM appointments")).fetchone()
+                db_info["live_postgres_test"] = "SUCCESS"
+                db_info["postgres_counts"] = {
+                    "patients": pg_patients[0] if pg_patients else 0,
+                    "appointments": pg_appts[0] if pg_appts else 0,
+                }
+            test_engine.dispose()
+        except Exception as e:
+            db_info["live_postgres_test"] = f"FAILED: {str(e)}"
     
     return db_info
 
