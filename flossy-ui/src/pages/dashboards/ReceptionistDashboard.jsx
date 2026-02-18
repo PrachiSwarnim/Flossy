@@ -19,7 +19,7 @@ export default function ReceptionistDashboard() {
     const [patientName, setPatientName] = useState("");
     const [patientPhone, setPatientPhone] = useState("");
     const [patientAge, setPatientAge] = useState("");
-    const [patientSex, setPatientSex] = useState("M");
+    const [patientSex, setPatientSex] = useState("");
     const [visitDate, setVisitDate] = useState("");
     const [visitTime, setVisitTime] = useState("");
     const [visitReason, setVisitReason] = useState("");
@@ -470,7 +470,7 @@ export default function ReceptionistDashboard() {
         setEditName(patient.name);
         setEditPhone(patient.phone);
         setEditAge(patient.age || "");
-        setEditSex(patient.sex || "M");
+        setEditSex(patient.sex || "");
         setIsEditModalOpen(true);
     }
 
@@ -942,6 +942,7 @@ export default function ReceptionistDashboard() {
                                             onChange={e => setPatientSex(e.target.value)}
                                             style={{ width: "100%", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff" }}
                                         >
+                                            <option value="" disabled>Choose</option>
                                             <option value="M">Male</option>
                                             <option value="F">Female</option>
                                             <option value="Other">Other</option>
@@ -1401,6 +1402,7 @@ export default function ReceptionistDashboard() {
                                     value={editSex} onChange={e => setEditSex(e.target.value)}
                                     style={{ width: "100%", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
                                 >
+                                    <option value="" disabled>Choose</option>
                                     <option value="M">Male</option>
                                     <option value="F">Female</option>
                                     <option value="Other">Other</option>
