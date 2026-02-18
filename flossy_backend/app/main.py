@@ -54,7 +54,7 @@ def health_check():
     return {
         "status": "healthy", 
         "service": "flossy-backend", 
-        "version": "2.1.0",
+        "version": "2.2.0",
         "deployment": os.getenv("K_REVISION", "local")
     }
 
