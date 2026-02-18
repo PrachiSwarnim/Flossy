@@ -180,7 +180,7 @@ export default function ReceptionistDashboard() {
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 body: JSON.stringify({
                     name: currentAppt.patient_name,
-                    phone: currentAppt.patient_phone || "0000000000",
+                    phone: currentAppt.patient_phone || "N/A",
                     age: parseInt(currentAppt.patient_age) || 0,
                     datetime: isoDateTime,
                     reason: "Follow-up: " + followUpReason,
