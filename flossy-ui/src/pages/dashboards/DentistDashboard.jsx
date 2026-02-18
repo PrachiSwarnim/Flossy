@@ -535,7 +535,7 @@ export default function DentistDashboard() {
                           hour12: true
                         })}
                       </b>
-                      <div className="appt-patient">{a.patient}</div>
+                      <div className="appt-patient">{a.patient_name || a.patient}</div>
                       <div className="appt-reason">{a.reason}</div>
                     </div>
                   ))
@@ -560,7 +560,7 @@ export default function DentistDashboard() {
                           hour12: true
                         })}
                       </b>
-                      <div className="appt-patient">{a.patient}</div>
+                      <div className="appt-patient">{a.patient_name || a.patient}</div>
                       <div className="appt-reason">{a.reason}</div>
                     </div>
                   ))

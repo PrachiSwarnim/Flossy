@@ -86,10 +86,13 @@ def get_all_patients(db: Session = Depends(get_db), user = Depends(require_role(
             skipped_test += 1
             continue
         
-        # Skip patients who are actually staff members (dentists, receptionists, admins)
+        # Skip patients who are actually staff members WITH no appointments
+        # (Keep staff who also have patient appointments — e.g. dentist visiting as patient)
         if p.user and p.user.role in ["dentist", "receptionist", "admin"]:
-            skipped_staff += 1
-            continue
+            has_appointments = db.query(Appointment).filter(Appointment.patient_id == p.id).count() > 0
+            if not has_appointments:
+                skipped_staff += 1
+                continue
             
         # NOTE: Previously we filtered staff users here, but this was too aggressive
             

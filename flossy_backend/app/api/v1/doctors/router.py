@@ -8,6 +8,12 @@ from app.models import User
 
 router = APIRouter()
 
+# Guaranteed doctors that must always appear in the dropdown
+GUARANTEED_DOCTORS = [
+    "Dr. Shagufta Jawaid",
+    "Dr. Shruti Choudhary",
+]
+
 @router.get("/")
 def get_doctors(db: Session = Depends(get_db)):
     # 1. Get all users with role 'dentist' OR specific admin email (case-insensitive)
@@ -18,7 +24,7 @@ def get_doctors(db: Session = Depends(get_db)):
         )
     ).all()
     
-    doctor_names = []
+    doctor_names = set(GUARANTEED_DOCTORS)  # Start with guaranteed doctors
     from app.core.auth_utils import extract_names_from_email
     
     for d in dentists:
@@ -32,8 +38,8 @@ def get_doctors(db: Session = Depends(get_db)):
         
         # Add Prefix
         if not proper.lower().startswith("dr.") and not proper.lower().startswith("dr "):
-             doctor_names.append(f"Dr. {proper}")
+             doctor_names.add(f"Dr. {proper}")
         else:
-             doctor_names.append(proper)
+             doctor_names.add(proper)
         
-    return {"doctors": sorted(list(set(doctor_names)))} # Unique & Sorted
+    return {"doctors": sorted(list(doctor_names))}

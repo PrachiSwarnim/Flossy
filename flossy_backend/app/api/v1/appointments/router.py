@@ -198,9 +198,13 @@ def dentist_upcoming(
     today_appts, upcoming_appts, history_appts = [], [], []
 
     for a in all_candidates:
-        if a.datetime < today_start:
+        # Ensure timezone-aware for comparison (handle legacy naive datetimes)
+        a_dt = a.datetime
+        if a_dt.tzinfo is None:
+            a_dt = a_dt.replace(tzinfo=timezone.utc)
+        if a_dt < today_start:
             history_appts.append(a)
-        elif today_start <= a.datetime < today_end:
+        elif today_start <= a_dt < today_end:
             today_appts.append(a)
         else:
             upcoming_appts.append(a)
@@ -240,6 +244,7 @@ def dentist_upcoming(
             "patient_age": a.patient.age if a.patient else None,
             "reason": a.reason,
             "status": a.status,
+            "doctor_name": a.doctor_name or "Not Assigned",
             "follow_up_reason": a.follow_up_reason,
             "follow_up_status": a.follow_up_status,
             "no_show_risk": no_show_risk,
@@ -277,13 +282,17 @@ def receptionist_upcoming(
     today_appts, upcoming_appts, history_appts = [], [], []
 
     for a in all_candidates:
-        is_today_strict = today_start <= a.datetime < today_end
-        is_past_pending = a.datetime < today_start and a.status == "scheduled"
-        is_past_completed = a.datetime < today_start and a.status != "scheduled"
+        # Ensure timezone-aware for comparison (handle legacy naive datetimes)
+        a_dt = a.datetime
+        if a_dt.tzinfo is None:
+            a_dt = a_dt.replace(tzinfo=timezone.utc)
+        is_today_strict = today_start <= a_dt < today_end
+        is_past_pending = a_dt < today_start and a.status == "scheduled"
+        is_past_completed = a_dt < today_start and a.status != "scheduled"
 
         if is_today_strict or is_past_pending:
             today_appts.append(a)
-        elif a.datetime >= today_end:
+        elif a_dt >= today_end:
             upcoming_appts.append(a)
         elif is_past_completed:
             history_appts.append(a)
