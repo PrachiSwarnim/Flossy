@@ -58,6 +58,43 @@ def health_check():
         "deployment": os.getenv("K_REVISION", "local")
     }
 
+@app.get("/health/db")
+def health_db():
+    """Diagnostic endpoint to check which database is being used."""
+    from app.core.database import ACTIVE_DB_TYPE, ACTIVE_DB_URL_MASKED, get_engine
+    from sqlalchemy import text
+    
+    db_info = {
+        "db_type": ACTIVE_DB_TYPE,
+        "db_url": ACTIVE_DB_URL_MASKED,
+        "database_url_env_set": bool(os.getenv("DATABASE_URL")),
+        "database_url_prefix": (os.getenv("DATABASE_URL") or "NOT_SET")[:30] + "...",
+    }
+    
+    # Test actual connection
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1"))
+            db_info["connection_test"] = "OK"
+            
+            # Check if tables exist and have data
+            try:
+                patients = conn.execute(text("SELECT count(*) FROM patients")).fetchone()
+                appointments = conn.execute(text("SELECT count(*) FROM appointments")).fetchone()
+                users = conn.execute(text("SELECT count(*) FROM users")).fetchone()
+                db_info["table_counts"] = {
+                    "patients": patients[0] if patients else 0,
+                    "appointments": appointments[0] if appointments else 0,
+                    "users": users[0] if users else 0,
+                }
+            except Exception as e:
+                db_info["table_error"] = str(e)
+    except Exception as e:
+        db_info["connection_test"] = f"FAILED: {str(e)}"
+    
+    return db_info
+
 @app.on_event("startup")
 async def startup():
     logger.info("🚀 FLOSSY BACKEND STARTUP EVENT")

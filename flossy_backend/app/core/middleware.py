@@ -8,6 +8,7 @@ from .config import ALLOWED_ORIGINS
 # Paths that do not require authentication
 EXEMPT_PATHS = {
     "/health",
+    "/health/db",
     "/api/public",
     "/api/docs",
     "/api/openapi.json",

@@ -18,23 +18,69 @@ if not DATABASE_URL:
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://")
 
+# Track which DB is actually being used
+ACTIVE_DB_TYPE = "unknown"
+ACTIVE_DB_URL_MASKED = "unknown"
+
 def create_resilient_engine(url):
-    try:
-        # Test connection for Postgres/MySQL to avoid startup crash
-        if "sqlite" not in url:
-            temp_engine = create_engine(url, connect_args={"connect_timeout": 5})
+    global ACTIVE_DB_TYPE, ACTIVE_DB_URL_MASKED
+    
+    if "sqlite" in url:
+        ACTIVE_DB_TYPE = "sqlite"
+        ACTIVE_DB_URL_MASKED = url
+        print(f"📦 Using SQLite database: {url}")
+        return create_engine(url, connect_args={"check_same_thread": False})
+    
+    # For Postgres (Supabase) — try multiple connection strategies
+    strategies = [
+        # Strategy 1: Direct connection with SSL
+        {"connect_timeout": 10, "sslmode": "require"},
+        # Strategy 2: Direct connection without SSL requirement
+        {"connect_timeout": 10},
+        # Strategy 3: Longer timeout
+        {"connect_timeout": 30},
+    ]
+    
+    last_error = None
+    for i, connect_args in enumerate(strategies):
+        try:
+            print(f"🔌 DB Connection attempt {i+1} with args: {connect_args}")
+            temp_engine = create_engine(
+                url, 
+                connect_args=connect_args,
+                pool_pre_ping=True,
+                pool_recycle=300,
+                pool_size=5,
+                max_overflow=10
+            )
             with temp_engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
+            
+            # Mask the URL for logging (hide password)
+            masked = url
+            if '@' in url:
+                prefix = url.split('://')[0] + '://***:***@'
+                suffix = url.split('@')[1]
+                masked = prefix + suffix
+            
+            ACTIVE_DB_TYPE = "postgresql"
+            ACTIVE_DB_URL_MASKED = masked
+            print(f"✅ Connected to PostgreSQL: {masked}")
             return temp_engine
-    except Exception as e:
-        print(f"⚠️ Warning: Could not connect to database.")
-        print(f"Error: {e}")
-        print("💡 Falling back to SQLite for stability.")
-        return create_engine("sqlite:///./sql_app.db", connect_args={"check_same_thread": False})
+        except Exception as e:
+            last_error = e
+            print(f"❌ DB Connection attempt {i+1} failed: {e}")
     
-    # If already sqlite or fallback
-    connect_args = {"check_same_thread": False} if "sqlite" in url else {}
-    return create_engine(url, connect_args=connect_args, pool_pre_ping=True)
+    # ALL STRATEGIES FAILED — DO NOT silently fall back to SQLite!
+    # This was causing data loss because SQLite in Cloud Run is ephemeral.
+    print(f"🚨🚨🚨 CRITICAL: ALL PostgreSQL connection attempts FAILED!")
+    print(f"🚨 Last error: {last_error}")
+    print(f"🚨 DATABASE_URL starts with: {url[:30]}...")
+    print(f"⚠️ Falling back to SQLite — DATA WILL BE LOST ON RESTART!")
+    
+    ACTIVE_DB_TYPE = "sqlite_fallback"
+    ACTIVE_DB_URL_MASKED = "sqlite:///./sql_app.db (FALLBACK - DATA LOSS RISK!)"
+    return create_engine("sqlite:///./sql_app.db", connect_args={"check_same_thread": False})
 
 # Global session and engine holders
 _engine = None
