@@ -37,7 +37,7 @@ export default function Header() {
                 Smile Artists
               </span>
               <span
-                className="text-[#d4af37] text-[0.72rem]"
+                className="text-[#d4af37] text-[0.65rem] text-right"
                 style={{ fontFamily: "'Monotype Corsiva', cursive" }}
               >
                 ...crafting smiles

@@ -19,7 +19,7 @@ const contacts = [
       "Artemis Hospital Road, Koyal Vihar",
       "Gurugram – 122003, Haryana, India",
     ],
-    extra: "11:00 AM – 8:00 PM (Mon–Sun)",
+    extra: "10:30 AM – 8:30 PM (Mon–Sun)",
   },
 ];
 

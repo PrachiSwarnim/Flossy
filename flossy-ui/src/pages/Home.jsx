@@ -54,7 +54,7 @@ const HOW_STEPS = [
 /* ─── STATS data ─── */
 const STATS = [
   { value: "10,000+", label: "Happy Patients" },
-  { value: "15+", label: "Years of Excellence" },
+  { value: "8", label: "Years of Excellence" },
   { value: "Top 1%", label: "Specialist Dentists" },
   { value: "4.9 / 5", label: "Patient Rating" },
 ];
