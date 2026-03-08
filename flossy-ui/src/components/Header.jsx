@@ -31,8 +31,8 @@ export default function Header() {
             />
             <div className="flex flex-col leading-none">
               <span
-                className="text-white text-[1rem] uppercase"
-                style={{ fontFamily: "'Cooper Black', serif", letterSpacing: "1.5px" }}
+                className="text-white text-[1.1rem] font-bold"
+                style={{ fontFamily: "var(--font-heading)", letterSpacing: "0.5px" }}
               >
                 Smile Artists
               </span>
