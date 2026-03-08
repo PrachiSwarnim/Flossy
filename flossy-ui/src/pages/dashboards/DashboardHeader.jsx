@@ -34,7 +34,7 @@ export default function Header({ openAI }) {
     >
       <div className="sa-logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
         <img src="/static/assets/logo.png" alt="logo" />
-        <div style={{ display: "flex", flexDirection: "column", lineHeight: "1", alignItems: "flex-start", gap: "2px" }}>
+        <div style={{ display: "flex", flexDirection: "column", lineHeight: "1", alignItems: "flex-end", gap: "2px" }}>
           <span className="text-brand" style={{ fontSize: "1.4rem", color: "#d4af37", fontWeight: "700" }}>Smile Artists</span>
           <span className="text-tagline" style={{ fontSize: "0.85rem", color: "#d4af37", opacity: 0.8, fontWeight: "normal" }}>...crafting smiles</span>
         </div>

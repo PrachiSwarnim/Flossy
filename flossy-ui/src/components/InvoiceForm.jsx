@@ -378,7 +378,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                     </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 40px', gap: '15px', marginBottom: '5px', padding: '0 10px', fontSize: '0.85rem', color: '#f0b800', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', alignItems: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 40px', gap: '15px', marginBottom: '5px', padding: '0 10px', fontSize: '0.75rem', fontFamily: 'var(--font-body), Inter, sans-serif', color: '#f0b800', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', alignItems: 'center' }}>
                     <div style={{ paddingLeft: '2px' }}>Treatment</div>
                     <div style={{ paddingLeft: '2px' }}>Cost</div>
                     <div style={{ paddingLeft: '2px' }}>Disc.</div>
@@ -530,7 +530,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                     </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 40px', gap: '15px', marginBottom: '5px', padding: '0 10px', fontSize: '0.85rem', color: '#f0b800', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', alignItems: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 40px', gap: '15px', marginBottom: '5px', padding: '0 10px', fontSize: '0.75rem', fontFamily: 'var(--font-body), Inter, sans-serif', color: '#f0b800', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', alignItems: 'center' }}>
                     <div style={{ paddingLeft: '2px' }}>Method</div>
                     <div style={{ paddingLeft: '2px' }}>Amount</div>
                     <div style={{ paddingLeft: '2px', gridColumn: '3 / 5' }}>Payment Date</div>

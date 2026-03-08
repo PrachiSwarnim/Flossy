@@ -792,6 +792,8 @@ body {
 .sidebar-collapsed .profile-avatar {
   width: 50px;
   height: 50px;
+  min-height: 50px;
+  flex-shrink: 0;
   margin: 0 auto 1rem;
 }
 
@@ -834,6 +836,8 @@ body {
 .profile-avatar {
   width: 100px;
   height: 100px;
+  min-height: 100px;
+  flex-shrink: 0;
   border-radius: 50%;
   background: linear-gradient(135deg, #333 0%, #252525 100%);
   border: 3px solid var(--primary-gold);

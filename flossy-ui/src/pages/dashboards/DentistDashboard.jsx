@@ -523,10 +523,10 @@ export default function DentistDashboard() {
           <div className="dashboard-layout" style={{ display: "flex", flexDirection: "column", gap: "1.5rem", paddingBottom: "1.5rem" }}>
 
             {/* ROW 1: APPOINTMENTS (SIDE BY SIDE) */}
-            <div className="row-appointments" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "1rem" }}>
+            <div className="row-appointments" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "1rem", width: "100%", maxWidth: "1020px", margin: "0 auto" }}>
 
               {/* TODAY */}
-              <div className="card animate-fade-up" style={{ animationDelay: "0.1s", flex: "1", minWidth: "300px", maxWidth: "450px" }}>
+              <div className="card animate-fade-up" style={{ animationDelay: "0.1s", flex: "1", minWidth: "300px" }}>
                 <div className="card-header">
                   <h3>Today's Appointments</h3>
                   <i className="fas fa-calendar-check card-icon"></i>
@@ -551,7 +551,7 @@ export default function DentistDashboard() {
               </div>
 
               {/* UPCOMING */}
-              <div className="card animate-fade-up" style={{ animationDelay: "0.2s", flex: "1", minWidth: "300px", maxWidth: "450px" }}>
+              <div className="card animate-fade-up" style={{ animationDelay: "0.2s", flex: "1", minWidth: "300px" }}>
                 <div className="card-header">
                   <h3>Upcoming Appointments</h3>
                   <i className="fas fa-calendar-alt card-icon"></i>
