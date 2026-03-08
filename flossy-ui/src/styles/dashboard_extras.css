@@ -14,7 +14,7 @@
 }
 
 .form-group label {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: #555;
     font-weight: 600;
 }
@@ -23,11 +23,11 @@
 .dashboard-input,
 .dashboard-textarea {
     width: 100%;
-    padding: 0.8rem;
+    padding: 0.6rem;
     border: 1px solid #ddd;
-    border-radius: 8px;
+    border-radius: 6px;
     font-family: inherit;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     transition: border-color 0.3s;
 }
 
@@ -40,10 +40,11 @@
 .upload-btn {
     background: linear-gradient(135deg, #fca311, #ffc857);
     border: none;
-    padding: 0.8rem 1.5rem;
+    padding: 0.6rem 1rem;
     color: white;
     font-weight: 600;
-    border-radius: 8px;
+    font-size: 0.9rem;
+    border-radius: 6px;
     cursor: pointer;
     display: flex;
     align-items: center;

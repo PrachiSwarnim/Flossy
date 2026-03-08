@@ -520,13 +520,13 @@ export default function DentistDashboard() {
         <main className="dentist-main">
           <h2 id="Message">Welcome back, Dr. {fullName}</h2>
 
-          <div className="dashboard-layout" style={{ display: "flex", flexDirection: "column", gap: "2rem", paddingBottom: "3rem" }}>
+          <div className="dashboard-layout" style={{ display: "flex", flexDirection: "column", gap: "1.5rem", paddingBottom: "1.5rem" }}>
 
             {/* ROW 1: APPOINTMENTS (SIDE BY SIDE) */}
-            <div className="row-appointments" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "1.5rem" }}>
+            <div className="row-appointments" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "1rem" }}>
 
               {/* TODAY */}
-              <div className="card animate-fade-up" style={{ animationDelay: "0.1s", flex: "1", minWidth: "350px", maxWidth: "500px" }}>
+              <div className="card animate-fade-up" style={{ animationDelay: "0.1s", flex: "1", minWidth: "300px", maxWidth: "450px" }}>
                 <div className="card-header">
                   <h3>Today's Appointments</h3>
                   <i className="fas fa-calendar-check card-icon"></i>
@@ -551,7 +551,7 @@ export default function DentistDashboard() {
               </div>
 
               {/* UPCOMING */}
-              <div className="card animate-fade-up" style={{ animationDelay: "0.2s", flex: "1", minWidth: "350px", maxWidth: "500px" }}>
+              <div className="card animate-fade-up" style={{ animationDelay: "0.2s", flex: "1", minWidth: "300px", maxWidth: "450px" }}>
                 <div className="card-header">
                   <h3>Upcoming Appointments</h3>
                   <i className="fas fa-calendar-alt card-icon"></i>
@@ -697,10 +697,10 @@ export default function DentistDashboard() {
                 </div>
                 <div style={{ padding: "1rem" }}>
                   {/* METRICS CARDS */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
-                    <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", textAlign: "center", border: "1px solid #333" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
+                    <div style={{ background: "#222", padding: "1rem", borderRadius: "8px", textAlign: "center", border: "1px solid #333" }}>
                       <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Appointments Done</h4>
-                      <div style={{ fontSize: "2rem", color: "#2ecc71", fontWeight: "bold" }}>
+                      <div style={{ fontSize: "1.8rem", color: "#2ecc71", fontWeight: "bold" }}>
                         {[...today, ...history].filter(a => {
                           const d = new Date(a.time);
                           const r = new Date(reportDate);
@@ -712,9 +712,9 @@ export default function DentistDashboard() {
                         }).length}
                       </div>
                     </div>
-                    <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", textAlign: "center", border: "1px solid #333" }}>
+                    <div style={{ background: "#222", padding: "1rem", borderRadius: "8px", textAlign: "center", border: "1px solid #333" }}>
                       <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Revenue Generated</h4>
-                      <div style={{ fontSize: "2rem", color: "#f0b800", fontWeight: "bold" }}>
+                      <div style={{ fontSize: "1.8rem", color: "#f0b800", fontWeight: "bold" }}>
                         ₹{invoices
                           .filter(inv => {
                             const d = new Date(inv.date);
@@ -728,15 +728,15 @@ export default function DentistDashboard() {
                           .toLocaleString()}
                       </div>
                     </div>
-                    <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", textAlign: "center", border: "1px solid #333" }}>
+                    <div style={{ background: "#222", padding: "1rem", borderRadius: "8px", textAlign: "center", border: "1px solid #333" }}>
                       <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Total Patients</h4>
-                      <div style={{ fontSize: "2rem", color: "#3498db", fontWeight: "bold" }}>
+                      <div style={{ fontSize: "1.8rem", color: "#3498db", fontWeight: "bold" }}>
                         {patientsList.length}
                       </div>
                     </div>
-                    <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", textAlign: "center", border: "1px solid #333" }}>
+                    <div style={{ background: "#222", padding: "1rem", borderRadius: "8px", textAlign: "center", border: "1px solid #333" }}>
                       <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Prescriptions Written</h4>
-                      <div style={{ fontSize: "2rem", color: "#9b59b6", fontWeight: "bold" }}>
+                      <div style={{ fontSize: "1.8rem", color: "#9b59b6", fontWeight: "bold" }}>
                         {recentPrescriptions.length}
                       </div>
                     </div>
@@ -747,12 +747,12 @@ export default function DentistDashboard() {
 
             {/* ROW 4: PRESCRIPTIONS */}
             <div className="row-prescriptions" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-              <div className="card animate-fade-up" style={{ animationDelay: "0.5s", width: "100%", maxWidth: "1020px", background: "#1a1a1a", borderRadius: "10px", border: "1px solid #333" }}>
-                <div style={{ padding: "1.5rem" }}>
+              <div className="card animate-fade-up" style={{ animationDelay: "0.5s", width: "100%", maxWidth: "1020px", background: "#1a1a1a", borderRadius: "8px", border: "1px solid #333" }}>
+                <div style={{ padding: "1rem" }}>
 
                   {/* SELECT PATIENT */}
-                  <div style={{ marginBottom: "1.5rem" }}>
-                    <label style={{ color: "#f0b800", fontWeight: "bold", marginBottom: "10px", display: "block", textTransform: "uppercase", letterSpacing: "1px" }}>Select Patient</label>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label style={{ color: "#f0b800", fontWeight: "bold", marginBottom: "8px", display: "block", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.85rem" }}>Select Patient</label>
                     <select
                       value={prescPatient}
                       onChange={(e) => {
@@ -761,12 +761,12 @@ export default function DentistDashboard() {
                       }}
                       style={{
                         width: "100%",
-                        padding: "15px",
+                        padding: "10px",
                         background: "#222",
                         border: "1px solid #444",
-                        borderRadius: "8px",
+                        borderRadius: "6px",
                         color: "#fff",
-                        fontSize: "1rem",
+                        fontSize: "0.9rem",
                         cursor: "pointer"
                       }}
                     >
@@ -829,14 +829,14 @@ export default function DentistDashboard() {
                         value={prescNotes}
                         onChange={(e) => setPrescNotes(e.target.value)}
                         style={{
-                          width: "100%",
-                          padding: "15px",
-                          background: "#222",
-                          border: "1px solid #444",
-                          borderRadius: "8px",
-                          color: "#fff",
-                          fontSize: "0.95rem",
-                          minHeight: "120px",
+                        width: "100%",
+                        padding: "10px",
+                        background: "#222",
+                        border: "1px solid #444",
+                        borderRadius: "6px",
+                        color: "#fff",
+                        fontSize: "0.85rem",
+                        minHeight: "80px",
                           resize: "vertical"
                         }}
                       ></textarea>
@@ -848,14 +848,14 @@ export default function DentistDashboard() {
                         value={prescTreatmentPlan || ""}
                         onChange={(e) => setPrescTreatmentPlan(e.target.value)}
                         style={{
-                          width: "100%",
-                          padding: "15px",
-                          background: "#222",
-                          border: "1px solid #444",
-                          borderRadius: "8px",
-                          color: "#fff",
-                          fontSize: "0.95rem",
-                          minHeight: "120px",
+                        width: "100%",
+                        padding: "10px",
+                        background: "#222",
+                        border: "1px solid #444",
+                        borderRadius: "6px",
+                        color: "#fff",
+                        fontSize: "0.85rem",
+                        minHeight: "80px",
                           resize: "vertical"
                         }}
                       ></textarea>
@@ -948,13 +948,13 @@ export default function DentistDashboard() {
                       onChange={(e) => setPrescRecommendations(e.target.value)}
                       style={{
                         width: "100%",
-                        padding: "15px",
+                        padding: "10px",
                         background: "#222",
                         border: "1px solid #444",
-                        borderRadius: "8px",
+                        borderRadius: "6px",
                         color: "#fff",
-                        fontSize: "0.95rem",
-                        minHeight: "120px",
+                        fontSize: "0.85rem",
+                        minHeight: "80px",
                         resize: "vertical"
                       }}
                     ></textarea>
@@ -965,23 +965,23 @@ export default function DentistDashboard() {
                     onClick={submitPrescription}
                     disabled={prescSubmitting || !prescPatient}
                     style={{
-                      padding: "18px",
+                      padding: "12px",
                       background: "#f0b800",
                       color: "#000",
                       border: "none",
-                      borderRadius: "0 0 10px 10px",
+                      borderRadius: "0 0 8px 8px",
                       fontWeight: "bold",
-                      fontSize: "1rem",
+                      fontSize: "0.9rem",
                       cursor: prescPatient ? "pointer" : "not-allowed",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "10px",
+                      gap: "8px",
                       marginTop: "1rem",
-                      marginLeft: "-1.5rem",
-                      marginRight: "-1.5rem",
-                      marginBottom: "-1.5rem",
-                      width: "calc(100% + 3rem)"
+                      marginLeft: "-1rem",
+                      marginRight: "-1rem",
+                      marginBottom: "-1rem",
+                      width: "calc(100% + 2rem)"
                     }}
                   >
                     <i className="fas fa-upload"></i>
@@ -1074,22 +1074,22 @@ export default function DentistDashboard() {
                   <table style={{ width: "100%", borderCollapse: "collapse", color: "#fff", textAlign: "left" }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #333" }}>
-                        <th style={{ padding: "12px", color: "#f0b800" }}>Name</th>
-                        <th style={{ padding: "12px", color: "#f0b800" }}>Age/Sex</th>
-                        <th style={{ padding: "12px", color: "#f0b800" }}>Phone</th>
-                        <th style={{ padding: "12px", color: "#f0b800" }}>Email</th>
-                        <th style={{ padding: "12px", color: "#f0b800" }}>Source</th>
+                        <th style={{ padding: "8px 10px", color: "#f0b800", fontSize: "0.85rem" }}>Name</th>
+                        <th style={{ padding: "8px 10px", color: "#f0b800", fontSize: "0.85rem" }}>Age/Sex</th>
+                        <th style={{ padding: "8px 10px", color: "#f0b800", fontSize: "0.85rem" }}>Phone</th>
+                        <th style={{ padding: "8px 10px", color: "#f0b800", fontSize: "0.85rem" }}>Email</th>
+                        <th style={{ padding: "8px 10px", color: "#f0b800", fontSize: "0.85rem" }}>Source</th>
                       </tr>
                     </thead>
                     <tbody>
                       {patientsList.length > 0 ? (
                         patientsList.map(p => (
                           <tr key={p.id} style={{ borderBottom: "1px solid #222" }}>
-                            <td style={{ padding: "12px" }}>{p.name}</td>
-                            <td style={{ padding: "12px", color: "#ddd" }}>{p.age || "-"} / {p.sex || p.gender || "-"}</td>
-                            <td style={{ padding: "12px", color: "#888" }}>{(!p.phone || p.phone.startsWith("TEMP_")) ? "N/A" : p.phone}</td>
-                            <td style={{ padding: "12px", color: "#888" }}>{p.email || "-"}</td>
-                            <td style={{ padding: "12px" }}>
+                            <td style={{ padding: "8px 10px", fontSize: "0.9rem" }}>{p.name}</td>
+                            <td style={{ padding: "8px 10px", color: "#ddd", fontSize: "0.85rem" }}>{p.age || "-"} / {p.sex || p.gender || "-"}</td>
+                            <td style={{ padding: "8px 10px", color: "#888", fontSize: "0.85rem" }}>{(!p.phone || p.phone.startsWith("TEMP_")) ? "N/A" : p.phone}</td>
+                            <td style={{ padding: "8px 10px", color: "#888", fontSize: "0.85rem" }}>{p.email || "-"}</td>
+                            <td style={{ padding: "8px 10px" }}>
                               <span style={{
                                 padding: "4px 8px",
                                 borderRadius: "4px",
