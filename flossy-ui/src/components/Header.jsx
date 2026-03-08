@@ -29,7 +29,7 @@ export default function Header() {
               alt="Smile Artists"
               className="w-9 h-9 rounded-full border border-[#d4af37]/50 object-cover"
             />
-            <div className="flex flex-col leading-none">
+            <div className="flex flex-col leading-none items-end">
               <span
                 className="text-white text-[1.1rem] font-bold"
                 style={{ fontFamily: "var(--font-heading)", letterSpacing: "0.5px" }}
