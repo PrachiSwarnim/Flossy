@@ -31,11 +31,11 @@ export default function Header() {
             />
             <div className="flex flex-col leading-none items-end" style={{ gap: "2px" }}>
               <span
-                className="text-white text-[1.3rem] font-bold"
+                className="text-white text-[1.4rem] font-bold"
                 style={{ fontFamily: "var(--font-heading)" }}
               >Smile Artists</span>
               <span
-                className="text-[#d4af37] text-[0.7rem] text-right"
+                className="text-[#d4af37] text-[0.85rem] text-right"
                 style={{ fontFamily: "'Monotype Corsiva', cursive", opacity: 0.8 }}
               >...crafting smiles</span>
             </div>
@@ -84,16 +84,14 @@ export default function Header() {
       {/* ── MOBILE OVERLAY ── */}
       <div
         onClick={close}
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[1001] transition-all duration-300 ${
-          isOpen ? "opacity-100 visible" : "opacity-0 invisible"
-        }`}
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[1001] transition-all duration-300 ${isOpen ? "opacity-100 visible" : "opacity-0 invisible"
+          }`}
       />
 
       {/* ── MOBILE DRAWER ── */}
       <aside
-        className={`fixed top-0 right-0 h-full w-72 z-[1002] flex flex-col py-6 px-5 transition-transform duration-[380ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed top-0 right-0 h-full w-72 z-[1002] flex flex-col py-6 px-5 transition-transform duration-[380ms] ease-[cubic-bezier(0.25,1,0.5,1)] ${isOpen ? "translate-x-0" : "translate-x-full"
+          }`}
         style={{ background: "#111111", boxShadow: "-8px 0 30px rgba(0,0,0,0.7)" }}
       >
         {/* Drawer header */}
