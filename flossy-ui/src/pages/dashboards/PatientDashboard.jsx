@@ -94,7 +94,7 @@ export default function PatientDashboard() {
     }
   }
 
-  async function downloadPrescription(id, isLegacy = false, patientName = "") {
+  async function downloadPrescription(id, isLegacy = false, patientName = "", stamp = true) {
     if (isLegacy) {
       alert("Legacy prescriptions cannot be downloaded as PDFs yet. Please ask your doctor to re-upload this in the new system.");
       return;
@@ -102,7 +102,7 @@ export default function PatientDashboard() {
     if (!session) return;
     try {
       const token = await session.getToken({ template: "default" });
-      const res = await fetch(`${API}/api/prescriptions/${id}/pdf`, {
+      const res = await fetch(`${API}/api/prescriptions/${id}/pdf?stamp=${stamp}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -111,7 +111,7 @@ export default function PatientDashboard() {
         const a = document.createElement("a");
         a.href = url;
         const safeName = patientName ? patientName.replace(/[^a-zA-Z0-9]/g, "_") : "";
-        a.download = `${safeName}_prescription.pdf`;
+        a.download = `${safeName}_prescription${stamp ? "" : "_plain"}.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -526,17 +526,7 @@ export default function PatientDashboard() {
           <i className={`fas fa-${profileVisible ? 'chevron-left' : 'bars'}`}></i>
         </div>
 
-        {/* Close button at top right of sidebar - only when expanded */}
-        {profileVisible && (
-          <button
-            className="sidebar-close-btn"
-            onClick={() => setProfileVisible(false)}
-            title="Close Sidebar"
-            style={{ top: '5.5rem' }}
-          >
-            <i className="fas fa-times"></i>
-          </button>
-        )}
+        {/* Close button removed to cleanly use only the toggle button */}
 
         <div className="profile-sidebar-content">
           <div className="profile-avatar">
@@ -799,9 +789,26 @@ export default function PatientDashboard() {
                           <span className="presc-date">{new Date(p.date).toLocaleDateString()}</span>
                           <p className="presc-details">{p.details}</p>
                         </div>
-                        <button className="download-btn" onClick={() => downloadPrescription(p.id, p.isLegacy, p.patient || fullName)}>
-                          <i className="fas fa-download"></i> {p.isLegacy ? "Legacy" : "Download"}
-                        </button>
+                        {p.isLegacy ? (
+                          <button className="download-btn" onClick={() => downloadPrescription(p.id, p.isLegacy, p.patient || fullName, true)}>
+                            <i className="fas fa-download"></i> Legacy
+                          </button>
+                        ) : (
+                          <div style={{ display: "flex", gap: "8px", marginTop: "0.5rem" }}>
+                            <button
+                              onClick={() => downloadPrescription(p.id, false, p.patient || fullName, true)}
+                              style={{ background: "#f0b800", border: "none", color: "#000", padding: "4px 8px", borderRadius: "4px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "bold" }}
+                            >
+                              <i className="fas fa-stamp"></i> Stamped
+                            </button>
+                            <button
+                              onClick={() => downloadPrescription(p.id, false, p.patient || fullName, false)}
+                              style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "4px 8px", borderRadius: "4px", cursor: "pointer", fontSize: "0.75rem" }}
+                            >
+                              Plain
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -335,9 +335,9 @@ export default function DentistDashboard() {
     }
   }
 
-  async function downloadPrescription(id, patientName = "") {
+  async function downloadPrescription(id, patientName = "", stamp = true) {
     const token = await session.getToken({ template: "default" });
-    const res = await fetch(`${API}/api/prescriptions/${id}/pdf`, {
+    const res = await fetch(`${API}/api/prescriptions/${id}/pdf?stamp=${stamp}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (res.ok) {
@@ -346,7 +346,7 @@ export default function DentistDashboard() {
       const a = document.createElement("a");
       a.href = url;
       const safeName = patientName ? patientName.replace(/[^a-zA-Z0-9]/g, "_") : "patient";
-      a.download = `${safeName}_prescription.pdf`;
+      a.download = `${safeName}_prescription${stamp ? "" : "_plain"}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -458,17 +458,7 @@ export default function DentistDashboard() {
           <i className={`fas fa-${profileVisible ? 'chevron-left' : 'bars'}`}></i>
         </div>
 
-        {/* Close button - only when expanded */}
-        {profileVisible && (
-          <button
-            className="sidebar-close-btn"
-            onClick={() => setProfileVisible(false)}
-            title="Close Sidebar"
-            style={{ top: '5.5rem' }}
-          >
-            <i className="fas fa-times"></i>
-          </button>
-        )}
+        {/* Close button removed to cleanly use only the toggle button */}
 
         <div className="profile-sidebar-content">
           <div className="profile-avatar">
@@ -808,12 +798,22 @@ export default function DentistDashboard() {
                               <span style={{ color: "#fff" }}>{new Date(presc.date).toLocaleDateString()}</span>
                               {presc.diagnosis && <span style={{ color: "#888", marginLeft: "10px" }}>{presc.diagnosis.slice(0, 50)}...</span>}
                             </div>
-                            <button
-                              onClick={() => downloadPrescription(presc.id, prescPatient)}
-                              style={{ background: "#333", border: "none", color: "#f0b800", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "0.8rem" }}
-                            >
-                              <i className="fas fa-download"></i>
-                            </button>
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              <button
+                                onClick={() => downloadPrescription(presc.id, prescPatient, true)}
+                                style={{ background: "#f0b800", border: "none", color: "#000", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "0.80rem", fontWeight: "bold" }}
+                                title="Download Stamped"
+                              >
+                                <i className="fas fa-stamp"></i> Stamped
+                              </button>
+                              <button
+                                onClick={() => downloadPrescription(presc.id, prescPatient, false)}
+                                style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "0.80rem" }}
+                                title="Download Plain"
+                              >
+                                Plain
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
