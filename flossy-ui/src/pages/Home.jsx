@@ -312,7 +312,7 @@ export default function Home() {
       {/* ══════════════════════════════════════
           SERVICES
       ══════════════════════════════════════ */}
-      <section id="services" style={{ scrollMarginTop: "100px" }} className="bg-[#111111] py-24 px-6">
+      <section id="services" style={{ scrollMarginTop: "100px" }} className="bg-[#111111] pt-12 pb-24 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <SectionLabel>What We Offer</SectionLabel>

@@ -23,7 +23,7 @@ export default function Team() {
   ];
 
   return (
-    <section className="bg-[#151515] py-16 px-6 md:px-[8%]">
+    <section className="bg-[#151515] pt-16 pb-8 px-6 md:px-[8%]">
       <div className="max-w-5xl mx-auto text-center mb-12">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
