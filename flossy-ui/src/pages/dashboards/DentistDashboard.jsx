@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { PropagateLoader } from "react-spinners";
 
 import Header from "./DashboardHeader";
+import BentoGrid from "../components/BentoGrid";
+import { Meteors } from "../components/ui/Meteors";
 import Footer from "../../components/Footer";
 import InvoiceForm from "../../components/InvoiceForm";
 
@@ -430,7 +432,21 @@ export default function DentistDashboard() {
   ================================ */
 
   return (
-    <div className={`dashboard-shell ${!profileVisible ? "sidebar-collapsed" : "sidebar-expanded"}`}>
+    <div className={`dashboard-shell relative overflow-hidden ${!profileVisible ? "sidebar-collapsed" : "sidebar-expanded"}`}>
+      {/* Animated Premium Background Effects */}
+      <Meteors number={25} />
+      <div
+        className="absolute top-0 right-0 w-[600px] h-[600px] pointer-events-none opacity-30"
+        style={{
+          background: "radial-gradient(circle at center, rgba(212,175,55,0.06) 0%, transparent 60%)",
+        }}
+      />
+      <div
+        className="absolute bottom-0 left-0 w-[600px] h-[600px] pointer-events-none opacity-30"
+        style={{
+          background: "radial-gradient(circle at center, rgba(212,175,55,0.04) 0%, transparent 60%)",
+        }}
+      />
       {/* DOCTOR PROFILE SIDEBAR */}
       <aside className="profile-sidebar">
         {/* Toggle button */}

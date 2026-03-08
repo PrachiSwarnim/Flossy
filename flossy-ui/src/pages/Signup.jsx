@@ -3,18 +3,43 @@ import "../styles/signup.css";
 import Header from "../components/RoleHeader";
 import Footer from "../components/Footer";
 import { useEffect } from "react";
+import { motion } from "framer-motion";
+import { Meteors } from "../components/ui/Meteors";
 
 export default function Signup() {
   useEffect(() => {
     document.title = "Sign Up - Smile Artists Dental Studio";
   }, []);
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-dark)" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#0f0f0f" }}>
       <Header />
-      <div className="signup-page" style={{ flex: 1 }}>
-        <div className="signup-card">
-          <h1>Create Your Account</h1>
-          <p>Welcome! Please fill in the details to get started.</p>
+      <div className="signup-page relative overflow-hidden" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "4rem 1rem", flexDirection: "column" }}>
+        
+        {/* Animated Background Elements */}
+        <Meteors number={15} />
+        <div
+          className="absolute top-1/4 left-1/4 w-[500px] h-[500px] pointer-events-none opacity-40"
+          style={{
+            background: "radial-gradient(circle at center, rgba(212,175,55,0.08) 0%, transparent 60%)",
+          }}
+        />
+
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="signup-card relative z-10 w-full max-w-md text-center mb-8"
+        >
+          <h1 className="text-3xl font-bold text-white mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>Create Your Account</h1>
+          <p className="text-white/50 text-sm">Welcome! Please fill in the details to get started.</p>
+        </motion.div>
+
+        <motion.div
+           initial={{ opacity: 0, y: 20 }}
+           animate={{ opacity: 1, y: 0 }}
+           transition={{ duration: 0.6, delay: 0.2 }}
+           className="relative z-10 w-full max-w-md"
+        >
 
           <SignUp
             path="/signup"
@@ -76,7 +101,7 @@ export default function Signup() {
             }}
           />
 
-        </div>
+        </motion.div>
       </div>
       <Footer />
     </div>

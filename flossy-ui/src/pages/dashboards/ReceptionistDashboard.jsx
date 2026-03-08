@@ -5,6 +5,7 @@ import { PropagateLoader } from "react-spinners";
 import Header from "./DashboardHeader";
 import Footer from "../../components/Footer";
 import InvoiceForm from "../../components/InvoiceForm";
+import { Meteors } from "../../components/ui/Meteors";
 import "../../styles/dentist_dashboard.css";
 import { TIME_SLOTS, formatTime12h } from "../../utils/timeSlots";
 
@@ -516,9 +517,23 @@ export default function ReceptionistDashboard() {
     const isNewUser = sessionStorage.getItem("flossy_is_new_user") === "true";
 
     return (
-        <>
+        <div className="relative overflow-hidden min-h-screen dashboard-shell">
+            {/* Animated Premium Background Effects */}
+            <Meteors number={25} />
+            <div
+                className="absolute top-0 right-0 w-[600px] h-[600px] pointer-events-none opacity-30"
+                style={{
+                    background: "radial-gradient(circle at center, rgba(212,175,55,0.06) 0%, transparent 60%)",
+                }}
+            />
+            <div
+                className="absolute bottom-0 left-0 w-[600px] h-[600px] pointer-events-none opacity-30"
+                style={{
+                    background: "radial-gradient(circle at center, rgba(212,175,55,0.04) 0%, transparent 60%)",
+                }}
+            />
             <Header />
-            <main className="dentist-main">
+            <main className="dentist-main relative z-10">
                 <h1 style={{ textAlign: "center", color: "#f0b800", marginBottom: "2rem", fontSize: "2.5rem" }}>Clinic Reception</h1>
                 <h2 id="Message">{isNewUser ? "Welcome" : "Welcome back"}, {fullName}!</h2>
 
@@ -1469,6 +1484,6 @@ export default function ReceptionistDashboard() {
                     </div>
                 </div>
             )}
-        </>
+        </div>
     );
 }

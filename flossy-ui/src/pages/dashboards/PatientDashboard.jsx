@@ -11,6 +11,7 @@ import "../../styles/dashboard_extras_patient.css";
 import "../../styles/dashboard_modal.css";
 import "../../styles/ai_features.css";
 import AppointmentCard from "../../components/AppointmentCard";
+import { Meteors } from "../../components/ui/Meteors";
 
 
 export default function PatientDashboard() {
@@ -499,7 +500,21 @@ export default function PatientDashboard() {
   const isNewUser = sessionStorage.getItem("flossy_is_new_user") === "true";
 
   return (
-    <div className={`dashboard-shell ${!profileVisible ? "sidebar-collapsed" : "sidebar-expanded"}`}>
+    <div className={`dashboard-shell relative overflow-hidden ${!profileVisible ? "sidebar-collapsed" : "sidebar-expanded"}`}>
+      {/* Animated Premium Background Effects */}
+      <Meteors number={25} />
+      <div
+        className="absolute top-0 right-0 w-[600px] h-[600px] pointer-events-none opacity-30"
+        style={{
+          background: "radial-gradient(circle at center, rgba(212,175,55,0.06) 0%, transparent 60%)",
+        }}
+      />
+      <div
+        className="absolute bottom-0 left-0 w-[600px] h-[600px] pointer-events-none opacity-30"
+        style={{
+          background: "radial-gradient(circle at center, rgba(212,175,55,0.04) 0%, transparent 60%)",
+        }}
+      />
       {/* PATIENT PROFILE SIDEBAR - Fixed to left */}
       <aside className="profile-sidebar">
         {/* Toggle button - shows menu when collapsed, chevron when expanded */}
