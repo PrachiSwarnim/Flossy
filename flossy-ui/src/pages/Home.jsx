@@ -24,7 +24,7 @@ const Divider = () => (
 
 /* ─── Section Label pill ─── */
 const SectionLabel = ({ children }) => (
-  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[0.68rem] font-semibold uppercase tracking-widest text-[#d4af37] bg-[#d4af37]/10 border border-[#d4af37]/20 mb-4">
+  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[0.68rem] font-semibold uppercase tracking-widest text-[#d4af37] bg-[#d4af37]/10 border border-[#d4af37]/20 mb-2">
     {children}
   </span>
 );

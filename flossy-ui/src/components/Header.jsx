@@ -29,19 +29,15 @@ export default function Header() {
               alt="Smile Artists"
               className="w-9 h-9 rounded-full border border-[#d4af37]/50 object-cover"
             />
-            <div className="flex flex-col leading-none items-end">
+            <div className="flex flex-col leading-none items-end" style={{ gap: "2px" }}>
               <span
-                className="text-white text-[1.1rem] font-bold"
-                style={{ fontFamily: "var(--font-heading)", letterSpacing: "0.5px" }}
-              >
-                Smile Artists
-              </span>
+                className="text-white text-[1.3rem] font-bold"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >Smile Artists</span>
               <span
-                className="text-[#d4af37] text-[0.65rem] text-right"
-                style={{ fontFamily: "'Monotype Corsiva', cursive" }}
-              >
-                ...crafting smiles
-              </span>
+                className="text-[#d4af37] text-[0.7rem] text-right"
+                style={{ fontFamily: "'Monotype Corsiva', cursive", opacity: 0.8 }}
+              >...crafting smiles</span>
             </div>
           </a>
 
