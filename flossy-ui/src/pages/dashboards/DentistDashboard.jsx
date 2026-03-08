@@ -460,7 +460,7 @@ export default function DentistDashboard() {
 
         {/* Close button removed to cleanly use only the toggle button */}
 
-        <div className="profile-sidebar-content">
+        <div className="profile-sidebar-content elegant-scroll">
           <div className="profile-avatar">
             {user?.imageUrl ? (
               <img src={user.imageUrl} alt="Profile" />
