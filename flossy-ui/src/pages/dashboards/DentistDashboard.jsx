@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { PropagateLoader } from "react-spinners";
 
 import Header from "./DashboardHeader";
-import BentoGrid from "../components/BentoGrid";
-import { Meteors } from "../components/ui/Meteors";
+import BentoGrid from "../../components/BentoGrid";
+import { Meteors } from "../../components/ui/Meteors";
 import Footer from "../../components/Footer";
 import InvoiceForm from "../../components/InvoiceForm";
 
@@ -965,7 +965,6 @@ export default function DentistDashboard() {
                     onClick={submitPrescription}
                     disabled={prescSubmitting || !prescPatient}
                     style={{
-                      width: "100%",
                       padding: "18px",
                       background: "#f0b800",
                       color: "#000",
