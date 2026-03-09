@@ -156,9 +156,14 @@ async def ai_chat(request: Request, user=Depends(require_role(["dentist", "recep
     user_name = user.first_name or user.email.split("@")[0].title() if user else "there"
     user_role = user.role if user else "user"
     
+    from datetime import datetime, timezone
+    
     # Context-aware system prompts
+    current_time_str = datetime.now(timezone.utc).strftime("%A, %B %d, %Y")
+    
     if context == "dentist_dashboard" or user_role == "dentist":
         system_context = f"""You are FlossyAI, an intelligent dental practice assistant for Dr. {user_name} at Smile Artists Dental Studio.
+        Today's Date: {current_time_str}.
         You help with:
         - Summarizing patient histories and appointments
         - Generating prescription templates
@@ -168,6 +173,7 @@ async def ai_chat(request: Request, user=Depends(require_role(["dentist", "recep
         Keep responses concise (max 3 sentences) and professional."""
     elif user_role == "receptionist":
         system_context = f"""You are FlossyAI, a helpful assistant for {user_name} at Smile Artists Dental Studio reception.
+        Today's Date: {current_time_str}.
         You help with:
         - Appointment scheduling and management
         - Patient record lookups
@@ -183,65 +189,49 @@ async def ai_chat(request: Request, user=Depends(require_role(["dentist", "recep
     
     prompt = f"{system_context}\n\nUser: {message}\n\nFlossyAI:"
     
-    # Try Groq for Agentic capabilities
-    from app.services.llm_client import groq_client
-    if groq_client and user_role in ["dentist", "receptionist"]:
+    # Try Gemini for Agentic capabilities
+    from app.services.llm_client import genai_client
+    from app.api.v1.ai.agent_tools import GEMINI_TOOLS_SCHEMA
+    if genai_client and user_role in ["dentist", "receptionist"]:
         try:
-            chat_completion = groq_client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": system_context},
-                    {"role": "user", "content": message}
-                ],
-                model="llama-3.3-70b-versatile",
-                temperature=0.4,
-                tools=TOOLS_SCHEMA,
-                tool_choice="auto",
+            chat = genai_client.chats.create(
+                model="gemini-2.5-flash",
+                config={
+                    "system_instruction": system_context,
+                    "temperature": 0.4,
+                    "tools": GEMINI_TOOLS_SCHEMA
+                }
             )
             
-            response_msg = chat_completion.choices[0].message
-            tool_calls = response_msg.tool_calls
+            response_msg = chat.send_message(message)
+            tool_calls = response_msg.function_calls
             
             if tool_calls:
-                # Execute tools and return the results!
-                print(f"🔧 FlossyAI is calling {len(tool_calls)} tools!")
-                messages_for_second_pass = [
-                    {"role": "system", "content": system_context},
-                    {"role": "user", "content": message},
-                    response_msg
-                ]
+                print(f"🔧 FlossyAI is calling {len(tool_calls)} tools with Gemini!")
                 
+                tool_responses = []
                 for tool_call in tool_calls:
-                    function_name = tool_call.function.name
-                    import json
-                    try:
-                        function_args = json.loads(tool_call.function.arguments)
-                    except json.JSONDecodeError:
-                        function_args = {}
+                    function_name = tool_call.name
+                    function_args = tool_call.args if tool_call.args else {}
                     
-                    tool_output = execute_tool(function_name, function_args, db)
+                    tool_output = execute_tool(function_name, dict(function_args), db)
                     print(f"🛠️ Result from {function_name}: {tool_output}")
                     
-                    messages_for_second_pass.append(
-                        {
-                            "tool_call_id": tool_call.id,
-                            "role": "tool",
+                    tool_responses.append({
+                        "function_response": {
                             "name": function_name,
-                            "content": str(tool_output)
+                            "response": {"result": str(tool_output)}
                         }
-                    )
+                    })
                 
-                # Make second LLM request to synthesize tool responses
-                second_response = groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=messages_for_second_pass
-                )
-                
-                response = second_response.choices[0].message.content.strip()
+                # Send the tool responses back for the final answer
+                second_response = chat.send_message(tool_responses)
+                response = second_response.text.strip()
             else:
-                response = response_msg.content.strip()
+                response = response_msg.text.strip()
                 
         except Exception as e:
-            print(f"❌ AI Agent Chat Error (Groq): {e}")
+            print(f"❌ AI Agent Chat Error (Gemini): {e}")
             try:
                 response = ai_generate(prompt, temperature=0.7)
                 response = response.strip()

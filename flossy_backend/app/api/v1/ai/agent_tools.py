@@ -158,6 +158,57 @@ TOOLS_SCHEMA = [
     }
 ]
 
+# Gemini Tool Schema (Slightly different from OpenAI/Groq format)
+GEMINI_TOOLS_SCHEMA = [{
+    "function_declarations": [
+        {
+            "name": "get_appointments",
+            "description": "Fetch a list of appointments for a specific date.",
+            "parameters": {
+                "type": "OBJECT",
+                "properties": {
+                    "date_str": {"type": "STRING", "description": "The date to check in YYYY-MM-DD format, or 'today' for the current date."}
+                },
+                "required": ["date_str"]
+            }
+        },
+        {
+            "name": "search_patients",
+            "description": "Search for patients by passing a name or partial name query.",
+            "parameters": {
+                "type": "OBJECT",
+                "properties": {
+                    "query": {"type": "STRING", "description": "Patient's first or last name to search for (e.g. 'Dhruv')."}
+                },
+                "required": ["query"]
+            }
+        },
+        {
+            "name": "calculate_daily_revenue",
+            "description": "Calculate daily clinic closure statistics including total revenue.",
+            "parameters": {
+                "type": "OBJECT",
+                "properties": {
+                    "date_str": {"type": "STRING", "description": "The date to check in YYYY-MM-DD format, or 'today' for the current date."}
+                },
+                "required": ["date_str"]
+            }
+        },
+        {
+            "name": "flag_patient_for_followup",
+            "description": "Flag a database patient for a follow up by leaving a clinical reason.",
+            "parameters": {
+                "type": "OBJECT",
+                "properties": {
+                    "patient_id": {"type": "INTEGER", "description": "The numeric ID of the patient (e.g. 1)."},
+                    "reason": {"type": "STRING", "description": "Reason for the follow-up, e.g., 'Check crown margins'."}
+                },
+                "required": ["patient_id", "reason"]
+            }
+        }
+    ]
+}]
+
 # Dispatcher
 def execute_tool(tool_name: str, arguments: dict, db: Session) -> str:
     if tool_name == "get_appointments":

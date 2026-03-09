@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useUser, useSession } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { PropagateLoader } from "react-spinners";
@@ -90,6 +90,11 @@ export default function DentistDashboard() {
 
   const [aiOpen, setAiOpen] = useState(false);
   const [messages, setMessages] = useState([]);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [profileVisible, setProfileVisible] = useState(false);
@@ -1146,6 +1151,7 @@ export default function DentistDashboard() {
               </div>
             ))}
             {typing && <div className="typing">FlossyAI is typing<span className="dot-one">.</span><span className="dot-two">.</span><span className="dot-three">.</span></div>}
+            <div ref={messagesEndRef} />
           </div>
 
           <div className="ai-input-area">
