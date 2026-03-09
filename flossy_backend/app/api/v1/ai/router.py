@@ -137,8 +137,10 @@ async def doctor_ai(request: Request):
         "groundedness": groundedness
     }
 
+from app.api.v1.ai.agent_tools import TOOLS_SCHEMA, execute_tool
+
 @router.post("/chat")
-async def ai_chat(request: Request, user=Depends(require_role(["dentist", "receptionist", "patient"]))):
+async def ai_chat(request: Request, user=Depends(require_role(["dentist", "receptionist", "patient"])), db: Session = Depends(get_db)):
     """
     General chat endpoint for FlossyAI panel in dashboards.
     Works for all authenticated users.
@@ -181,12 +183,78 @@ async def ai_chat(request: Request, user=Depends(require_role(["dentist", "recep
     
     prompt = f"{system_context}\n\nUser: {message}\n\nFlossyAI:"
     
-    try:
-        response = ai_generate(prompt, temperature=0.7)
-        response = response.strip()
-    except Exception as e:
-        print(f"❌ AI Chat Error: {e}")
-        response = f"I'm having trouble connecting right now, {user_name}. Please try again in a moment."
+    # Try Groq for Agentic capabilities
+    from app.services.llm_client import groq_client
+    if groq_client and user_role in ["dentist", "receptionist"]:
+        try:
+            chat_completion = groq_client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": system_context},
+                    {"role": "user", "content": message}
+                ],
+                model="llama-3.3-70b-versatile",
+                temperature=0.4,
+                tools=TOOLS_SCHEMA,
+                tool_choice="auto",
+            )
+            
+            response_msg = chat_completion.choices[0].message
+            tool_calls = response_msg.tool_calls
+            
+            if tool_calls:
+                # Execute tools and return the results!
+                print(f"🔧 FlossyAI is calling {len(tool_calls)} tools!")
+                messages_for_second_pass = [
+                    {"role": "system", "content": system_context},
+                    {"role": "user", "content": message},
+                    response_msg
+                ]
+                
+                for tool_call in tool_calls:
+                    function_name = tool_call.function.name
+                    import json
+                    try:
+                        function_args = json.loads(tool_call.function.arguments)
+                    except json.JSONDecodeError:
+                        function_args = {}
+                    
+                    tool_output = execute_tool(function_name, function_args, db)
+                    print(f"🛠️ Result from {function_name}: {tool_output}")
+                    
+                    messages_for_second_pass.append(
+                        {
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": function_name,
+                            "content": str(tool_output)
+                        }
+                    )
+                
+                # Make second LLM request to synthesize tool responses
+                second_response = groq_client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=messages_for_second_pass
+                )
+                
+                response = second_response.choices[0].message.content.strip()
+            else:
+                response = response_msg.content.strip()
+                
+        except Exception as e:
+            print(f"❌ AI Agent Chat Error (Groq): {e}")
+            try:
+                response = ai_generate(prompt, temperature=0.7)
+                response = response.strip()
+            except:
+                response = f"I'm having trouble connecting right now, {user_name}. Please try again in a moment."
+    else:
+        # Fallback to standard generic response for patients or if Groq fails
+        try:
+            response = ai_generate(prompt, temperature=0.7)
+            response = response.strip()
+        except Exception as e:
+            print(f"❌ AI Chat Error: {e}")
+            response = f"I'm having trouble connecting right now, {user_name}. Please try again in a moment."
     
     return {
         "response": response,
