@@ -26,7 +26,7 @@ def get_client():
             return None
     return _client_cache
 
-def ai_generate(prompt, temperature=0.7, model="gemini-2.0-flash", client_override=None):
+def ai_generate(prompt, temperature=0.7, model="gemini-2.5-flash", client_override=None):
     # 1. Try Groq First (if available)
     if groq_client:
         try:

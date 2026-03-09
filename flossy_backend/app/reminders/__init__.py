@@ -53,7 +53,7 @@ def generate_quirky_message_gemini(level: int, patient_name: str, time_str: str,
 
     try:
         response = genai_client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt
         )
         return response.text.strip()
