@@ -32,11 +32,21 @@ export default function Header({ openAI }) {
         overflowX: "hidden"
       }}
     >
-      <div className="sa-logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
-        <img src="/static/assets/logo.png" alt="logo" />
-        <div style={{ display: "flex", flexDirection: "column", lineHeight: "1", alignItems: "flex-end", gap: "2px" }}>
-          <span className="text-brand" style={{ fontSize: "1.4rem", color: "#d4af37", fontWeight: "700" }}>Smile Artists</span>
-          <span className="text-tagline" style={{ fontSize: "0.85rem", color: "#d4af37", opacity: 0.8, fontWeight: "normal" }}>...crafting smiles</span>
+      <div className="sa-logo flex items-center gap-2.5 flex-shrink-0" onClick={() => navigate("/")} style={{ cursor: "pointer", display: "flex", flexDirection: "row" }}>
+        <img
+          src="/static/assets/logo.png"
+          alt="Smile Artists"
+          className="w-9 h-9 rounded-full border border-[#d4af37]/50 object-cover"
+        />
+        <div className="flex flex-col leading-none items-end" style={{ gap: "2px" }}>
+          <span
+            className="text-white text-[1.4rem] font-bold"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >Smile Artists</span>
+          <span
+            className="text-[#d4af37] text-[0.85rem] text-right"
+            style={{ fontFamily: "'Monotype Corsiva', cursive", opacity: 0.8 }}
+          >...crafting smiles</span>
         </div>
       </div>
 

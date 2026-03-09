@@ -4,11 +4,21 @@ import "../styles/role_header.css";
 export default function RoleHeader() {
   return (
     <header className="role-header">
-      <div className="role-header-logo">
-        <img src="/static/assets/logo.png" alt="Smile Artists" />
-        <div style={{ display: "flex", flexDirection: "column", lineHeight: "0.9", alignItems: "flex-start", gap: "3px" }}>
-          <span style={{ fontSize: "1.3rem", color: "#d4af37", fontWeight: "600" }}>Smile Artists</span>
-          <span style={{ fontSize: "0.85rem", color: "#d4af37", opacity: 0.8 }}>...crafting smiles</span>
+      <div className="role-header-logo flex items-center gap-2.5 flex-shrink-0" onClick={() => window.location.href="/"} style={{ cursor: "pointer", display: "flex", flexDirection: "row" }}>
+        <img
+          src="/static/assets/logo.png"
+          alt="Smile Artists"
+          className="w-9 h-9 rounded-full border border-[#d4af37]/50 object-cover"
+        />
+        <div className="flex flex-col leading-none items-end" style={{ gap: "2px" }}>
+          <span
+            className="text-white text-[1.4rem] font-bold"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >Smile Artists</span>
+          <span
+            className="text-[#d4af37] text-[0.85rem] text-right"
+            style={{ fontFamily: "'Monotype Corsiva', cursive", opacity: 0.8 }}
+          >...crafting smiles</span>
         </div>
       </div>
 

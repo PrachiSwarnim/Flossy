@@ -6,8 +6,12 @@ import Header from "./DashboardHeader";
 import Footer from "../../components/Footer";
 import InvoiceForm from "../../components/InvoiceForm";
 import { Meteors } from "../../components/ui/Meteors";
-import "../../styles/dentist_dashboard.css";
 import { TIME_SLOTS, formatTime12h } from "../../utils/timeSlots";
+
+import "../../styles/dentist_dashboard.css";
+import "../../styles/dashboard_extras.css";
+import "../../styles/patient_dashboard.css";
+import "../../styles/ai_features.css";
 
 const API = import.meta.env.VITE_API_BASE_URL?.replace("http://", "https://");
 
@@ -26,6 +30,13 @@ export default function ReceptionistDashboard() {
     const [visitReason, setVisitReason] = useState("");
     const [assignedDoctor, setAssignedDoctor] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Sidebar & AI State
+    const [profileVisible, setProfileVisible] = useState(false);
+    const [aiOpen, setAiOpen] = useState(false);
+    const [messages, setMessages] = useState([]);
+    const [input, setInput] = useState("");
+    const [typing, setTyping] = useState(false);
     const [patientsList, setPatientsList] = useState([]);
     const [invoices, setInvoices] = useState([]);
     const [today, setToday] = useState([]);
@@ -384,6 +395,38 @@ export default function ReceptionistDashboard() {
         }
     }
 
+    /* ==============================
+       AI CHAT HANDLER
+    ================================ */
+
+    async function sendAiMessage(customMsg = null) {
+        const msg = customMsg || input.trim();
+        if (!msg) return;
+
+        setMessages(prev => [...prev, { from: "user", text: msg }]);
+        setInput("");
+        setTyping(true);
+
+        try {
+            const token = await session.getToken({ template: "default" });
+            const res = await fetch(`${API}/api/ai/chat`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ message: msg, context: "receptionist_dashboard" })
+            });
+            const data = await res.json();
+            setMessages(prev => [...prev, { from: "ai", text: data.response || data.message || "I'm here to help!" }]);
+        } catch (err) {
+            console.error("AI Error:", err);
+            setMessages(prev => [...prev, { from: "ai", text: "Sorry, I couldn't process that. Please try again." }]);
+        } finally {
+            setTyping(false);
+        }
+    }
+
     async function handleAddPatient() {
         if (!patientName || !patientPhone || !patientAge || !visitDate || !visitTime || !visitReason || !assignedDoctor) {
             alert("Please fill in all details, including assigning a doctor.");
@@ -517,7 +560,7 @@ export default function ReceptionistDashboard() {
     const isNewUser = sessionStorage.getItem("flossy_is_new_user") === "true";
 
     return (
-        <div className="relative overflow-hidden min-h-screen dashboard-shell">
+        <div className={`dashboard-shell relative overflow-hidden min-h-screen ${!profileVisible ? "sidebar-collapsed" : "sidebar-expanded"}`}>
             {/* Animated Premium Background Effects */}
             <Meteors number={25} />
             <div
@@ -532,10 +575,78 @@ export default function ReceptionistDashboard() {
                     background: "radial-gradient(circle at center, rgba(212,175,55,0.04) 0%, transparent 60%)",
                 }}
             />
-            <Header />
-            <main className="dentist-main relative z-10">
-                <h1 style={{ textAlign: "center", color: "#f0b800", marginBottom: "2rem", fontSize: "2.5rem" }}>Clinic Reception</h1>
-                <h2 id="Message">{isNewUser ? "Welcome" : "Welcome back"}, {fullName}!</h2>
+
+            {/* RECEPTIONIST PROFILE SIDEBAR */}
+            <aside className="profile-sidebar">
+                <div
+                    className="sidebar-expand-toggle"
+                    onClick={() => setProfileVisible(!profileVisible)}
+                    title={profileVisible ? "Hide Sidebar" : "Show Sidebar"}
+                >
+                    <i className={`fas fa-${profileVisible ? 'chevron-left' : 'bars'}`}></i>
+                </div>
+
+                <div className="profile-sidebar-content elegant-scroll">
+                    <div className="profile-avatar">
+                        {user?.imageUrl ? (
+                            <img src={user.imageUrl} alt="Profile" />
+                        ) : (
+                            <div className="avatar-placeholder">
+                                <i className="fas fa-headset"></i>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="profile-header-text">
+                        <h3 className="profile-name">{fullName}</h3>
+                        <span className="profile-role">Clinic Receptionist</span>
+                    </div>
+
+                    <div className="profile-info-grid" style={{ justifyContent: 'center', textAlign: 'center' }}>
+                        <div className="profile-stat">
+                            <span className="stat-value">{today.length}</span>
+                            <span className="stat-label">Today</span>
+                        </div>
+                        <div className="profile-stat">
+                            <span className="stat-value">{upcoming.length}</span>
+                            <span className="stat-label">Upcoming</span>
+                        </div>
+                        <div className="profile-stat">
+                            <span className="stat-value">{patientsList.length}</span>
+                            <span className="stat-label">Patients</span>
+                        </div>
+                    </div>
+
+                    <div className="profile-details-compact">
+                        <div className="detail-row" title={user?.primaryEmailAddress?.emailAddress}>
+                            <i className="fas fa-envelope"></i>
+                            <span>{user?.primaryEmailAddress?.emailAddress || "No email"}</span>
+                        </div>
+                        <div className="detail-row">
+                            <i className="fas fa-clinic-medical"></i>
+                            <span>Smile Artists Dental Studio</span>
+                        </div>
+                        <div className="detail-row">
+                            <i className="fas fa-map-marker-alt"></i>
+                            <span>Gurugram</span>
+                        </div>
+                    </div>
+
+                    <div className="sidebar-actions">
+                        <button className="p-btn sidebar-book-btn" onClick={() => setAiOpen(true)}>
+                            <i className="fas fa-robot"></i> <span>FlossyAI</span>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <div className="dashboard-main-content">
+                <Header openAI={() => setAiOpen(true)} />
+                <main className="dentist-main relative z-10">
+                <h2 id="Message" style={{ marginBottom: "0.5rem" }}>Clinic Reception</h2>
+                <h3 style={{ textAlign: "center", color: "#d4af37", marginBottom: "2.5rem", fontSize: "1.4rem", fontWeight: "normal", fontFamily: "var(--font-heading)", fontStyle: "italic" }}>
+                    {isNewUser ? "Welcome" : "Welcome back"}, {fullName}!
+                </h3>
 
                 <div className="dashboard-layout" style={{ display: "flex", flexDirection: "column", gap: "2rem", paddingBottom: "3rem", alignItems: "center" }}>
 
@@ -1379,8 +1490,50 @@ export default function ReceptionistDashboard() {
                     </div>
                 </div>
             </main>
-            <Footer />
+            
+            {/* AI SIDE PANEL */}
+            <aside className={`ai-panel ${aiOpen ? "open" : ""}`}>
+                <div className="ai-header">
+                    <span>FlossyAI Assistant</span>
+                    <button className="close" onClick={() => setAiOpen(false)}>×</button>
+                </div>
 
+                <div className="ai-content">
+                    {messages.length === 0 && (
+                        <div className="ai-welcome">
+                            <p>
+                                Hi <b>{user?.firstName || "Receptionist"}</b>! How can FlossyAI assist you today?
+                            </p>
+                            <div className="ai-chips">
+                                <button onClick={() => sendAiMessage("Summarize today's appointments")}>📅 Today's Schedule</button>
+                                <button onClick={() => sendAiMessage("Generate daily report")}>📊 Daily Report</button>
+                                <button onClick={() => sendAiMessage("Find patients missing follow-ups")}>🔔 Follow-ups</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {messages.map((m, i) => (
+                        <div key={i} className={m.from === "ai" ? "msg-ai" : "msg-user"}>
+                            <b>{m.from === "ai" ? "FlossyAI" : "You"}:</b> {m.text}
+                        </div>
+                    ))}
+                    {typing && <div className="typing">FlossyAI is typing<span className="dot-one">.</span><span className="dot-two">.</span><span className="dot-three">.</span></div>}
+                </div>
+
+                <div className="ai-input-area">
+                    <input
+                        type="text"
+                        placeholder="Ask something..."
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && sendAiMessage()}
+                    />
+                    <button onClick={() => sendAiMessage()}>Send</button>
+                </div>
+            </aside>
+
+            <Footer />
+            </div>
             {/* QUICK EDIT MODAL */}
             {isEditModalOpen && (
                 <div style={{
