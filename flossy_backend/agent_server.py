@@ -20,6 +20,8 @@ from google.oauth2 import service_account
 from app.core.database import SessionLocal
 from app.models import Appointment, Patient, User
 from sqlalchemy import and_
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from app.services.agent_graph import app_graph
 
 # --- RL IMPORTS ---
 try:
@@ -349,95 +351,39 @@ async def send_bot(ws: WebSocket, text: str):
     await ws.send_json({"type": "status", "content": "Listening..."})
 
 async def process_conversation_turn(text: str, st: dict, mode: str = "VOICE", ws: WebSocket = None):
-    """Handles one turn of conversation using Gemini with Tools, with Groq fallback."""
-    from app.services.llm_client import genai_client, groq_client
-    from app.core.utils import ai_generate
-
+    """Handles one turn of conversation using LangGraph (Agentic workflow)."""
     if ws:
         await ws.send_json({"type": "status", "content": "Thinking..."})
     
-    # 1. Select Prompt
-    system_prompt, action_id = select_prompt(text)
+    # 1. Prepare State for LangGraph
+    history = st.get("history", [])
+    if not history:
+        # Initial system prompt
+        history.append(SystemMessage(content=SYSTEM_PROMPT_DEFAULT))
     
-    # 2. Call Gemini
+    messages = history + [HumanMessage(content=text)]
+    
+    # 2. Invoke Graph
     try:
-        chat = genai_client.chats.create(
-            model="gemini-2.0-flash-001",
-            config=types.GenerateContentConfig(
-                tools=my_tools, 
-                system_instruction=system_prompt
-            )
-        )
-        response = chat.send_message(text)
+        inputs = {"messages": messages, "rag_context": ""}
+        config = {"configurable": {"thread_id": st.get("cid", "default")}}
         
-        # Manual Tool Call Handling
-        while True:
-            # Check for tool calls in the response
-            tool_calls = []
-            if response.candidates and response.candidates[0].content.parts:
-                for part in response.candidates[0].content.parts:
-                    if part.function_call:
-                        tool_calls.append(part.function_call)
-            
-            if not tool_calls:
-                break
-                
-            print(f"🛠️ Tool Calls: {tool_calls}")
-            tool_responses = []
-            for tc in tool_calls:
-                # Find the function in my_tools or local scope
-                func_name = tc.name
-                func_args = tc.args
-                print(f"🚀 Executing {func_name} with {func_args}")
-                
-                # Dynamic lookup of function
-                func = globals().get(func_name)
-                if func:
-                    try:
-                        # Call the function
-                        if isinstance(func_args, dict):
-                            result = func(**func_args)
-                        else:
-                            result = func()
-                        
-                        print(f"✅ Result: {result}")
-                        tool_responses.append(types.Part.from_function_response(
-                            name=func_name,
-                            response={"result": str(result)}
-                        ))
-                    except Exception as fe:
-                        print(f"❌ Tool execution failed: {fe}")
-                        tool_responses.append(types.Part.from_function_response(
-                            name=func_name,
-                            response={"result": f"Error: {fe}"}
-                        ))
-                else:
-                    print(f"⚠️ Function {func_name} not found!")
-                    tool_responses.append(types.Part.from_function_response(
-                        name=func_name,
-                        response={"result": "Function not found."}
-                    ))
-            
-            # Send results back to model
-            response = chat.send_message(tool_responses)
-
-        ai_reply = response.text or "I'm checking..."
+        # Run in executor because LangGraph/LangChain can be synchronous in parts
+        loop = asyncio.get_running_loop()
+        final_state = await loop.run_in_executor(None, lambda: app_graph.invoke(inputs, config))
         
-        if "booked" in ai_reply.lower() and action_id:
-            reward_rl(action_id)
-            
+        # 3. Extract AI Reply
+        ai_msg = final_state["messages"][-1]
+        ai_reply = ai_msg.content
+        
+        # Update history
+        st["history"] = final_state["messages"]
         st["last_ai_reply"] = ai_reply
+        
         return ai_reply, st
 
     except Exception as e:
-        err_msg = str(e)
-        if "RESOURCE_EXHAUSTED" in err_msg or "429" in err_msg:
-             print("⚠️ Gemini Rate Limit Hit. Falling back to Groq/Llama...")
-             fallback_prompt = f"{system_prompt}\n\nUSER MESSAGE: {text}\n\nREPLY CONCISELY:"
-             ai_reply = ai_generate(fallback_prompt)
-             return ai_reply, st
-        
-        print(f"❌ Gemini Error: {e}")
+        print(f"❌ LangGraph Error: {e}")
         return "I'm sorry, I'm having trouble thinking right now.", st
 
 # -------------------------

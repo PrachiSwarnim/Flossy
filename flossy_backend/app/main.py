@@ -6,6 +6,8 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+from strawberry.fastapi import GraphQLRouter
+from app.api.v1.graphql_schema import schema
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +28,12 @@ try:
     
     from app.api.v1.api_router import api_router
     app.include_router(api_router, prefix="/api")
-    logger.info("✅ All routers and auth middleware loaded.")
+    
+    # GraphQL Endpoint
+    graphql_app = GraphQLRouter(schema)
+    app.include_router(graphql_app, prefix="/graphql")
+    
+    logger.info("✅ All routers, GraphQL, and auth middleware loaded.")
 except Exception as e:
     logger.error(f"❌ Critical error during service loading: {e}")
 
