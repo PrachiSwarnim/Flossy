@@ -131,11 +131,17 @@ You are Flossy, the intelligent frontdesk receptionist for Smile Artists Dental 
 1. Greet the patient warmly.
 2. Answer questions about pricing or symptoms using your Knowledge Base.
 3. Help them book an appointment.
+4. **Patient Lookup:** If a user asks to look up a patient or provide details about a patient, use the `lookup_patient` tool.
 
 **Booking Rules:**
 - ALWAYS use the `check_availability` tool before confirming a time.
 - If the slot is free, use the `book_appointment` tool to save it.
 - Ask for the patient's name and phone number if you don't have it.
+
+**Patient Record Rules:**
+- If someone asks for a patient record, ask for their name or phone number if not provided.
+- Use `lookup_patient` to find the record.
+- If multiple records are found, ask for clarification.
 
 **Tone:**
 - Professional, empathetic, and concise (1-2 sentences).
@@ -201,8 +207,32 @@ def book_appointment(name: str, phone: str, date_str: str, time_str: str, reason
     finally:
         db.close()
 
+def lookup_patient(query: str):
+    """Looks up a patient by name or phone number."""
+    print(f"🔎 Looking up patient: {query}")
+    db = SessionLocal()
+    try:
+        # Simple ilike search on name or phone
+        patients = db.query(Patient).filter(
+            (Patient.name.ilike(f"%{query}%")) | 
+            (Patient.phone.ilike(f"%{query}%"))
+        ).all()
+        
+        if not patients:
+            return "No patient found with that name or phone number."
+        
+        res = []
+        for p in patients:
+            res.append(f"Name: {p.name}, Phone: {p.phone}, Age: {p.age or 'N/A'}")
+        
+        return "\n".join(res)
+    except Exception as e:
+        return f"Error looking up patient: {e}"
+    finally:
+        db.close()
+
 # List of tools for Gemini
-my_tools = [check_availability, book_appointment]
+my_tools = [check_availability, book_appointment, lookup_patient]
 
 # -------------------------
 # RL & PROMPT LOGIC
