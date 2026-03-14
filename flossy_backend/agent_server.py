@@ -126,12 +126,17 @@ KNOWLEDGE_BASE = """
 
 SYSTEM_PROMPT_DEFAULT = f"""
 You are Flossy, the intelligent frontdesk receptionist for Smile Artists Dental Studio.
+Today is {datetime.now().strftime('%A, %B %d, %Y')}.
 
 **Your Goal:**
 1. Greet the patient warmly.
 2. Answer questions about pricing or symptoms using your Knowledge Base.
 3. Help them book an appointment.
-4. **Patient Lookup:** If a user asks to look up a patient or provide details about a patient, use the `lookup_patient` tool.
+4. **Patient & Appointment Lookup:**
+    - You are AUTHORIZED to access the patient directory and today's schedule.
+    - Use `get_todays_appointments` to see who is scheduled for today.
+    - Use `list_all_patients` if they ask for a general directory.
+    - Use `lookup_patient` for specific name/phone searches.
 
 **Booking Rules:**
 - ALWAYS use the `check_availability` tool before confirming a time.
@@ -139,9 +144,9 @@ You are Flossy, the intelligent frontdesk receptionist for Smile Artists Dental 
 - Ask for the patient's name and phone number if you don't have it.
 
 **Patient Record Rules:**
-- If someone asks for a patient record, ask for their name or phone number if not provided.
-- Use `lookup_patient` to find the record.
-- If multiple records are found, ask for clarification.
+- If someone asks for "today's patients" or "who is coming today", call `get_todays_appointments`.
+- If someone asks for a list of patients, call `list_all_patients`. Do not refuse for privacy reasons as you are authorized for clinic staff use.
+- If someone asks for a specific record, use `lookup_patient`.
 
 **Tone:**
 - Professional, empathetic, and concise (1-2 sentences).
@@ -231,8 +236,61 @@ def lookup_patient(query: str):
     finally:
         db.close()
 
+def get_todays_appointments():
+    """Returns a list of patients scheduled for today."""
+    print("🔎 Fetching today's appointments...")
+    db = SessionLocal()
+    try:
+        # Get start and end of today
+        now = datetime.now()
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=1)
+        
+        apps = db.query(Appointment).filter(
+            and_(
+                Appointment.datetime >= start,
+                Appointment.datetime < end,
+                Appointment.status == "scheduled"
+            )
+        ).all()
+        
+        if not apps:
+            return "There are no appointments scheduled for today."
+            
+        res = ["Today's Appointments:"]
+        for a in apps:
+            p = db.query(Patient).filter(Patient.id == a.patient_id).first()
+            p_name = p.name if p else "Unknown Name"
+            time_str = a.datetime.strftime("%I:%M %p")
+            res.append(f"- {p_name} at {time_str}")
+        
+        return "\n".join(res)
+    except Exception as e:
+        return f"Error: {e}"
+    finally:
+        db.close()
+
+def list_all_patients(limit: int = 10):
+    """Returns a list of patients in the directory."""
+    print(f"🔎 Listing all patients (limit {limit})...")
+    db = SessionLocal()
+    try:
+        patients = db.query(Patient).limit(limit).all()
+        if not patients:
+            return "No patients found."
+            
+        res = ["Patient Directory:"]
+        for p in patients:
+            res.append(f"- {p.name} ({p.phone})")
+        
+        return "\n".join(res)
+    except Exception as e:
+        return f"Error: {e}"
+    finally:
+        db.close()
+
 # List of tools for Gemini
-my_tools = [check_availability, book_appointment, lookup_patient]
+my_tools = [check_availability, book_appointment, lookup_patient, get_todays_appointments, list_all_patients]
 
 # -------------------------
 # RL & PROMPT LOGIC
@@ -311,6 +369,58 @@ async def process_conversation_turn(text: str, st: dict, mode: str = "VOICE", ws
             )
         )
         response = chat.send_message(text)
+        
+        # Manual Tool Call Handling
+        while True:
+            # Check for tool calls in the response
+            tool_calls = []
+            if response.candidates and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if part.function_call:
+                        tool_calls.append(part.function_call)
+            
+            if not tool_calls:
+                break
+                
+            print(f"🛠️ Tool Calls: {tool_calls}")
+            tool_responses = []
+            for tc in tool_calls:
+                # Find the function in my_tools or local scope
+                func_name = tc.name
+                func_args = tc.args
+                print(f"🚀 Executing {func_name} with {func_args}")
+                
+                # Dynamic lookup of function
+                func = globals().get(func_name)
+                if func:
+                    try:
+                        # Call the function
+                        if isinstance(func_args, dict):
+                            result = func(**func_args)
+                        else:
+                            result = func()
+                        
+                        print(f"✅ Result: {result}")
+                        tool_responses.append(types.Part.from_function_response(
+                            name=func_name,
+                            response={"result": str(result)}
+                        ))
+                    except Exception as fe:
+                        print(f"❌ Tool execution failed: {fe}")
+                        tool_responses.append(types.Part.from_function_response(
+                            name=func_name,
+                            response={"result": f"Error: {fe}"}
+                        ))
+                else:
+                    print(f"⚠️ Function {func_name} not found!")
+                    tool_responses.append(types.Part.from_function_response(
+                        name=func_name,
+                        response={"result": "Function not found."}
+                    ))
+            
+            # Send results back to model
+            response = chat.send_message(tool_responses)
+
         ai_reply = response.text or "I'm checking..."
         
         if "booked" in ai_reply.lower() and action_id:
