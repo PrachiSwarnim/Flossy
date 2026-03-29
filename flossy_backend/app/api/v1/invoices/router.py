@@ -18,19 +18,32 @@ def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db), user = De
     Creates an itemized invoice. Accessible by both dentist and receptionist.
     """
     try:
-        # 1. Find patient
-        patient = db.query(Patient).filter(Patient.name.ilike(data.patient_name)).first()
+        # 1. Find patient - try multiple matching strategies since the frontend
+        # sends the display_name which may differ from the raw Patient.name
+        search_name = data.patient_name.strip()
+        
+        # Strategy 1: Direct match on Patient.name
+        patient = db.query(Patient).filter(Patient.name.ilike(search_name)).first()
+        
+        # Strategy 2: Match on first_name + last_name (display_name from patients API)
         if not patient:
-            # Fallback: check User table
-            u_p = db.query(User).filter(User.role == "patient").all()
-            # simple filter, or if name is in user metadata
-            # For simplicity, if not in Patient table, fail or try to match users?
-            # Reusing main.py logic:
-            # "u_p = db.query(User).filter(User.name.ilike(data.patient_name)).first()" -> User doesn't have name column in new model?
-            # User model has email. Patient has name.
-            # If User has no name column, the main.py logic was probably flawed or relying on a property.
-            # Let's stick to Patient table name match.
-            pass
+            from sqlalchemy import func
+            patients_all = db.query(Patient).all()
+            for p in patients_all:
+                # Build display_name the same way the patients router does
+                if p.first_name:
+                    display = f"{p.first_name} {p.last_name or ''}".strip()
+                else:
+                    display = (p.name or "").strip()
+                if display.lower() == search_name.lower():
+                    patient = p
+                    break
+        
+        # Strategy 3: Partial/fuzzy match on name field
+        if not patient:
+            patient = db.query(Patient).filter(
+                Patient.name.ilike(f"%{search_name}%")
+            ).first()
                 
         if not patient:
             raise HTTPException(status_code=404, detail=f"Patient '{data.patient_name}' not found.")
@@ -118,8 +131,23 @@ def update_invoice(id: int, data: InvoiceCreate, db: Session = Depends(get_db), 
         if data.currency: invoice.currency = data.currency
         invoice.discount = data.discount
         
-        # Patient
-        patient = db.query(Patient).filter(Patient.name.ilike(data.patient_name)).first()
+        # Patient - use same multi-strategy lookup
+        search_name = data.patient_name.strip()
+        patient = db.query(Patient).filter(Patient.name.ilike(search_name)).first()
+        if not patient:
+            patients_all = db.query(Patient).all()
+            for p in patients_all:
+                if p.first_name:
+                    display = f"{p.first_name} {p.last_name or ''}".strip()
+                else:
+                    display = (p.name or "").strip()
+                if display.lower() == search_name.lower():
+                    patient = p
+                    break
+        if not patient:
+            patient = db.query(Patient).filter(
+                Patient.name.ilike(f"%{search_name}%")
+            ).first()
         if patient: invoice.patient_id = patient.id
 
         # 2. Replace Items
