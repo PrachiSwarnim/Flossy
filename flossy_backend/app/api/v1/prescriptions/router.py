@@ -156,13 +156,26 @@ def get_patient_prescriptions_by_name(patient_name: str, db: Session = Depends(g
     """
     import urllib.parse
     decoded_name = urllib.parse.unquote(patient_name).strip()
+    search_name = decoded_name.title()
     
-    # Find patient by name (case-insensitive)
+    # 1. Try exact case-insensitive match
     patient = db.query(Patient).filter(Patient.name.ilike(decoded_name)).first()
     
+    # 2. Try with title case
     if not patient:
-        # Try matching with title case
-        patient = db.query(Patient).filter(Patient.name.ilike(decoded_name.title())).first()
+        patient = db.query(Patient).filter(Patient.name.ilike(search_name)).first()
+
+    # 3. Try with wildcards to handle extra whitespace in DB
+    if not patient:
+        patient = db.query(Patient).filter(Patient.name.ilike(f"%{search_name}%")).first()
+
+    # 4. Normalize and compare all patient names
+    if not patient:
+        all_patients = db.query(Patient).all()
+        for p in all_patients:
+            if p.name and p.name.strip().title() == search_name:
+                patient = p
+                break
     
     if not patient:
         return {"prescriptions": []}
