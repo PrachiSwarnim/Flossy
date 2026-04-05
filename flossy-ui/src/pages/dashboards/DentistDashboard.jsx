@@ -763,6 +763,7 @@ export default function DentistDashboard() {
                       value={prescPatient}
                       onChange={(e) => {
                         setPrescPatient(e.target.value);
+                        setPrescHistoryExpanded(false);
                         fetchPatientPrescriptions(e.target.value);
                       }}
                       style={{
