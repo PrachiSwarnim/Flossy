@@ -16,7 +16,21 @@ router = APIRouter()
 def create_prescription(data: PrescriptionCreate, db: Session = Depends(get_db), user = Depends(require_role("dentist"))):
     # 1. Search for Patient record first
     search_name = data.patient_name.strip().title()
+    
+    # Try exact case-insensitive match
     patient = db.query(Patient).filter(Patient.name.ilike(search_name)).first()
+
+    # Fallback: Try with wildcards to handle extra whitespace
+    if not patient:
+        patient = db.query(Patient).filter(Patient.name.ilike(f"%{search_name}%")).first()
+
+    # Fallback: Normalize and compare all patient names
+    if not patient:
+        all_patients = db.query(Patient).all()
+        for p in all_patients:
+            if p.name and p.name.strip().title() == search_name:
+                patient = p
+                break
 
     if not patient:
         # Fallback: Search in Users table for legacy or derived names
