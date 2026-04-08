@@ -118,7 +118,6 @@ export default function DentistDashboard() {
   const [prescTreatmentPlan, setPrescTreatmentPlan] = useState("");
   const [prescRecommendations, setPrescRecommendations] = useState("");
   const [prescMedSearch, setPrescMedSearch] = useState("");
-  const [prescHistoryExpanded, setPrescHistoryExpanded] = useState(false);
 
   // ===== ANALYTICS STATE =====
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
@@ -763,7 +762,6 @@ export default function DentistDashboard() {
                       value={prescPatient}
                       onChange={(e) => {
                         setPrescPatient(e.target.value);
-                        setPrescHistoryExpanded(false);
                         fetchPatientPrescriptions(e.target.value);
                       }}
                       style={{
@@ -960,114 +958,39 @@ export default function DentistDashboard() {
                         Prescription History for {prescPatient}
                         <span style={{ color: "#888", fontSize: "0.8rem", fontWeight: "normal" }}>({patientPrescriptions.length})</span>
                       </h4>
-
-                      {/* Always show first 2 */}
-                      {patientPrescriptions.slice(0, 2).map(presc => (
-                        <div key={presc.id} style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "8px",
-                          borderBottom: "1px solid #333",
-                          fontSize: "0.9rem"
-                        }}>
-                          <div>
-                            <span style={{ color: "#fff" }}>{new Date(presc.date).toLocaleDateString()}</span>
-                            {presc.diagnosis && <span style={{ color: "#888", marginLeft: "10px" }}>{presc.diagnosis.slice(0, 50)}...</span>}
-                          </div>
-                          <div style={{ display: "flex", gap: "8px" }}>
-                            <button
-                              onClick={() => downloadPrescription(presc.id, prescPatient, true)}
-                              style={{ background: "#f0b800", border: "none", color: "#000", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "0.80rem", fontWeight: "bold" }}
-                              title="Download Stamped"
-                            >
-                              <i className="fas fa-stamp"></i> Stamped
-                            </button>
-                            <button
-                              onClick={() => downloadPrescription(presc.id, prescPatient, false)}
-                              style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "0.80rem" }}
-                              title="Download Plain"
-                            >
-                              Plain
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-
-                      {/* Expandable remaining prescriptions */}
-                      {patientPrescriptions.length > 2 && (
-                        <>
-                          <div style={{
-                            maxHeight: prescHistoryExpanded ? `${(patientPrescriptions.length - 2) * 50}px` : "0px",
-                            overflow: "hidden",
-                            transition: "max-height 0.4s ease-in-out"
+                      <div className="elegant-scroll" style={{ maxHeight: "100px", overflowY: "auto" }}>
+                        {patientPrescriptions.map(presc => (
+                          <div key={presc.id} style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "8px",
+                            borderBottom: "1px solid #333",
+                            fontSize: "0.9rem"
                           }}>
-                            {patientPrescriptions.slice(2).map(presc => (
-                              <div key={presc.id} style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                padding: "8px",
-                                borderBottom: "1px solid #333",
-                                fontSize: "0.9rem"
-                              }}>
-                                <div>
-                                  <span style={{ color: "#fff" }}>{new Date(presc.date).toLocaleDateString()}</span>
-                                  {presc.diagnosis && <span style={{ color: "#888", marginLeft: "10px" }}>{presc.diagnosis.slice(0, 50)}...</span>}
-                                </div>
-                                <div style={{ display: "flex", gap: "8px" }}>
-                                  <button
-                                    onClick={() => downloadPrescription(presc.id, prescPatient, true)}
-                                    style={{ background: "#f0b800", border: "none", color: "#000", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "0.80rem", fontWeight: "bold" }}
-                                    title="Download Stamped"
-                                  >
-                                    <i className="fas fa-stamp"></i> Stamped
-                                  </button>
-                                  <button
-                                    onClick={() => downloadPrescription(presc.id, prescPatient, false)}
-                                    style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "0.80rem" }}
-                                    title="Download Plain"
-                                  >
-                                    Plain
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
+                            <div>
+                              <span style={{ color: "#fff" }}>{new Date(presc.date).toLocaleDateString()}</span>
+                              {presc.diagnosis && <span style={{ color: "#888", marginLeft: "10px" }}>{presc.diagnosis.slice(0, 50)}...</span>}
+                            </div>
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              <button
+                                onClick={() => downloadPrescription(presc.id, prescPatient, true)}
+                                style={{ background: "#f0b800", border: "none", color: "#000", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "0.80rem", fontWeight: "bold" }}
+                                title="Download Stamped"
+                              >
+                                <i className="fas fa-stamp"></i> Stamped
+                              </button>
+                              <button
+                                onClick={() => downloadPrescription(presc.id, prescPatient, false)}
+                                style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "0.80rem" }}
+                                title="Download Plain"
+                              >
+                                Plain
+                              </button>
+                            </div>
                           </div>
-
-                          {/* Slide down toggle bar */}
-                          <button
-                            onClick={() => setPrescHistoryExpanded(!prescHistoryExpanded)}
-                            style={{
-                              width: "100%",
-                              padding: "8px",
-                              marginTop: "6px",
-                              background: "linear-gradient(135deg, #2a2a2a, #333)",
-                              border: "1px solid #444",
-                              borderRadius: "6px",
-                              color: "#f0b800",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: "8px",
-                              fontSize: "0.82rem",
-                              fontWeight: "600",
-                              transition: "all 0.2s ease"
-                            }}
-                            onMouseOver={(e) => { e.currentTarget.style.background = "#3a3a3a"; e.currentTarget.style.borderColor = "#f0b800"; }}
-                            onMouseOut={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, #2a2a2a, #333)"; e.currentTarget.style.borderColor = "#444"; }}
-                          >
-                            <i className={`fas fa-chevron-${prescHistoryExpanded ? 'up' : 'down'}`}
-                              style={{ transition: "transform 0.3s ease" }}
-                            ></i>
-                            {prescHistoryExpanded
-                              ? "Show Less"
-                              : `Show ${patientPrescriptions.length - 2} More Prescription${patientPrescriptions.length - 2 > 1 ? 's' : ''}`
-                            }
-                          </button>
-                        </>
-                      )}
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

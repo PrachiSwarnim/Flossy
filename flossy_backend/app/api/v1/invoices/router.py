@@ -268,7 +268,8 @@ def download_invoice_pdf(id: int, stamp: bool = Query(True), db: Session = Depen
     pdf.add_page()
 
     # --- HEADER ---
-    logo_path = r"c:\Users\Prachi Swarnim\Desktop\Flossy\flossy-ui\public\static\assets\logo.png"
+    from pathlib import Path
+    logo_path = str(Path(__file__).resolve().parents[4] / "logo.png")
     try:
         pdf.image(logo_path, 10, 15, 30)
     except:
@@ -406,7 +407,7 @@ def download_invoice_pdf(id: int, stamp: bool = Query(True), db: Session = Depen
     if pdf.get_y() > 240: pdf.add_page()
     
     if stamp:
-        stamp_path = r"Clinic Stamp.jpg"
+        stamp_path = str(Path(__file__).resolve().parents[4] / "Clinic Stamp.jpg")
         try:
             with pdf.rotation(angle=-5, x=167.5, y=262):
                 pdf.image(stamp_path, x=150, y=252, w=35)
