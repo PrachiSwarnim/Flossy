@@ -30,3 +30,7 @@ ALLOWED_ORIGINS = [
     "https://flossy-ui-nine.vercel.app",
     "https://flossy-backend-422640267680.asia-south1.run.app"
 ]
+
+# Cloud Storage
+STORAGE_BUCKET = os.getenv("GOOGLE_STORAGE_BUCKET", "smile-artists-uploads")
+UPLOAD_DIR = "uploads"

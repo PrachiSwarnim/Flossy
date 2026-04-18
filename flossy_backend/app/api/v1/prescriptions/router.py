@@ -20,17 +20,19 @@ router = APIRouter()
 @router.post("/upload_xray")
 async def upload_xray(file: UploadFile = File(...), user = Depends(require_role("dentist"))):
     try:
-        if not os.path.exists("uploads"):
-            os.makedirs("uploads")
+        from app.core.storage import upload_file
         
         file_ext = file.filename.split(".")[-1]
         file_name = f"{uuid.uuid4()}.{file_ext}"
-        file_path = os.path.join("uploads", file_name)
         
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        result_url = upload_file(file, file_name)
+        
+        # If result_url is a full https://, return it as url. Otherwise use local path.
+        if result_url.startswith("http"):
+            return {"filename": file_name, "url": result_url}
+        else:
+            return {"filename": file_name, "url": f"/uploads/{file_name}"}
             
-        return {"filename": file_name, "url": f"/uploads/{file_name}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
@@ -486,6 +488,21 @@ def download_prescription_pdf(id: int, stamp: bool = Query(True), db: Session = 
             
             for i, img_name in enumerate(p.xrays):
                 f_path = os.path.join("uploads", img_name)
+                
+                # If not local, try to download from GCS for PDF generation
+                if not os.path.exists(f_path):
+                    try:
+                        from app.core.config import STORAGE_BUCKET
+                        from google.cloud import storage
+                        client = storage.Client()
+                        bucket = client.bucket(STORAGE_BUCKET)
+                        blob = bucket.blob(img_name)
+                        if blob.exists():
+                            if not os.path.exists("uploads"): os.makedirs("uploads")
+                            blob.download_to_filename(f_path)
+                            print(f"📦 JIT Downloaded {img_name} for PDF")
+                    except: pass
+
                 if not os.path.exists(f_path): continue
                 
                 col = i % 2

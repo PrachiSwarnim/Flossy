@@ -28,10 +28,10 @@ class Patient(Base):
     __tablename__ = "patients"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(120), nullable=False)
-    first_name = Column(String(100), nullable=True)
-    last_name = Column(String(100), nullable=True)
-    phone = Column(String(20), unique=True, nullable=False)
+    name = Column(String(120), nullable=False, index=True)
+    first_name = Column(String(100), nullable=True, index=True)
+    last_name = Column(String(100), nullable=True, index=True)
+    phone = Column(String(20), unique=True, nullable=False, index=True)
     age = Column(Integer, nullable=True)
     contact_datetime = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
@@ -57,8 +57,8 @@ class Appointment(Base):
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
     doctor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
-    datetime = Column(DateTime(timezone=True), nullable=False)
-    status = Column(String(50), default="scheduled")
+    datetime = Column(DateTime(timezone=True), nullable=False, index=True)
+    status = Column(String(50), default="scheduled", index=True)
 
     doctor_name = Column(String(120), nullable=True)  # UI only
     reason = Column(String(255), nullable=True)
@@ -142,7 +142,7 @@ class Prescription(Base):
     recommendations = Column(Text, nullable=True)
     linked_to = Column(Integer, ForeignKey("prescriptions.id", ondelete="SET NULL"), nullable=True) # Links to original prescription for continuations
     xrays = Column(JSON, default=[]) # List of filenames or URLs for X-ray images
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     # Relationships
     patient = relationship("Patient")
@@ -161,7 +161,7 @@ class Invoice(Base):
     currency = Column(String(10), default="INR")
     discount = Column(Float, default=0.0)
     total_amount = Column(Float, default=0.0) # Calculated as sum(items) - discount
-    status = Column(String(50), default="unpaid") # "unpaid", "partially_paid", "paid"
+    status = Column(String(50), default="unpaid", index=True) # "unpaid", "partially_paid", "paid"
 
     # Relationships
     patient = relationship("Patient")
