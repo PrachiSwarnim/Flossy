@@ -257,6 +257,15 @@ def get_invoice_details(id: int, db: Session = Depends(get_db)):
         ]
     }
 
+@router.delete("/{id}")
+def delete_invoice(id: int, db: Session = Depends(get_db), user = Depends(require_role("any"))):
+    invoice = db.query(Invoice).filter(Invoice.id == id).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    db.delete(invoice)
+    db.commit()
+    return {"success": True}
+
 @router.get("/{id}/pdf")
 def download_invoice_pdf(id: int, stamp: bool = Query(True), db: Session = Depends(get_db)):
     invoice = db.query(Invoice).filter(Invoice.id == id).first()

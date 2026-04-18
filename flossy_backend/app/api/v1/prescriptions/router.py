@@ -216,6 +216,15 @@ def update_prescription(id: int, data: PrescriptionUpdate, db: Session = Depends
     db.commit()
     return {"success": True}
 
+@router.delete("/{id}")
+def delete_prescription(id: int, db: Session = Depends(get_db), user = Depends(require_role("dentist"))):
+    presc = db.query(Prescription).filter(Prescription.id == id).first()
+    if not presc:
+        raise HTTPException(status_code=404, detail="Prescription not found")
+    db.delete(presc)
+    db.commit()
+    return {"success": True}
+
 @router.get("/{id}/pdf")
 def download_prescription_pdf(id: int, stamp: bool = Query(True), db: Session = Depends(get_db)):
     presc = db.query(Prescription).filter(Prescription.id == id).first()

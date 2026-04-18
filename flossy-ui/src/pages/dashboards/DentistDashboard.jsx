@@ -118,6 +118,7 @@ export default function DentistDashboard() {
   const [prescTreatmentPlan, setPrescTreatmentPlan] = useState("");
   const [prescRecommendations, setPrescRecommendations] = useState("");
   const [prescMedSearch, setPrescMedSearch] = useState("");
+  const [prescChiefComplaint, setPrescChiefComplaint] = useState("");
 
   // ===== ANALYTICS STATE =====
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
@@ -310,6 +311,7 @@ export default function DentistDashboard() {
         },
         body: JSON.stringify({
           patient_name: prescPatient,
+          details: prescChiefComplaint,
           diagnosis: prescNotes,
           treatment_plan: prescTreatmentPlan,
           recommendations: prescRecommendations,
@@ -327,6 +329,7 @@ export default function DentistDashboard() {
         setPrescTreatmentPlan("");
         setPrescRecommendations("");
         setPrescMedSearch("");
+        setPrescChiefComplaint("");
         fetchRecentPrescriptions();
       } else {
         const errData = await res.json();
@@ -355,6 +358,47 @@ export default function DentistDashboard() {
       document.body.appendChild(a);
       a.click();
       a.remove();
+    }
+  }
+
+  async function deletePrescription(id) {
+    if (!window.confirm("Are you sure you want to delete this prescription? This cannot be undone.")) return;
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/prescriptions/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        alert("Prescription deleted successfully.");
+        fetchPatientPrescriptions(prescPatient);
+        fetchRecentPrescriptions();
+      } else {
+        alert("Failed to delete prescription.");
+      }
+    } catch (err) {
+      console.error("Delete prescription error:", err);
+      alert("Error deleting prescription.");
+    }
+  }
+
+  async function deleteInvoice(id) {
+    if (!window.confirm("Are you sure you want to delete this invoice? This cannot be undone.")) return;
+    try {
+      const token = await session.getToken({ template: "default" });
+      const res = await fetch(`${API}/api/invoices/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        alert("Invoice deleted successfully.");
+        fetchInvoices();
+      } else {
+        alert("Failed to delete invoice.");
+      }
+    } catch (err) {
+      console.error("Delete invoice error:", err);
+      alert("Error deleting invoice.");
     }
   }
 
@@ -782,6 +826,27 @@ export default function DentistDashboard() {
                     </select>
                   </div>
 
+                  {/* CHIEF COMPLAINT */}
+                  <div style={{ marginBottom: "1.5rem" }}>
+                    <label style={{ color: "#f0b800", fontWeight: "bold", marginBottom: "10px", display: "block", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.85rem" }}>Chief Complaint</label>
+                    <textarea
+                      placeholder="e.g. Pain in lower left molar for 3 days..."
+                      value={prescChiefComplaint}
+                      onChange={(e) => setPrescChiefComplaint(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        background: "#222",
+                        border: "1px solid #444",
+                        borderRadius: "6px",
+                        color: "#fff",
+                        fontSize: "0.85rem",
+                        minHeight: "60px",
+                        resize: "vertical"
+                      }}
+                    ></textarea>
+                  </div>
+
                   {/* DIAGNOSIS & TREATMENT PLAN - Side by Side */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
                     <div>
@@ -987,6 +1052,13 @@ export default function DentistDashboard() {
                               >
                                 Plain
                               </button>
+                              <button
+                                onClick={() => deletePrescription(presc.id)}
+                                style={{ background: "transparent", border: "1px solid #e74c3c", color: "#e74c3c", padding: "4px 10px", borderRadius: "4px", cursor: "pointer", fontSize: "0.80rem" }}
+                                title="Delete Prescription"
+                              >
+                                <i className="fas fa-trash-alt"></i>
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -1053,6 +1125,13 @@ export default function DentistDashboard() {
                                   style={{ background: "transparent", border: "1px solid #555", color: "#888", padding: "5px 10px", borderRadius: "4px", fontSize: "0.80rem", cursor: "pointer" }}
                                 >
                                   Plain
+                                </button>
+                                <button
+                                  onClick={() => deleteInvoice(inv.id)}
+                                  style={{ background: "transparent", border: "1px solid #e74c3c", color: "#e74c3c", padding: "5px 10px", borderRadius: "4px", fontSize: "0.80rem", cursor: "pointer" }}
+                                  title="Delete Invoice"
+                                >
+                                  <i className="fas fa-trash-alt"></i>
                                 </button>
                               </div>
                             </div>
