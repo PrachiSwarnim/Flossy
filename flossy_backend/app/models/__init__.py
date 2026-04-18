@@ -140,6 +140,7 @@ class Prescription(Base):
     diagnosis = Column(Text, nullable=True)
     treatment_plan = Column(Text, nullable=True)
     recommendations = Column(Text, nullable=True)
+    instructions = Column(Text, nullable=True) # Dedicated field for patient instructions
     linked_to = Column(Integer, ForeignKey("prescriptions.id", ondelete="SET NULL"), nullable=True) # Links to original prescription for continuations
     xrays = Column(JSON, default=[]) # List of filenames or URLs for X-ray images
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)

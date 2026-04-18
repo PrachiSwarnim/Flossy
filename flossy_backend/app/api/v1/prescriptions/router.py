@@ -111,6 +111,8 @@ def create_prescription(data: PrescriptionCreate, db: Session = Depends(get_db),
         xrays=data.xrays or [],
         created_at=data.created_at or datetime.now(timezone.utc)
     )
+    if data.instructions is not None: new_presc.instructions = data.instructions
+    
     db.add(new_presc)
     db.commit()
     db.refresh(new_presc)
@@ -246,6 +248,7 @@ def update_prescription(id: int, data: PrescriptionUpdate, db: Session = Depends
     if data.diagnosis is not None: presc.diagnosis = data.diagnosis
     if data.treatment_plan is not None: presc.treatment_plan = data.treatment_plan
     if data.recommendations is not None: presc.recommendations = data.recommendations
+    if data.instructions is not None: presc.instructions = data.instructions
     if data.created_at is not None: presc.created_at = data.created_at
     
     db.commit()
@@ -321,11 +324,11 @@ def download_prescription_pdf(id: int, stamp: bool = Query(True), db: Session = 
 
         # ── HEADER: Logo & Clinic Info ──
         try:
-            pdf.image(logo_path, 10, 15, 30)
+            pdf.image(logo_path, 10, 14, 30) # Moved up slightly for alignment
         except:
             pass
 
-        pdf.set_xy(45, 15)
+        pdf.set_xy(45, 18) # Moved down to align with logo text
         pdf.set_font("Times", "B", 24)
         pdf.set_text_color(212, 175, 55)
         brand_w = pdf.get_string_width("Smile Artists")
@@ -353,15 +356,16 @@ def download_prescription_pdf(id: int, stamp: bool = Query(True), db: Session = 
         pdf.rect(10, pdf.get_y(), 190, 1.2, 'F')
         pdf.ln(5)
 
-        # ── TITLE BAR ──
-        pdf.set_font("Arial", "B", 13)
-        pdf.set_fill_color(35, 35, 35)
-        pdf.set_text_color(255, 255, 255)
-        title_text = " MEDICAL PRESCRIPTION"
+        # ── TITLE ──
+        pdf.set_font("Arial", "B", 14)
+        pdf.set_text_color(50, 50, 50) # Neutral dark gray
+        title_text = "MEDICAL PRESCRIPTION"
         if page_idx > 0:
-            title_text = f" MEDICAL PRESCRIPTION  -  CONTINUATION (Visit {page_idx + 1})"
-        pdf.cell(190, 10, title_text, ln=True, align="C", fill=True)
-        pdf.ln(6)
+            title_text = f"MEDICAL PRESCRIPTION  -  CONTINUATION (Visit {page_idx + 1})"
+        
+        # Center the title without background fill
+        pdf.cell(190, 10, title_text, ln=True, align="C")
+        pdf.ln(4)
 
         # ── PATIENT INFO TABLE ──
         # Row 1
@@ -470,60 +474,12 @@ def download_prescription_pdf(id: int, stamp: bool = Query(True), db: Session = 
         if p.treatment_plan:
             add_section("Treatment Plan", p.treatment_plan)
         if p.recommendations:
-            add_section("Recommendation / Instructions", p.recommendations, rx_symbol=True)
+            add_section("Rx", p.recommendations, bullet=True, rx_symbol=True)
+        if p.instructions:
+            add_section("Recommendation / Instructions", p.instructions)
 
-        # ── X-RAY SECTION ──
-        if p.xrays and len(p.xrays) > 0:
-            pdf.add_page() # Put X-rays on a fresh page
-            pdf.set_font("Arial", "B", 12)
-            pdf.set_text_color(212, 175, 55)
-            pdf.cell(0, 10, "RADIOLOGICAL EVIDENCE (X-RAYS)", ln=True, align="C")
-            pdf.ln(5)
-            
-            x_start = 15
-            y_curr = pdf.get_y()
-            img_w = 85
-            img_h = 65
-            spacing = 10
-            
-            for i, img_name in enumerate(p.xrays):
-                f_path = os.path.join("uploads", img_name)
-                
-                # If not local, try to download from GCS for PDF generation
-                if not os.path.exists(f_path):
-                    try:
-                        from app.core.config import STORAGE_BUCKET
-                        from google.cloud import storage
-                        client = storage.Client()
-                        bucket = client.bucket(STORAGE_BUCKET)
-                        blob = bucket.blob(img_name)
-                        if blob.exists():
-                            if not os.path.exists("uploads"): os.makedirs("uploads")
-                            blob.download_to_filename(f_path)
-                            print(f"📦 JIT Downloaded {img_name} for PDF")
-                    except: pass
-
-                if not os.path.exists(f_path): continue
-                
-                col = i % 2
-                x_pos = x_start + (col * (img_w + spacing))
-                
-                # If it's a new row, update y_curr
-                if i > 0 and col == 0:
-                    y_curr += img_h + spacing + 10
-                    
-                # New page if overflow
-                if y_curr + img_h > 260:
-                    pdf.add_page()
-                    y_curr = 20
-                
-                try:
-                    pdf.image(f_path, x=x_pos, y=y_curr, w=img_w, h=img_h)
-                    pdf.set_xy(x_pos, y_curr + img_h + 2)
-                    pdf.set_font("Arial", "I", 8)
-                    pdf.set_text_color(100, 100, 100)
-                    pdf.cell(img_w, 5, f"X-ray Image {i+1}", align="C", ln=0)
-                except: pass
+        # X-rays removed from per-page rendering to be moved to the end of the doc
+        pass
 
         # ── FOOTER: Signature & Stamp ──
         if pdf.get_y() > 240:
@@ -566,6 +522,63 @@ def download_prescription_pdf(id: int, stamp: bool = Query(True), db: Session = 
     total = len(all_prescriptions)
     for idx, p in enumerate(all_prescriptions):
         render_prescription_page(p, idx, total)
+
+    # ── CONSOLIDATED X-RAY SECTION (AT THE END) ──
+    all_xrays = []
+    for p in all_prescriptions:
+        if p.xrays:
+            for xray in p.xrays:
+                if xray not in all_xrays: all_xrays.append(xray)
+
+    if all_xrays:
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 14)
+        pdf.set_text_color(212, 175, 55)
+        pdf.cell(0, 12, "RADIOLOGICAL EVIDENCE (X-RAYS)", ln=True, align="C")
+        pdf.ln(5)
+        
+        x_start = 18
+        y_curr = pdf.get_y()
+        max_img_w = 85
+        spacing = 10
+        
+        for i, img_name in enumerate(all_xrays):
+            f_path = os.path.join("uploads", img_name)
+            if not os.path.exists(f_path):
+                try:
+                    from app.core.config import STORAGE_BUCKET
+                    from google.cloud import storage
+                    client = storage.Client()
+                    bucket = client.bucket(STORAGE_BUCKET)
+                    blob = bucket.blob(img_name)
+                    if blob.exists():
+                        if not os.path.exists("uploads"): os.makedirs("uploads")
+                        blob.download_to_filename(f_path)
+                except: pass
+
+            if not os.path.exists(f_path): continue
+
+            # Image logic: Proportional scaling
+            col = i % 2
+            x_pos = x_start + (col * (max_img_w + spacing))
+            
+            if i > 0 and col == 0:
+                y_curr = pdf.get_y() + 10 # Start new row
+
+            if y_curr > 230:
+                pdf.add_page()
+                y_curr = 20
+
+            try:
+                # Set w=max_img_w and h=0 to maintain aspect ratio automatically
+                pdf.image(f_path, x=x_pos, y=y_curr, w=max_img_w)
+                # No need for set_xy calculation here as h is auto-calculated, 
+                # but we need to move the cursor for the next image row
+                # We'll just set it to a safe distance
+                pdf.set_y(y_curr + 65) 
+            except Exception as e:
+                print(f"PDF Image Error: {e}")
+                pass
 
     pdf_bytes = bytes(pdf.output())
     return StreamingResponse(

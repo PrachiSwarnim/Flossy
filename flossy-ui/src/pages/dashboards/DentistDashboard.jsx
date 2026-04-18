@@ -117,6 +117,7 @@ export default function DentistDashboard() {
   const [recentPrescriptions, setRecentPrescriptions] = useState([]);
   const [prescTreatmentPlan, setPrescTreatmentPlan] = useState("");
   const [prescRecommendations, setPrescRecommendations] = useState("");
+  const [prescInstructions, setPrescInstructions] = useState("");
   const [prescMedSearch, setPrescMedSearch] = useState("");
   const [prescChiefComplaint, setPrescChiefComplaint] = useState("");
   const [visitType, setVisitType] = useState("complaint"); // 'complaint' or 'follow_up'
@@ -347,6 +348,7 @@ export default function DentistDashboard() {
           diagnosis: prescNotes,
           treatment_plan: prescTreatmentPlan,
           recommendations: prescRecommendations,
+          instructions: prescInstructions,
           medications: prescMedications.filter(m => m.name),
           doctor_name: fullName,
           continue_prescription_id: prescContinue && patientPrescriptions.length > 0 ? patientPrescriptions[0].id : null,
@@ -363,6 +365,7 @@ export default function DentistDashboard() {
         setPrescNotes("");
         setPrescTreatmentPlan("");
         setPrescRecommendations("");
+        setPrescInstructions("");
         setPrescMedSearch("");
         setPrescChiefComplaint("");
         setPrescContinue(false);
@@ -977,10 +980,10 @@ export default function DentistDashboard() {
                     </div>
                   </div>
 
-                  {/* Rx - RECOMMENDATION / INSTRUCTIONS */}
+                  {/* Rx - MEDICATIONS */}
                   <div style={{ marginBottom: "1.5rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                      <label style={{ color: "#fff", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}><span style={{ fontFamily: "Times New Roman, serif", fontStyle: "italic", fontSize: "1.2rem", color: "#f0b800", marginRight: "6px" }}>Rx</span> Recommendation / Instructions</label>
+                      <label style={{ color: "#fff", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}><span style={{ fontFamily: "Times New Roman, serif", fontStyle: "italic", fontSize: "1.2rem", color: "#f0b800", marginRight: "6px" }}>Rx</span> Medications</label>
                       <div style={{ position: "relative", width: "250px" }}>
                         <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#666", zIndex: 1 }}></i>
                         <input
@@ -1058,9 +1061,30 @@ export default function DentistDashboard() {
                       </div>
                     </div>
                     <textarea
-                      placeholder="e.g. Warm salt water rinses, twice daily..."
+                      placeholder="e.g. Tab. Paracetamol 500mg - 1-0-1 for 3 days..."
                       value={prescRecommendations || ""}
                       onChange={(e) => setPrescRecommendations(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        background: "#222",
+                        border: "1px solid #444",
+                        borderRadius: "6px",
+                        color: "#fff",
+                        fontSize: "0.85rem",
+                        minHeight: "80px",
+                        resize: "vertical"
+                      }}
+                    ></textarea>
+                  </div>
+
+                  {/* RECOMMENDATION / INSTRUCTIONS */}
+                  <div style={{ marginBottom: "1.5rem" }}>
+                    <label style={{ color: "#fff", fontWeight: "bold", marginBottom: "10px", display: "block", textTransform: "uppercase", letterSpacing: "1px" }}>Clinical Instructions / Advice</label>
+                    <textarea
+                      placeholder="e.g. Warm saline rinses, avoid hot foods..."
+                      value={prescInstructions || ""}
+                      onChange={(e) => setPrescInstructions(e.target.value)}
                       style={{
                         width: "100%",
                         padding: "10px",
