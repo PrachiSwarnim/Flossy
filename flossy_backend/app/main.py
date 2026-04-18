@@ -28,6 +28,13 @@ try:
     
     from app.api.v1.api_router import api_router
     app.include_router(api_router, prefix="/api")
+
+    # Serve uploads static directory
+    from fastapi.staticfiles import StaticFiles
+    uploads_path = "uploads"
+    if not os.path.exists(uploads_path):
+        os.makedirs(uploads_path)
+    app.mount("/uploads", StaticFiles(directory=uploads_path), name="uploads")
     
     # GraphQL Endpoint
     graphql_app = GraphQLRouter(schema)

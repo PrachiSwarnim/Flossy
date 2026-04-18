@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -10,6 +10,7 @@ class PrescriptionCreate(BaseModel):
     recommendations: Optional[str] = None
     created_at: Optional[datetime] = None # Allow backdating
     continue_prescription_id: Optional[int] = None # If set, this is a continuation of that prescription
+    xrays: Optional[List[str]] = []
 
 class PrescriptionUpdate(BaseModel):
     details: Optional[str] = None
@@ -17,3 +18,4 @@ class PrescriptionUpdate(BaseModel):
     treatment_plan: Optional[str] = None
     recommendations: Optional[str] = None
     created_at: Optional[datetime] = None
+    xrays: Optional[List[str]] = []

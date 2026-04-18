@@ -304,7 +304,7 @@ def download_invoice_pdf(id: int, stamp: bool = Query(True), db: Session = Depen
     pdf.set_x(45)
     pdf.cell(0, 5, "Koyal Vihar, Gurugram - 122003, Haryana, India", ln=True)
     pdf.set_x(45)
-    pdf.cell(0, 5, "Ph: +91 9693288488, +91 8507213999 | Web: www.smileartists.in", ln=True)
+    pdf.cell(0, 5, "Ph: +91 9693288488, +91 8507213999 | Web: www.smileartistsdentalstudio.com", ln=True)
     
     pdf.ln(5)
     

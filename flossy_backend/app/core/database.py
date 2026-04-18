@@ -196,6 +196,9 @@ def init_db():
                         conn.execute(text("ALTER TABLE prescriptions ADD COLUMN recommendations TEXT;"))
                     if "linked_to" not in columns:
                         conn.execute(text("ALTER TABLE prescriptions ADD COLUMN linked_to INTEGER REFERENCES prescriptions(id) ON DELETE SET NULL;"))
+                    if "xrays" not in columns:
+                        # Use JSON type for xrays, compatible with both PG and SQLite
+                        conn.execute(text("ALTER TABLE prescriptions ADD COLUMN xrays JSON DEFAULT '[]';"))
                     try: conn.execute(text("ALTER TABLE prescriptions ALTER COLUMN details DROP NOT NULL;"))
                     except: pass 
             except Exception as e: print(f"Migration error (prescriptions): {e}")

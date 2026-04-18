@@ -1,7 +1,11 @@
-from datetime import datetime, timezone
+import os
+import shutil
+import uuid
 import re
 import io
-from fastapi import APIRouter, HTTPException, Depends, Query
+from datetime import datetime, timezone
+from typing import List, Optional
+from fastapi import APIRouter, HTTPException, Depends, Query, File, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -11,6 +15,24 @@ from app.api.v1.prescriptions.schemas import PrescriptionCreate, PrescriptionUpd
 from app.services.pdf import FlossyPDF
 
 router = APIRouter()
+
+# 🏥 UPLOAD X-RAYS
+@router.post("/upload_xray")
+async def upload_xray(file: UploadFile = File(...), user = Depends(require_role("dentist"))):
+    try:
+        if not os.path.exists("uploads"):
+            os.makedirs("uploads")
+        
+        file_ext = file.filename.split(".")[-1]
+        file_name = f"{uuid.uuid4()}.{file_ext}"
+        file_path = os.path.join("uploads", file_name)
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        return {"filename": file_name, "url": f"/uploads/{file_name}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 @router.post("/")
 def create_prescription(data: PrescriptionCreate, db: Session = Depends(get_db), user = Depends(require_role("dentist"))):
@@ -84,6 +106,7 @@ def create_prescription(data: PrescriptionCreate, db: Session = Depends(get_db),
         treatment_plan=data.treatment_plan,
         recommendations=data.recommendations,
         linked_to=linked_id,
+        xrays=data.xrays or [],
         created_at=data.created_at or datetime.now(timezone.utc)
     )
     db.add(new_presc)
@@ -316,7 +339,7 @@ ll        raise HTTPException(status_code=404, detail="Prescription not found")
         pdf.set_x(45)
         pdf.cell(0, 4, "Koyal Vihar, Gurugram - 122003, Haryana, India", ln=True)
         pdf.set_x(45)
-        pdf.cell(0, 4, "Ph: +91 9693288488, +91 8507213999 | Web: www.smileartists.in", ln=True)
+        pdf.cell(0, 4, "Ph: +91 9693288488, +91 8507213999 | Web: www.smileartistsdentalstudio.com", ln=True)
 
         # Gold accent bar under header
         pdf.ln(3)
@@ -442,6 +465,44 @@ ll        raise HTTPException(status_code=404, detail="Prescription not found")
             add_section("Treatment Plan", p.treatment_plan)
         if p.recommendations:
             add_section("Recommendation / Instructions", p.recommendations, rx_symbol=True)
+
+        # ── X-RAY SECTION ──
+        if p.xrays and len(p.xrays) > 0:
+            pdf.add_page() # Put X-rays on a fresh page
+            pdf.set_font("Arial", "B", 12)
+            pdf.set_text_color(212, 175, 55)
+            pdf.cell(0, 10, "RADIOLOGICAL EVIDENCE (X-RAYS)", ln=True, align="C")
+            pdf.ln(5)
+            
+            x_start = 15
+            y_curr = pdf.get_y()
+            img_w = 85
+            img_h = 65
+            spacing = 10
+            
+            for i, img_name in enumerate(p.xrays):
+                f_path = os.path.join("uploads", img_name)
+                if not os.path.exists(f_path): continue
+                
+                col = i % 2
+                x_pos = x_start + (col * (img_w + spacing))
+                
+                # If it's a new row, update y_curr
+                if i > 0 and col == 0:
+                    y_curr += img_h + spacing + 10
+                    
+                # New page if overflow
+                if y_curr + img_h > 260:
+                    pdf.add_page()
+                    y_curr = 20
+                
+                try:
+                    pdf.image(f_path, x=x_pos, y=y_curr, w=img_w, h=img_h)
+                    pdf.set_xy(x_pos, y_curr + img_h + 2)
+                    pdf.set_font("Arial", "I", 8)
+                    pdf.set_text_color(100, 100, 100)
+                    pdf.cell(img_w, 5, f"X-ray Image {i+1}", align="C", ln=0)
+                except: pass
 
         # ── FOOTER: Signature & Stamp ──
         if pdf.get_y() > 240:

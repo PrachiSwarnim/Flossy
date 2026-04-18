@@ -120,6 +120,7 @@ export default function DentistDashboard() {
   const [prescMedSearch, setPrescMedSearch] = useState("");
   const [prescChiefComplaint, setPrescChiefComplaint] = useState("");
   const [prescContinue, setPrescContinue] = useState(false);
+  const [prescXrays, setPrescXrays] = useState([]); // Array of filenames
 
   // ===== ANALYTICS STATE =====
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
@@ -262,6 +263,34 @@ export default function DentistDashboard() {
      INVOICE DOWNLOAD
   ================================ */
 
+  async function handleXrayUpload(e) {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    const token = await session.getToken({ template: "default" });
+    const uploadedNames = [...prescXrays];
+
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch(`${API}/api/prescriptions/upload_xray`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+        if (res.ok) {
+          const data = await res.json();
+          uploadedNames.push(data.filename);
+        }
+      } catch (err) {
+        console.error("X-ray upload failed:", err);
+      }
+    }
+    setPrescXrays(uploadedNames);
+  }
+
   async function downloadInvoice(id, invNum, stamp = true, patientName = "") {
     const token = await session.getToken({ template: "default" });
     const res = await fetch(`${API}/api/invoices/${id}/pdf?stamp=${stamp}`, {
@@ -318,7 +347,8 @@ export default function DentistDashboard() {
           recommendations: prescRecommendations,
           medications: prescMedications.filter(m => m.name),
           doctor_name: fullName,
-          continue_prescription_id: prescContinue && patientPrescriptions.length > 0 ? patientPrescriptions[0].id : null
+          continue_prescription_id: prescContinue && patientPrescriptions.length > 0 ? patientPrescriptions[0].id : null,
+          xrays: prescXrays
         })
       });
 
@@ -333,6 +363,7 @@ export default function DentistDashboard() {
         setPrescMedSearch("");
         setPrescChiefComplaint("");
         setPrescContinue(false);
+        setPrescXrays([]);
         fetchRecentPrescriptions();
       } else {
         const errData = await res.json();
@@ -988,6 +1019,64 @@ export default function DentistDashboard() {
                         resize: "vertical"
                       }}
                     ></textarea>
+                  </div>
+
+                  {/* X-RAY UPLOAD SECTION */}
+                  <div style={{ marginBottom: "1.5rem" }}>
+                    <label style={{ color: "#f0b800", fontWeight: "bold", marginBottom: "10px", display: "block", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.85rem" }}>Radiological Attachments (X-Rays)</label>
+                    <div style={{
+                      border: "2px dashed #444",
+                      borderRadius: "8px",
+                      padding: "20px",
+                      textAlign: "center",
+                      background: "#121212",
+                      cursor: "pointer",
+                      position: "relative"
+                    }}
+                      onClick={() => document.getElementById("xray-input").click()}
+                    >
+                      <i className="fas fa-file-image" style={{ fontSize: "2rem", color: "#666", marginBottom: "10px" }}></i>
+                      <p style={{ color: "#888", fontSize: "0.85rem", margin: 0 }}>Click to upload X-ray photos (JPG, PNG)</p>
+                      <input
+                        id="xray-input"
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleXrayUpload}
+                        style={{ display: "none" }}
+                      />
+                    </div>
+
+                    {/* X-ray Previews */}
+                    {prescXrays.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "15px" }}>
+                        {prescXrays.map((name, idx) => (
+                          <div key={idx} style={{ position: "relative", width: "80px", height: "80px" }}>
+                            <img
+                              src={`${API}/uploads/${name}`}
+                              alt="X-ray"
+                              style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "6px", border: "1px solid #444" }}
+                            />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPrescXrays(prev => prev.filter((_, i) => i !== idx));
+                              }}
+                              style={{
+                                position: "absolute", top: "-5px", right: "-5px",
+                                background: "#ff4d4d", color: "#fff", border: "none",
+                                borderRadius: "50%", width: "20px", height: "20px",
+                                fontSize: "10px", cursor: "pointer", display: "flex",
+                                alignItems: "center", justifyContent: "center",
+                                boxShadow: "0 2px 4px rgba(0,0,0,0.3)"
+                              }}
+                            >
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* CONTINUE PRESCRIPTION TOGGLE */}
