@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
 import { useSession } from '@clerk/clerk-react';
+import { COUNTRY_CODES } from '../utils/countryCodes';
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
@@ -35,6 +35,8 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
     const [treatmentSearchTerm, setTreatmentSearchTerm] = useState("");
     const [activeTreatmentIdx, setActiveTreatmentIdx] = useState(null);
     const [catalog, setCatalog] = useState([]);
+    const [patientPhone, setPatientPhone] = useState("");
+    const [countryCode, setCountryCode] = useState("+91");
 
     // Populate form if editing
     useEffect(() => {
@@ -314,6 +316,15 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                                 onClick={() => {
                                                     setPatientName(p.name);
                                                     setPatientSearch(p.name);
+                                                    // Extract country code if present
+                                                    const phoneStr = p.phone || "";
+                                                    const match = COUNTRY_CODES.find(c => phoneStr.startsWith(c.code));
+                                                    if (match) {
+                                                        setCountryCode(match.code);
+                                                        setPatientPhone(phoneStr.replace(match.code, ""));
+                                                    } else {
+                                                        setPatientPhone(phoneStr);
+                                                    }
                                                     setShowPatientSuggestions(false);
                                                 }}
                                                 style={{
@@ -367,6 +378,31 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                             <option value="INR">INR (₹)</option>
                             <option value="USD">USD ($)</option>
                         </select>
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '1rem' }}>
+                    <div className="form-group">
+                        <label style={{ color: '#f0b800', fontWeight: 'bold' }}>Patient Phone</label>
+                        <div style={{ display: "flex", gap: "5px" }}>
+                            <select
+                                value={countryCode}
+                                onChange={e => setCountryCode(e.target.value)}
+                                style={{ width: "90px", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff", cursor: "pointer" }}
+                            >
+                                {COUNTRY_CODES.map(c => (
+                                    <option key={c.iso} value={c.code}>{c.iso} ({c.code})</option>
+                                ))}
+                            </select>
+                            <input
+                                type="text"
+                                placeholder="Phone number"
+                                value={patientPhone}
+                                onChange={(e) => setPatientPhone(e.target.value)}
+                                className="dashboard-input"
+                                style={{ flex: 1 }}
+                            />
+                        </div>
                     </div>
                 </div>
 

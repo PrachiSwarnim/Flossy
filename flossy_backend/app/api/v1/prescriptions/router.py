@@ -257,7 +257,11 @@ def delete_prescription(id: int, db: Session = Depends(get_db), user = Depends(r
     db.delete(presc)
     db.commit()
     return {"success": True}
-ll        raise HTTPException(status_code=404, detail="Prescription not found")
+@router.get("/{id}/pdf")
+def download_prescription_pdf(id: int, stamp: bool = Query(True), db: Session = Depends(get_db)):
+    presc = db.query(Prescription).filter(Prescription.id == id).first()
+    if not presc:
+        raise HTTPException(status_code=404, detail="Prescription not found")
 
     # ── Collect all linked prescriptions (root + continuations) ──
     root = presc

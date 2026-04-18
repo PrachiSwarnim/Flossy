@@ -7,6 +7,7 @@ import Footer from "../../components/Footer";
 import InvoiceForm from "../../components/InvoiceForm";
 import { Meteors } from "../../components/ui/Meteors";
 import { TIME_SLOTS, formatTime12h } from "../../utils/timeSlots";
+import { COUNTRY_CODES } from "../../utils/countryCodes";
 
 import "../../styles/dentist_dashboard.css";
 import "../../styles/dashboard_extras.css";
@@ -23,6 +24,7 @@ export default function ReceptionistDashboard() {
     const [pageLoading, setPageLoading] = useState(true);
     const [patientName, setPatientName] = useState("");
     const [patientPhone, setPatientPhone] = useState("");
+    const [patientCountryCode, setPatientCountryCode] = useState("+91");
     const [patientAge, setPatientAge] = useState("");
     const [patientSex, setPatientSex] = useState("");
     const [visitDate, setVisitDate] = useState("");
@@ -55,6 +57,7 @@ export default function ReceptionistDashboard() {
     const [editingPatient, setEditingPatient] = useState(null);
     const [editName, setEditName] = useState("");
     const [editPhone, setEditPhone] = useState("");
+    const [editCountryCode, setEditCountryCode] = useState("+91");
     const [editAge, setEditAge] = useState("");
     const [editSex, setEditSex] = useState("M");
 
@@ -451,7 +454,7 @@ export default function ReceptionistDashboard() {
                 },
                 body: JSON.stringify({
                     name: patientName,
-                    phone: patientPhone,
+                    phone: `${patientCountryCode}${patientPhone}`,
                     age: parseInt(patientAge),
                     datetime: isoDateTime,
                     reason: visitReason,
@@ -517,7 +520,18 @@ export default function ReceptionistDashboard() {
     function openEditModal(patient) {
         setEditingPatient(patient);
         setEditName(patient.name);
-        setEditPhone(patient.phone);
+        
+        // Extract country code if present
+        const phoneStr = patient.phone || "";
+        const match = COUNTRY_CODES.find(c => phoneStr.startsWith(c.code));
+        if (match) {
+            setEditCountryCode(match.code);
+            setEditPhone(phoneStr.replace(match.code, ""));
+        } else {
+            setEditCountryCode("+91");
+            setEditPhone(phoneStr);
+        }
+
         setEditAge(patient.age || "");
         setEditSex(patient.sex || "");
         setIsEditModalOpen(true);
@@ -536,7 +550,7 @@ export default function ReceptionistDashboard() {
                 },
                 body: JSON.stringify({
                     name: editName,
-                    phone: editPhone,
+                    phone: `${editCountryCode}${editPhone}`,
                     age: parseInt(editAge),
                     sex: editSex
                 })
@@ -1048,13 +1062,24 @@ export default function ReceptionistDashboard() {
                                 <div style={{ display: "flex", gap: "15px" }}>
                                     <div className="form-group" style={{ flex: 2 }}>
                                         <label style={{ color: "#888", marginBottom: "5px", display: "block" }}>Phone Number</label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. 9876543210"
-                                            value={patientPhone}
-                                            onChange={e => setPatientPhone(e.target.value)}
-                                            style={{ width: "100%", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff" }}
-                                        />
+                                        <div style={{ display: "flex", gap: "5px" }}>
+                                            <select
+                                                value={patientCountryCode}
+                                                onChange={e => setPatientCountryCode(e.target.value)}
+                                                style={{ width: "90px", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff", cursor: "pointer" }}
+                                            >
+                                                {COUNTRY_CODES.map(c => (
+                                                    <option key={c.iso} value={c.code}>{c.iso} ({c.code})</option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. 9876543210"
+                                                value={patientPhone}
+                                                onChange={e => setPatientPhone(e.target.value)}
+                                                style={{ flex: 1, padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff" }}
+                                            />
+                                        </div>
                                     </div>
                                     <div className="form-group" style={{ flex: 1 }}>
                                         <label style={{ color: "#888", marginBottom: "5px", display: "block" }}>Age</label>
@@ -1558,10 +1583,21 @@ export default function ReceptionistDashboard() {
                             </div>
                             <div>
                                 <label style={{ color: "#888", fontSize: "0.8rem" }}>Phone</label>
-                                <input
-                                    type="text" value={editPhone} onChange={e => setEditPhone(e.target.value)}
-                                    style={{ width: "100%", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
-                                />
+                                <div style={{ display: "flex", gap: "5px" }}>
+                                    <select
+                                        value={editCountryCode}
+                                        onChange={e => setEditCountryCode(e.target.value)}
+                                        style={{ width: "90px", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff", cursor: "pointer" }}
+                                    >
+                                        {COUNTRY_CODES.map(c => (
+                                            <option key={c.iso} value={c.code}>{c.iso} ({c.code})</option>
+                                        ))}
+                                    </select>
+                                    <input
+                                        type="text" value={editPhone} onChange={e => setEditPhone(e.target.value)}
+                                        style={{ flex: 1, padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label style={{ color: "#888", fontSize: "0.8rem" }}>Age</label>

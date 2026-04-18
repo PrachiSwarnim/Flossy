@@ -119,8 +119,10 @@ export default function DentistDashboard() {
   const [prescRecommendations, setPrescRecommendations] = useState("");
   const [prescMedSearch, setPrescMedSearch] = useState("");
   const [prescChiefComplaint, setPrescChiefComplaint] = useState("");
+  const [visitType, setVisitType] = useState("complaint"); // 'complaint' or 'follow_up'
   const [prescContinue, setPrescContinue] = useState(false);
   const [prescXrays, setPrescXrays] = useState([]); // Array of filenames
+  const [prescDate, setPrescDate] = useState(new Date().toISOString().split('T')[0]);
 
   // ===== ANALYTICS STATE =====
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
@@ -348,7 +350,8 @@ export default function DentistDashboard() {
           medications: prescMedications.filter(m => m.name),
           doctor_name: fullName,
           continue_prescription_id: prescContinue && patientPrescriptions.length > 0 ? patientPrescriptions[0].id : null,
-          xrays: prescXrays
+          xrays: prescXrays,
+          created_at: prescDate ? new Date(prescDate).toISOString() : new Date().toISOString()
         })
       });
 
@@ -364,6 +367,7 @@ export default function DentistDashboard() {
         setPrescChiefComplaint("");
         setPrescContinue(false);
         setPrescXrays([]);
+        setPrescDate(new Date().toISOString().split('T')[0]);
         fetchRecentPrescriptions();
       } else {
         const errData = await res.json();
@@ -833,53 +837,103 @@ export default function DentistDashboard() {
               <div className="card animate-fade-up" style={{ animationDelay: "0.5s", width: "100%", maxWidth: "1020px", background: "#1a1a1a", borderRadius: "8px", border: "1px solid #333" }}>
                 <div style={{ padding: "1rem" }}>
 
-                  {/* SELECT PATIENT */}
-                  <div style={{ marginBottom: "1rem" }}>
-                    <label style={{ color: "#f0b800", fontWeight: "bold", marginBottom: "8px", display: "block", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.85rem" }}>Select Patient</label>
-                    <select
-                      value={prescPatient}
-                      onChange={(e) => {
-                        setPrescPatient(e.target.value);
-                        fetchPatientPrescriptions(e.target.value);
-                      }}
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        background: "#222",
-                        border: "1px solid #444",
-                        borderRadius: "6px",
-                        color: "#fff",
-                        fontSize: "0.9rem",
-                        cursor: "pointer"
-                      }}
-                    >
-                      <option value="">-- Choose Patient --</option>
-                      {patientsList.map(p => (
-                        <option key={p.id} value={p.name}>{p.name}</option>
-                      ))}
-                    </select>
+                  {/* PATIENT & DATE SELECTION */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                    {/* SELECT PATIENT */}
+                    <div>
+                      <label style={{ color: "#f0b800", fontWeight: "bold", marginBottom: "8px", display: "block", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.85rem" }}>Select Patient</label>
+                      <select
+                        value={prescPatient}
+                        onChange={(e) => {
+                          setPrescPatient(e.target.value);
+                          fetchPatientPrescriptions(e.target.value);
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          background: "#222",
+                          border: "1px solid #444",
+                          borderRadius: "6px",
+                          color: "#fff",
+                          fontSize: "0.9rem",
+                          cursor: "pointer"
+                        }}
+                      >
+                        <option value="">-- Choose Patient --</option>
+                        {patientsList.map(p => (
+                          <option key={p.id} value={p.name}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* PRESCRIPTION DATE */}
+                    <div>
+                      <label style={{ color: "#f0b800", fontWeight: "bold", marginBottom: "8px", display: "block", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.85rem" }}>Prescription Date</label>
+                      <input
+                        type="date"
+                        value={prescDate}
+                        onChange={(e) => setPrescDate(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          background: "#222",
+                          border: "1px solid #444",
+                          borderRadius: "6px",
+                          color: "#fff",
+                          fontSize: "0.9rem",
+                          cursor: "pointer"
+                        }}
+                      />
+                    </div>
                   </div>
 
-                  {/* CHIEF COMPLAINT */}
-                  <div style={{ marginBottom: "1.5rem" }}>
-                    <label style={{ color: "#f0b800", fontWeight: "bold", marginBottom: "10px", display: "block", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.85rem" }}>Chief Complaint</label>
-                    <textarea
-                      placeholder="e.g. Pain in lower left molar for 3 days..."
-                      value={prescChiefComplaint}
-                      onChange={(e) => setPrescChiefComplaint(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        background: "#222",
-                        border: "1px solid #444",
-                        borderRadius: "6px",
-                        color: "#fff",
-                        fontSize: "0.85rem",
-                        minHeight: "60px",
-                        resize: "vertical"
-                      }}
-                    ></textarea>
-                  </div>
+                   {/* CHIEF COMPLAINT */}
+                   <div style={{ marginBottom: "1.5rem" }}>
+                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                       <label style={{ color: "#f0b800", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.85rem" }}>Chief Complaint</label>
+                       
+                       {/* Visit Type Slider */}
+                       <div style={{ display: "flex", background: "#222", borderRadius: "20px", padding: "2px", border: "1px solid #444" }}>
+                         <button 
+                           onClick={() => { setVisitType("complaint"); if(prescChiefComplaint === "Follow up") setPrescChiefComplaint(""); }}
+                           style={{ 
+                             padding: "4px 12px", borderRadius: "18px", border: "none", cursor: "pointer", fontSize: "0.7rem", fontWeight: "bold",
+                             background: visitType === "complaint" ? "linear-gradient(135deg, #f0b800, #b8860b)" : "transparent",
+                             color: visitType === "complaint" ? "#000" : "#888",
+                             transition: "all 0.3s ease"
+                           }}
+                         >Complaint</button>
+                         <button 
+                           onClick={() => { setVisitType("follow_up"); setPrescChiefComplaint("Follow up"); }}
+                           style={{ 
+                             padding: "4px 12px", borderRadius: "18px", border: "none", cursor: "pointer", fontSize: "0.7rem", fontWeight: "bold",
+                             background: visitType === "follow_up" ? "linear-gradient(135deg, #f0b800, #b8860b)" : "transparent",
+                             color: visitType === "follow_up" ? "#000" : "#888",
+                             transition: "all 0.3s ease"
+                           }}
+                         >Follow Up</button>
+                       </div>
+                     </div>
+                     <textarea
+                       placeholder="e.g. Pain in lower left molar for 3 days..."
+                       value={prescChiefComplaint}
+                       onChange={(e) => {
+                         setPrescChiefComplaint(e.target.value);
+                         if (e.target.value !== "Follow up" && visitType === "follow_up") setVisitType("complaint");
+                       }}
+                       style={{
+                         width: "100%",
+                         padding: "10px",
+                         background: "#222",
+                         border: "1px solid #444",
+                         borderRadius: "6px",
+                         color: "#fff",
+                         fontSize: "0.85rem",
+                         minHeight: "60px",
+                         resize: "vertical"
+                       }}
+                     ></textarea>
+                   </div>
 
                   {/* DIAGNOSIS & TREATMENT PLAN - Side by Side */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
