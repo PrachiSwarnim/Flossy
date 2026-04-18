@@ -119,6 +119,7 @@ export default function DentistDashboard() {
   const [prescRecommendations, setPrescRecommendations] = useState("");
   const [prescMedSearch, setPrescMedSearch] = useState("");
   const [prescChiefComplaint, setPrescChiefComplaint] = useState("");
+  const [prescContinue, setPrescContinue] = useState(false);
 
   // ===== ANALYTICS STATE =====
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
@@ -316,7 +317,8 @@ export default function DentistDashboard() {
           treatment_plan: prescTreatmentPlan,
           recommendations: prescRecommendations,
           medications: prescMedications.filter(m => m.name),
-          doctor_name: fullName
+          doctor_name: fullName,
+          continue_prescription_id: prescContinue && patientPrescriptions.length > 0 ? patientPrescriptions[0].id : null
         })
       });
 
@@ -330,6 +332,7 @@ export default function DentistDashboard() {
         setPrescRecommendations("");
         setPrescMedSearch("");
         setPrescChiefComplaint("");
+        setPrescContinue(false);
         fetchRecentPrescriptions();
       } else {
         const errData = await res.json();
@@ -889,10 +892,10 @@ export default function DentistDashboard() {
                     </div>
                   </div>
 
-                  {/* RECOMMENDATIONS / MEDICATIONS */}
+                  {/* Rx - RECOMMENDATION / INSTRUCTIONS */}
                   <div style={{ marginBottom: "1.5rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                      <label style={{ color: "#fff", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}>Recommendations / Medications</label>
+                      <label style={{ color: "#fff", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}><span style={{ fontFamily: "Times New Roman, serif", fontStyle: "italic", fontSize: "1.2rem", color: "#f0b800", marginRight: "6px" }}>Rx</span> Recommendation / Instructions</label>
                       <div style={{ position: "relative", width: "250px" }}>
                         <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#666", zIndex: 1 }}></i>
                         <input
@@ -986,6 +989,29 @@ export default function DentistDashboard() {
                       }}
                     ></textarea>
                   </div>
+
+                  {/* CONTINUE PRESCRIPTION TOGGLE */}
+                  {prescPatient && patientPrescriptions.length > 0 && (
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: "10px",
+                      padding: "10px 14px", marginBottom: "1rem",
+                      background: "#1a2a1a", border: "1px solid #2a5a2a",
+                      borderRadius: "6px", cursor: "pointer"
+                    }}
+                      onClick={() => setPrescContinue && setPrescContinue(!prescContinue)}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={prescContinue || false}
+                        onChange={(e) => setPrescContinue(e.target.checked)}
+                        style={{ accentColor: "#2ecc71", width: "16px", height: "16px", cursor: "pointer" }}
+                      />
+                      <div>
+                        <span style={{ color: "#2ecc71", fontWeight: "bold", fontSize: "0.85rem" }}>Continue Last Prescription</span>
+                        <div style={{ color: "#888", fontSize: "0.75rem" }}>This visit will be appended as a new page to the patient's latest prescription PDF</div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* UPLOAD PRESCRIPTION BUTTON */}
                   <button

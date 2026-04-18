@@ -140,6 +140,7 @@ class Prescription(Base):
     diagnosis = Column(Text, nullable=True)
     treatment_plan = Column(Text, nullable=True)
     recommendations = Column(Text, nullable=True)
+    linked_to = Column(Integer, ForeignKey("prescriptions.id", ondelete="SET NULL"), nullable=True) # Links to original prescription for continuations
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationships

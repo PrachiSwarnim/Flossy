@@ -45,7 +45,7 @@ def create_resilient_engine(url):
     last_error = None
     for i, connect_args in enumerate(strategies):
         try:
-            print(f"🔌 DB Connection attempt {i+1} with args: {connect_args}")
+            print(f"DB Connection attempt {i+1} with args: {connect_args}")
             temp_engine = create_engine(
                 url, 
                 connect_args=connect_args,
@@ -66,19 +66,19 @@ def create_resilient_engine(url):
             
             ACTIVE_DB_TYPE = "postgresql"
             ACTIVE_DB_URL_MASKED = masked
-            print(f"✅ Connected to PostgreSQL: {masked}")
+            print(f"Connected to PostgreSQL: {masked}")
             return temp_engine
         except Exception as e:
             last_error = e
             LAST_DB_ERRORS.append(f"Attempt {i+1}: {str(e)}")
-            print(f"❌ DB Connection attempt {i+1} failed: {e}")
+            print(f"DB Connection attempt {i+1} failed: {e}")
     
     # ALL STRATEGIES FAILED — DO NOT silently fall back to SQLite!
     # This was causing data loss because SQLite in Cloud Run is ephemeral.
-    print(f"🚨🚨🚨 CRITICAL: ALL PostgreSQL connection attempts FAILED!")
-    print(f"🚨 Last error: {last_error}")
-    print(f"🚨 DATABASE_URL starts with: {url[:30]}...")
-    print(f"⚠️ Falling back to SQLite — DATA WILL BE LOST ON RESTART!")
+    print(f"CRITICAL: ALL PostgreSQL connection attempts FAILED!")
+    print(f"Last error: {last_error}")
+    print(f"DATABASE_URL starts with: {url[:30]}...")
+    print(f"Falling back to SQLite — DATA WILL BE LOST ON RESTART!")
     
     ACTIVE_DB_TYPE = "sqlite_fallback"
     ACTIVE_DB_URL_MASKED = "sqlite:///./sql_app.db (FALLBACK - DATA LOSS RISK!)"
@@ -136,7 +136,7 @@ def get_db():
             init_db()
             _DB_INITIALIZED = True
         except Exception as e:
-            print(f"⚠️ Lazy DB init error: {e}")
+            print(f"Lazy DB init error: {e}")
             
     db = get_session_local()()
     try:
@@ -149,7 +149,7 @@ def init_db():
     """
     Lightweight DB initialization with auto-migrations.
     """
-    print("🛠️ Starting DB initialization and migrations...")
+    print("Starting DB initialization and migrations...")
     try:
         from app import models as _ 
         engine = get_engine()
@@ -194,6 +194,8 @@ def init_db():
                         conn.execute(text("ALTER TABLE prescriptions ADD COLUMN diagnosis TEXT;"))
                         conn.execute(text("ALTER TABLE prescriptions ADD COLUMN treatment_plan TEXT;"))
                         conn.execute(text("ALTER TABLE prescriptions ADD COLUMN recommendations TEXT;"))
+                    if "linked_to" not in columns:
+                        conn.execute(text("ALTER TABLE prescriptions ADD COLUMN linked_to INTEGER REFERENCES prescriptions(id) ON DELETE SET NULL;"))
                     try: conn.execute(text("ALTER TABLE prescriptions ALTER COLUMN details DROP NOT NULL;"))
                     except: pass 
             except Exception as e: print(f"Migration error (prescriptions): {e}")
@@ -219,7 +221,7 @@ def init_db():
                 if inspector.has_table("treatment_catalog"):
                     res_tc = conn.execute(text("SELECT count(*) FROM treatment_catalog")).fetchone()
                     if res_tc and res_tc[0] == 0:
-                        print("🌱 Seeding Treatment Catalog...")
+                        print("Seeding Treatment Catalog...")
                         treatments = [
                             ("Dental Scaling & Polishing", 1500, "Preventive"),
                             ("Root Canal Treatment (RCT)", 500, "Endodontic"),
@@ -240,7 +242,7 @@ def init_db():
                 print(f"Migration/Seed error (catalog): {e}")
 
             conn.commit()
-            print("✅ DB Schema auto-migration check complete.")
+            print("DB Schema auto-migration check complete.")
             
     except Exception as e:
         print(f"(!) init_db migration error: {e}")
