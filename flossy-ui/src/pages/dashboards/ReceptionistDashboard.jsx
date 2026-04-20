@@ -667,11 +667,11 @@ export default function ReceptionistDashboard() {
                     {isNewUser ? "Welcome" : "Welcome back"}, {fullName}!
                 </h3>
 
-                <div className="dashboard-layout" style={{ display: "flex", flexDirection: "column", gap: "2rem", paddingBottom: "3rem", alignItems: "center" }}>
+                <div className="dashboard-layout dash-row" style={{ paddingBottom: "3rem", justifyContent: "center" }}>
 
-                    {/* ROW 1: APPOINTMENTS (SIDE BY SIDE) */}
-                    <div className="row-appointments" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "1.5rem", width: "100%", maxWidth: "1000px" }}>
-                        <div className="card animate-fade-up" style={{ animationDelay: "0.1s", flex: "1", minWidth: "300px", maxWidth: "488px" }}>
+                    {/* ROW 1: APPOINTMENTS */}
+                    <div className="row-appointments dash-row" style={{ justifyContent: "center", maxWidth: "1000px" }}>
+                        <div className="card dash-col animate-fade-up" style={{ animationDelay: "0.1s", maxWidth: "488px" }}>
                             <div className="card-header">
                                 <h3>Today’s Appointments <span style={{ fontSize: "0.8rem", color: "#f0b800", marginLeft: "8px" }}>{new Date().toLocaleDateString()}</span></h3>
                                 <i className="fas fa-calendar-check card-icon"></i>
@@ -827,7 +827,7 @@ export default function ReceptionistDashboard() {
                             </div>
                         </div>
 
-                        <div className="card animate-fade-up" style={{ animationDelay: "0.2s", flex: "1", minWidth: "300px", maxWidth: "488px" }}>
+                        <div className="card dash-col animate-fade-up" style={{ animationDelay: "0.2s", maxWidth: "488px" }}>
                             <div className="card-header">
                                 <h3>Upcoming Appointments</h3>
                                 <i className="fas fa-clock card-icon"></i>

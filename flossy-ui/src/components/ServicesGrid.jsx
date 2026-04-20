@@ -16,7 +16,7 @@ export default function ServicesGrid({ services }) {
       {/* Left button */}
       <button
         onClick={() => scroll("left")}
-        className="flex-shrink-0 w-10 h-10 rounded-full bg-[#1f1f1f] border border-white/10 hover:border-[#d4af37]/50 text-white/60 hover:text-[#d4af37] text-base transition-all duration-200 cursor-pointer flex items-center justify-center shadow-lg"
+        className="hidden md:flex flex-shrink-0 w-10 h-10 rounded-full bg-[#1f1f1f] border border-white/10 hover:border-[#d4af37]/50 text-white/60 hover:text-[#d4af37] text-base transition-all duration-200 cursor-pointer items-center justify-center shadow-lg"
       >
         &#10094;
       </button>
@@ -35,7 +35,7 @@ export default function ServicesGrid({ services }) {
       {/* Right button */}
       <button
         onClick={() => scroll("right")}
-        className="flex-shrink-0 w-10 h-10 rounded-full bg-[#1f1f1f] border border-white/10 hover:border-[#d4af37]/50 text-white/60 hover:text-[#d4af37] text-base transition-all duration-200 cursor-pointer flex items-center justify-center shadow-lg"
+        className="hidden md:flex flex-shrink-0 w-10 h-10 rounded-full bg-[#1f1f1f] border border-white/10 hover:border-[#d4af37]/50 text-white/60 hover:text-[#d4af37] text-base transition-all duration-200 cursor-pointer items-center justify-center shadow-lg"
       >
         &#10095;
       </button>

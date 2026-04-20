@@ -8,6 +8,11 @@
   min-height: 100vh;
   background: #0b0b0b;
   font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+}
+
+.auth-root *, .auth-root *::before, .auth-root *::after {
+  box-sizing: border-box;
 }
 
 /* ═══════════════════════════════════════════
@@ -107,23 +112,39 @@
 }
 .auth-feature-item {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: #ccc;
-  font-size: 0.9rem;
+  align-items: flex-start;
+  gap: 1rem;
+  color: #f0f0f0;
+  font-size: 0.98rem;
   font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: all 0.3s ease;
+}
+.auth-feature-item:hover {
+  transform: translateX(6px);
+}
+.auth-feature-item:hover .auth-feature-icon {
+    transform: scale(1.1);
+    border-color: rgba(212, 175, 55, 0.5);
+    background: rgba(212, 175, 55, 0.2);
+}
+.auth-feature-label {
+    opacity: 0.9;
 }
 .auth-feature-icon {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(212,175,55,0.1);
-  border: 1px solid rgba(212,175,55,0.2);
-  border-radius: 8px;
-  font-size: 1rem;
+  margin-top: 2px;
+  background: linear-gradient(135deg, rgba(212,175,55,0.15) 0%, rgba(212,175,55,0.05) 100%);
+  border: 1px solid rgba(212,175,55,0.25);
+  border-radius: 10px;
+  font-size: 1.1rem;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
 /* Footer */
@@ -148,7 +169,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 3rem 2rem;
+  padding: 2rem;
   position: relative;
   background: #0b0b0b;
   overflow: hidden;
@@ -172,13 +193,13 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
   background: rgba(20, 20, 20, 0.85);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(212, 175, 55, 0.15);
   border-radius: 20px;
-  padding: 2.5rem 2rem;
+  padding: 2.5rem 1.5rem;
   box-shadow:
     0 0 0 1px rgba(255,255,255,0.03),
     0 20px 60px rgba(0,0,0,0.6),
@@ -190,7 +211,9 @@
 ═══════════════════════════════════════════ */
 .cl-rootBox {
   width: 100% !important;
+  max-width: 100% !important;
   font-family: 'Inter', sans-serif !important;
+  box-sizing: border-box !important;
 }
 
 /* Card itself transparent — styled by .auth-form-card */
@@ -200,6 +223,8 @@
   border: none !important;
   padding: 0 !important;
   border-radius: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 .cl-headerTitle {
@@ -229,36 +254,82 @@
   font-size: 0.84rem !important;
 }
 
+.cl-socialButtons {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+}
+
+.cl-socialButtonsBlockButton {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
 .cl-formButtonPrimary {
   background: linear-gradient(135deg, #c9a227, #f0c455) !important;
   color: #111 !important;
   font-weight: 700 !important;
+  font-size: 0.95rem !important;
   border: none !important;
   border-radius: 10px !important;
-  letter-spacing: 0.02em !important;
-  transition: opacity 0.2s, transform 0.1s !important;
+  letter-spacing: 0.03em !important;
+  text-transform: uppercase !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.25) !important;
 }
 .cl-formButtonPrimary:hover {
-  opacity: 0.9 !important;
-  transform: translateY(-1px) !important;
+  opacity: 1 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4) !important;
+  filter: brightness(1.1) !important;
+}
+.cl-formButtonPrimary:active {
+  transform: translateY(0) !important;
 }
 
 .cl-socialButtonsBlockButton {
-  background: #1a1a1a !important;
-  border: 1px solid #2e2e2e !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   color: #fff !important;
-  border-radius: 10px !important;
-  transition: border-color 0.2s !important;
+  border-radius: 12px !important;
+  height: 48px !important;
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
 }
 .cl-socialButtonsBlockButton:hover {
-  border-color: #d4af37 !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(212, 175, 55, 0.4) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
+}
+.cl-socialButtonsBlockButtonText {
+    font-weight: 600 !important;
+    letter-spacing: 0.01em !important;
 }
 
 .cl-dividerLine {
-  background: #222 !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  height: 1px !important;
 }
 .cl-dividerText {
-  color: #555 !important;
+  color: #444 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  font-weight: 600 !important;
+}
+
+.cl-socialButtonsBlockButtonBadge {
+    background: #d4af37 !important;
+    color: #111 !important;
+    font-size: 0.65rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
 }
 
 .cl-footerActionLink {

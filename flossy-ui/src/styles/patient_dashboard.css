@@ -35,7 +35,19 @@ body {
   max-width: 1300px;
   margin: 0 auto;
   padding: 120px 3rem 4rem;
-  /* More top padding for the fixed header */
+  transition: padding 0.3s ease;
+}
+
+@media (max-width: 900px) {
+  .patient-main {
+    padding: 100px 1.5rem 3rem;
+  }
+}
+
+@media (max-width: 600px) {
+    .patient-main {
+        padding: 90px 1rem 2rem;
+    }
 }
 
 /* ===============  Title =============== */
@@ -49,11 +61,25 @@ body {
   text-shadow: 0 4px 20px rgba(212, 175, 55, 0.2);
 }
 
+@media (max-width: 600px) {
+  #welcomeMessage {
+    font-size: 1.8rem;
+    margin-bottom: 2rem;
+  }
+}
+
 /* =============== Dashboard Grid =============== */
 .patient-grid {
   display: grid;
   gap: 2rem;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+@media (max-width: 600px) {
+    .patient-grid {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
 }
 
 /* =============== Dashboard Card =============== */
@@ -676,6 +702,48 @@ body {
 
 .sidebar-collapsed .dashboard-main-content {
   margin-left: 80px;
+}
+
+@media (max-width: 900px) {
+  .profile-sidebar {
+    position: fixed !important;
+    left: 0;
+    top: 0; /* DashboardHeader logic handles Z and top */
+    bottom: 0;
+    width: 280px !important;
+    z-index: 10001 !important;
+    transform: translateX(-100%);
+    box-shadow: 10px 0 50px rgba(0,0,0,0.8);
+    background: #111 !important;
+  }
+
+  .sidebar-expanded .profile-sidebar {
+    transform: translateX(0);
+  }
+
+  .dashboard-main-content {
+      margin-left: 0 !important;
+      width: 100% !important;
+  }
+
+  .sidebar-expand-toggle {
+      display: flex !important;
+      position: fixed !important;
+      left: 15px !important;
+      top: 90px !important;
+      right: auto !important;
+      width: 40px !important;
+      height: 40px !important;
+      border-radius: 10px !important;
+  }
+
+  .patient-card {
+      padding: 1.5rem !important;
+  }
+
+  .patient-card h3 {
+      font-size: 1.2rem !important;
+  }
 }
 
 .sidebar-expand-toggle {

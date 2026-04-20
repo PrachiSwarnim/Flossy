@@ -45,7 +45,7 @@ export default function Login() {
             ].map(({ icon, label }) => (
               <div className="auth-feature-item" key={label}>
                 <span className="auth-feature-icon">{icon}</span>
-                <span>{label}</span>
+                <span className="auth-feature-label">{label}</span>
               </div>
             ))}
           </div>
@@ -85,11 +85,12 @@ export default function Login() {
                 borderRadius: "10px",
               },
               elements: {
-                rootBox: { width: "100%", maxWidth: "400px", margin: "0 auto" },
+                rootBox: { width: "100%", margin: "0 auto" },
                 card: {
                   background: "transparent",
                   boxShadow: "none",
                   padding: "0",
+                  width: "100%",
                   border: "none",
                 },
                 headerTitle: {
@@ -104,6 +105,7 @@ export default function Login() {
                   border: "1px solid #333",
                   color: "#fff",
                   borderRadius: "10px",
+                  width: "100%",
                   transition: "border-color 0.2s",
                 },
                 socialButtonsBlockButtonText: { color: "#fff", fontWeight: "500" },
