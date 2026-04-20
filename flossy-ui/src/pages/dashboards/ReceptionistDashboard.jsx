@@ -32,6 +32,10 @@ export default function ReceptionistDashboard() {
     const [visitReason, setVisitReason] = useState("");
     const [assignedDoctor, setAssignedDoctor] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showCountrySearch, setShowCountrySearch] = useState(false);
+    const [countrySearch, setCountrySearch] = useState("");
+    const [showEditCountrySearch, setShowEditCountrySearch] = useState(false);
+    const [editCountrySearch, setEditCountrySearch] = useState("");
     
     // Sidebar & AI State
     const [profileVisible, setProfileVisible] = useState(false);
@@ -1063,15 +1067,35 @@ export default function ReceptionistDashboard() {
                                     <div className="form-group" style={{ flex: 2 }}>
                                         <label style={{ color: "#888", marginBottom: "5px", display: "block" }}>Phone Number</label>
                                         <div style={{ display: "flex", gap: "5px" }}>
-                                            <select
-                                                value={patientCountryCode}
-                                                onChange={e => setPatientCountryCode(e.target.value)}
-                                                style={{ width: "90px", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff", cursor: "pointer" }}
-                                            >
-                                                {COUNTRY_CODES.map(c => (
-                                                    <option key={c.iso} value={c.code}>{c.iso} ({c.code})</option>
-                                                ))}
-                                            </select>
+                                            <div className="relative" style={{ width: "100px" }}>
+                                                <input
+                                                    type="text"
+                                                    value={showCountrySearch ? countrySearch : patientCountryCode}
+                                                    onFocus={() => { setShowCountrySearch(true); setCountrySearch(""); }}
+                                                    onChange={(e) => setCountrySearch(e.target.value)}
+                                                    placeholder="Code"
+                                                    style={{ width: "100%", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff", outline: "none" }}
+                                                />
+                                                {showCountrySearch && (
+                                                    <div className="elegant-scroll" style={{
+                                                        position: "absolute", top: "100%", left: 0,
+                                                        zIndex: 105, background: "#1a1a1a", border: "1px solid #444",
+                                                        borderRadius: "8px", marginTop: "5px", maxHeight: "180px",
+                                                        overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", width: "220px"
+                                                    }}>
+                                                        {COUNTRY_CODES.filter(c => 
+                                                            c.name.toLowerCase().includes(countrySearch.toLowerCase()) || 
+                                                            c.code.includes(countrySearch) || 
+                                                            c.iso.toLowerCase().includes(countrySearch.toLowerCase())
+                                                        ).map(c => (
+                                                            <div key={c.iso} onClick={() => { setPatientCountryCode(c.code); setShowCountrySearch(false); }}
+                                                                 style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}>
+                                                                {c.iso} ({c.code}) - {c.name}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
                                             <input
                                                 type="text"
                                                 placeholder="e.g. 9876543210"
@@ -1109,12 +1133,15 @@ export default function ReceptionistDashboard() {
                                 <div className="form-group">
                                     <label style={{ color: "#888", marginBottom: "5px", display: "block" }}>Date & Time of Visit</label>
                                     <div style={{ display: "flex", gap: "10px" }}>
-                                        <input
-                                            type="date"
-                                            value={visitDate}
-                                            onChange={e => setVisitDate(e.target.value)}
-                                            style={{ flex: 1, padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff" }}
-                                        />
+                                        <div className="relative" style={{ flex: 1 }}>
+                                            <input
+                                                type="date"
+                                                value={visitDate}
+                                                onChange={e => setVisitDate(e.target.value)}
+                                                style={{ width: "100%", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff", colorScheme: "dark", paddingRight: "35px" }}
+                                            />
+                                            <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#d4af37", opacity: 0.8 }}></i>
+                                        </div>
                                         <select
                                             value={visitTime}
                                             onChange={e => setVisitTime(e.target.value)}
@@ -1581,24 +1608,44 @@ export default function ReceptionistDashboard() {
                                     style={{ width: "100%", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
                                 />
                             </div>
-                            <div>
-                                <label style={{ color: "#888", fontSize: "0.8rem" }}>Phone</label>
-                                <div style={{ display: "flex", gap: "5px" }}>
-                                    <select
-                                        value={editCountryCode}
-                                        onChange={e => setEditCountryCode(e.target.value)}
-                                        style={{ width: "90px", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff", cursor: "pointer" }}
-                                    >
-                                        {COUNTRY_CODES.map(c => (
-                                            <option key={c.iso} value={c.code}>{c.iso} ({c.code})</option>
-                                        ))}
-                                    </select>
-                                    <input
-                                        type="text" value={editPhone} onChange={e => setEditPhone(e.target.value)}
-                                        style={{ flex: 1, padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
-                                    />
-                                </div>
-                            </div>
+                             <div>
+                                 <label style={{ color: "#888", fontSize: "0.8rem" }}>Phone</label>
+                                 <div style={{ display: "flex", gap: "5px" }}>
+                                     <div className="relative" style={{ width: "100px" }}>
+                                         <input
+                                             type="text"
+                                             value={showEditCountrySearch ? editCountrySearch : editCountryCode}
+                                             onFocus={() => { setShowEditCountrySearch(true); setEditCountrySearch(""); }}
+                                             onChange={(e) => setEditCountrySearch(e.target.value)}
+                                             placeholder="Code"
+                                             style={{ width: "100%", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff", outline: "none" }}
+                                         />
+                                         {showEditCountrySearch && (
+                                             <div className="elegant-scroll" style={{
+                                                 position: "absolute", bottom: "100%", left: 0,
+                                                 zIndex: 105, background: "#1a1a1a", border: "1px solid #444",
+                                                 borderRadius: "8px", marginBottom: "5px", maxHeight: "150px",
+                                                 overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", width: "220px"
+                                             }}>
+                                                 {COUNTRY_CODES.filter(c => 
+                                                     c.name.toLowerCase().includes(editCountrySearch.toLowerCase()) || 
+                                                     c.code.includes(editCountrySearch) || 
+                                                     c.iso.toLowerCase().includes(editCountrySearch.toLowerCase())
+                                                 ).map(c => (
+                                                     <div key={c.iso} onClick={() => { setEditCountryCode(c.code); setShowEditCountrySearch(false); }}
+                                                          style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}>
+                                                         {c.iso} ({c.code}) - {c.name}
+                                                     </div>
+                                                 ))}
+                                             </div>
+                                         )}
+                                     </div>
+                                     <input
+                                         type="text" value={editPhone} onChange={e => setEditPhone(e.target.value)}
+                                         style={{ flex: 1, padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
+                                     />
+                                 </div>
+                             </div>
                             <div>
                                 <label style={{ color: "#888", fontSize: "0.8rem" }}>Age</label>
                                 <input

@@ -10,6 +10,7 @@ import Footer from "../../components/Footer";
 import InvoiceForm from "../../components/InvoiceForm";
 
 import { TIME_SLOTS, formatTime12h } from "../../utils/timeSlots";
+import { COUNTRY_CODES } from "../../utils/countryCodes";
 
 import "../../styles/dentist_dashboard.css";
 import "../../styles/dashboard_extras.css";
@@ -950,19 +951,18 @@ export default function DentistDashboard() {
                                         position: "absolute", top: "100%", left: 0, right: 0,
                                         zIndex: 105, background: "#1a1a1a", border: "1px solid #444",
                                         borderRadius: "8px", marginTop: "5px", maxHeight: "200px",
-                                        overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", width: "120px"
+                                        overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", width: "220px"
                                     }}>
-                                        {[
-                                          { code: "+91", iso: "IN" },
-                                          { code: "+1", iso: "US" },
-                                          { code: "+44", iso: "GB" },
-                                          { code: "+971", iso: "AE" },
-                                          { code: "+84", iso: "VN" }
-                                        ].filter(c => c.code.includes(prescCountryCode) || c.iso.toLowerCase().includes(prescCountryCode.toLowerCase()))
+                                        {COUNTRY_CODES
+                                        .filter(c => 
+                                          c.code.includes(prescCountryCode) || 
+                                          c.iso.toLowerCase().includes(prescCountryCode.toLowerCase()) ||
+                                          c.name.toLowerCase().includes(prescCountryCode.toLowerCase())
+                                        )
                                         .map(c => (
                                           <div key={c.iso} onClick={() => { setPrescCountryCode(c.code); setShowPrescCountrySearch(false); }}
                                                style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}>
-                                            {c.iso} ({c.code})
+                                            {c.iso} ({c.code}) - {c.name}
                                           </div>
                                         ))}
                                     </div>

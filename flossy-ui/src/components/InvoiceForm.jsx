@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from '@clerk/clerk-react';
 import { COUNTRY_CODES } from '../utils/countryCodes';
+import { CURRENCIES } from '../utils/currencies';
 import '../styles/invoice_form.css';
 
 const API = import.meta.env.VITE_API_BASE_URL;
@@ -40,6 +41,8 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
     const [patientPhone, setPatientPhone] = useState("");
     const [countryCode, setCountryCode] = useState("+91");
     const [showCountrySearch, setShowCountrySearch] = useState(false);
+    const [showCurrencySearch, setShowCurrencySearch] = useState(false);
+    const [currencySearch, setCurrencySearch] = useState("");
 
     // Populate form if editing
     useEffect(() => {
@@ -362,26 +365,53 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                             ></div>
                         )}
                     </div>
-                    <div className="form-group">
-                        <label>Date</label>
-                        <input
-                            type="date"
-                            value={invoiceDate}
-                            onChange={(e) => setInvoiceDate(e.target.value)}
-                            className="dashboard-input"
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label>Currency</label>
-                        <select
-                            value={currency}
-                            onChange={(e) => handleCurrencyChange(e.target.value)}
-                            className="dashboard-select"
-                        >
-                            <option value="INR">INR (₹)</option>
-                            <option value="USD">USD ($)</option>
-                        </select>
-                    </div>
+                        <div className="form-group relative" style={{ flex: 1 }}>
+                            <label>DATE</label>
+                            <div className="relative">
+                                <input
+                                    type="date"
+                                    value={invoiceDate}
+                                    onChange={(e) => setInvoiceDate(e.target.value)}
+                                    className="date-input-with-icon"
+                                    style={{ paddingRight: "35px" }}
+                                />
+                                <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#d4af37", opacity: 0.8 }}></i>
+                            </div>
+                        </div>
+                        <div className="form-group relative" style={{ flex: 1, minWidth: "180px" }}>
+                            <label>CURRENCY</label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={showCurrencySearch ? currencySearch : `${currency} (${CURRENCIES.find(c => c.code === currency)?.symbol || ""})`}
+                                    onFocus={() => { setShowCurrencySearch(true); setCurrencySearch(""); }}
+                                    onChange={(e) => setCurrencySearch(e.target.value)}
+                                    placeholder="Search currency..."
+                                    style={{
+                                        background: "#222", border: "1px solid #333", borderRadius: "8px",
+                                        color: "#fff", padding: "12px", width: "100%", outline: "none"
+                                    }}
+                                />
+                                {showCurrencySearch && (
+                                    <div className="elegant-scroll" style={{
+                                        position: "absolute", top: "100%", left: 0, right: 0,
+                                        zIndex: 105, background: "#1a1a1a", border: "1px solid #444",
+                                        borderRadius: "8px", marginTop: "5px", maxHeight: "200px",
+                                        overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+                                    }}>
+                                        {CURRENCIES.filter(c => 
+                                            c.name.toLowerCase().includes(currencySearch.toLowerCase()) || 
+                                            c.code.toLowerCase().includes(currencySearch.toLowerCase())
+                                        ).map(c => (
+                                            <div key={c.code} onClick={() => { setCurrency(c.code); setShowCurrencySearch(false); }}
+                                                 style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}>
+                                                {c.code} ({c.symbol}) - {c.name}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '1rem' }}>
@@ -596,12 +626,15 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                 <option value="percent">%</option>
                             </select>
                         </div>
-                        <input
-                            type="date"
-                            value={item.treatment_date}
-                            onChange={(e) => updateItem(idx, 'treatment_date', e.target.value)}
-                            className="dashboard-input"
-                        />
+                                                <div className="relative">
+                                    <input
+                                        type="date"
+                                        value={item.treatment_date}
+                                        onChange={(e) => updateItem(idx, "treatment_date", e.target.value)}
+                                        style={{ colorScheme: "dark", width: "100%", paddingRight: "35px" }}
+                                    />
+                                    <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#d4af37", opacity: 0.8 }}></i>
+                                </div>
                         <button type="button" onClick={() => removeItem(idx)} disabled={items.length === 1} className="trash-btn" style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                             <i className="fas fa-trash"></i>
                         </button>
@@ -646,13 +679,15 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                             />
                             <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.8rem' }}>{currency === 'INR' ? '₹' : '$'}</span>
                         </div>
-                        <input
-                            type="date"
-                            value={p.paid_on}
-                            onChange={(e) => updatePayment(pIdx, 'paid_on', e.target.value)}
-                            className="dashboard-input"
-                            style={{ gridColumn: '3 / 5' }}
-                        />
+                                                <div className="relative">
+                                    <input
+                                        type="date"
+                                        value={p.paid_on}
+                                        onChange={(e) => updatePayment(pIdx, "paid_on", e.target.value)}
+                                        style={{ colorScheme: "dark", width: "100%", paddingRight: "35px" }}
+                                    />
+                                    <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#d4af37", opacity: 0.8 }}></i>
+                                </div>
                         <button type="button" onClick={() => removePayment(pIdx)} disabled={payments.length === 1} style={{ background: 'transparent', color: '#ff4444', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                             <i className="fas fa-trash"></i>
                         </button>
