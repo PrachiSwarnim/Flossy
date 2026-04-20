@@ -322,13 +322,12 @@ def download_prescription_pdf(id: int, stamp: bool = Query(True), db: Session = 
         doc_name = resolve_doctor_name(p.doctor)
         pdf.add_page()
 
-        # ── HEADER: Logo & Clinic Info ──
         try:
-            pdf.image(logo_path, 10, 14, 30) # Moved up slightly for alignment
+            pdf.image(logo_path, 10, 10, 30) # Moved up for better alignment
         except:
             pass
 
-        pdf.set_xy(45, 18) # Moved down to align with logo text
+        pdf.set_xy(45, 16) # Adjusted to middle of 30mm image height (approx)
         pdf.set_font("Times", "B", 24)
         pdf.set_text_color(212, 175, 55)
         brand_w = pdf.get_string_width("Smile Artists")

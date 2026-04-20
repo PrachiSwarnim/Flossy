@@ -43,6 +43,7 @@ export default function Header({ openAI }) {
             src="/static/assets/logo.png"
             alt="Smile Artists"
             className="w-9 h-9 rounded-full border border-[#d4af37]/50 object-cover"
+            style={{ marginTop: "-2px" }}
           />
           <div className="flex flex-col leading-none items-end" style={{ gap: "2px" }}>
             <span

@@ -23,9 +23,16 @@ export default function Login() {
         <div className="auth-orb auth-orb--bottom" />
 
         <div className="auth-brand-content">
-          <div className="auth-logo-row">
-            <span className="auth-logo-icon">🦷</span>
-            <span className="auth-logo-text">Smile Artists</span>
+          <div className="auth-logo-row" style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }} onClick={() => window.location.href = "/"}>
+            <img
+              src="/static/assets/logo.png"
+              alt="Smile Artists"
+              style={{ width: "42px", height: "42px", borderRadius: "50%", border: "1px solid rgba(212, 175, 55, 0.4)", objectFit: "cover" }}
+            />
+            <div style={{ display: "flex", flexDirection: "column", lineHeight: "1.1", alignItems: "flex-end" }}>
+              <span style={{ color: "#fff", fontSize: "1.35rem", fontWeight: "bold", fontFamily: "var(--font-heading)" }}>Smile Artists</span>
+              <span style={{ color: "#d4af37", fontSize: "0.8rem", fontFamily: "'Monotype Corsiva', cursive", opacity: 0.8 }}>...crafting smiles</span>
+            </div>
           </div>
           <h2 className="auth-brand-headline">
             Premium Dental Care,<br />
