@@ -194,6 +194,8 @@ def init_db():
                         conn.execute(text("ALTER TABLE prescriptions ADD COLUMN diagnosis TEXT;"))
                         conn.execute(text("ALTER TABLE prescriptions ADD COLUMN treatment_plan TEXT;"))
                         conn.execute(text("ALTER TABLE prescriptions ADD COLUMN recommendations TEXT;"))
+                    if "instructions" not in columns:
+                        conn.execute(text("ALTER TABLE prescriptions ADD COLUMN instructions TEXT;"))
                     if "linked_to" not in columns:
                         conn.execute(text("ALTER TABLE prescriptions ADD COLUMN linked_to INTEGER REFERENCES prescriptions(id) ON DELETE SET NULL;"))
                     if "xrays" not in columns:
