@@ -427,9 +427,15 @@ def download_prescription_pdf(id: int, stamp: bool = Query(True), db: Session = 
                 pdf.set_font("Times", "BI", 22)
                 pdf.set_text_color(212, 175, 55)
                 pdf.cell(16, 10, "Rx", ln=0)
-                pdf.set_font("Arial", "B", 11)
-                pdf.set_text_color(212, 175, 55)
-                pdf.cell(0, 10, title.upper(), ln=True)
+                
+                # If title is 'RX' or 'Rx', don't print it next to the symbol to avoid 'Rx RX'
+                display_title = title.upper()
+                if display_title in ["RX", "Rx"]:
+                    pdf.cell(0, 10, "", ln=True)
+                else:
+                    pdf.set_font("Arial", "B", 11)
+                    pdf.set_text_color(212, 175, 55)
+                    pdf.cell(0, 10, display_title, ln=True)
             else:
                 pdf.set_font("Arial", "B", 11)
                 pdf.set_text_color(212, 175, 55)
@@ -474,7 +480,7 @@ def download_prescription_pdf(id: int, stamp: bool = Query(True), db: Session = 
         if p.treatment_plan:
             add_section("Treatment Plan", p.treatment_plan)
         if p.recommendations:
-            add_section("Rx", p.recommendations, bullet=True, rx_symbol=True)
+            add_section("RX", p.recommendations, bullet=True, rx_symbol=True)
         if p.instructions:
             add_section("Recommendation / Instructions", p.instructions)
 

@@ -952,7 +952,9 @@ export default function DentistDashboard() {
                   {/* Rx - MEDICATIONS */}
                   <div style={{ marginBottom: "1.5rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                      <label><span style={{ fontFamily: "Times New Roman, serif", fontStyle: "italic", fontSize: "1.2rem", color: "#d4af37", marginRight: "6px" }}>Rx</span> Medications</label>
+                      <label style={{ display: "flex", alignItems: "center" }}>
+                        <span style={{ fontFamily: "Times New Roman, serif", fontStyle: "italic", fontSize: "1.42rem", color: "#d4af37", marginRight: "8px", fontWeight: "bold" }}>Rx</span>
+                      </label>
                       <div style={{ position: "relative", width: "250px" }}>
                         <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#d4af37", opacity: 0.6, zIndex: 1 }}></i>
                         <input
@@ -1033,7 +1035,7 @@ export default function DentistDashboard() {
 
                   {/* RECOMMENDATION / INSTRUCTIONS */}
                   <div style={{ marginBottom: "1.5rem" }}>
-                    <label>Clinical Instructions & Advice</label>
+                    <label style={{ color: "#f0b800", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.85rem" }}>Recommendation / Instructions</label>
                     <textarea
                       placeholder="e.g. Warm saline rinses 3 times a day, avoid chewing on the right side..."
                       value={prescInstructions || ""}
