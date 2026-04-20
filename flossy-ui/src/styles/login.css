@@ -130,6 +130,8 @@
 }
 .auth-feature-label {
     opacity: 0.9;
+    font-family: 'Outfit', 'Inter', sans-serif;
+    font-weight: 400;
 }
 .auth-feature-icon {
   width: 32px;
@@ -259,6 +261,7 @@
     display: flex !important;
     flex-direction: column !important;
     gap: 0.75rem !important;
+    align-items: center !important;
 }
 
 .cl-socialButtonsBlockButton {
@@ -298,7 +301,18 @@
   width: 100% !important;
   display: flex !important;
   justify-content: center !important;
+  align-items: center !important;
   transition: all 0.2s ease !important;
+  position: relative !important;
+}
+
+/* Hide the 'Last used' floating text from Clerk */
+.cl-socialButtonsBlockButtonBadge {
+    display: none !important;
+}
+
+.cl-socialButtonsBlockButtonArrow {
+    display: none !important;
 }
 .cl-socialButtonsBlockButton:hover {
   background: rgba(255, 255, 255, 0.06) !important;
