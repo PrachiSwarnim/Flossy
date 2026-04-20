@@ -1554,6 +1554,7 @@ export default function ReceptionistDashboard() {
                                 </table>
                             </div>
                         </div>
+                    </div>
                 </div>
             </main>
             
