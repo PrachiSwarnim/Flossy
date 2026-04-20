@@ -1114,7 +1114,6 @@ export default function ReceptionistDashboard() {
                                                 onChange={e => setPatientPhone(e.target.value)}
                                                 style={{ flex: 1, padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff" }}
                                             />
-                                        </div>
                                     </div>
                                     <div className="form-group" style={{ flex: 1 }}>
                                         <label style={{ color: "#888", marginBottom: "5px", display: "block" }}>Age</label>
@@ -1555,7 +1554,6 @@ export default function ReceptionistDashboard() {
                                 </table>
                             </div>
                         </div>
-                    </div>
                 </div>
             </main>
             
@@ -1659,7 +1657,6 @@ export default function ReceptionistDashboard() {
                                          style={{ flex: 1, padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
                                      />
                                  </div>
-                             </div>
                             <div>
                                 <label style={{ color: "#888", fontSize: "0.8rem" }}>Age</label>
                                 <input
