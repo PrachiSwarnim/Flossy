@@ -122,6 +122,30 @@ export default function DentistDashboard() {
   const [prescInstructions, setPrescInstructions] = useState("");
   const [prescMedSearch, setPrescMedSearch] = useState("");
   const [prescChiefComplaint, setPrescChiefComplaint] = useState("");
+
+  const handleBulletKeyDown = (e, val, setter) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const cursorPosition = e.target.selectionStart;
+      const textBefore = val.substring(0, cursorPosition);
+      const textAfter = val.substring(cursorPosition);
+      const newValue = textBefore + '\n• ' + textAfter;
+      setter(newValue);
+      
+      // Reset cursor position after the bullet
+      setTimeout(() => {
+        e.target.selectionStart = e.target.selectionEnd = cursorPosition + 3;
+      }, 0);
+    }
+  };
+
+  const ensureFirstBullet = (val, setter) => {
+    if (!val || val.trim() === "") {
+      setter("• ");
+    } else if (!val.startsWith("• ")) {
+      setter("• " + val);
+    }
+  };
   const [visitType, setVisitType] = useState("complaint"); // 'complaint' or 'follow_up'
   const [prescContinue, setPrescContinue] = useState(false);
   const [prescXrays, setPrescXrays] = useState([]); // Array of filenames
@@ -755,21 +779,16 @@ export default function DentistDashboard() {
                 <div className="card-header">
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <h3>Daily Analytics</h3>
-                    <input
-                      type="date"
-                      value={reportDate}
-                      onChange={(e) => setReportDate(e.target.value)}
-                      style={{
-                        background: "rgba(0,0,0,0.3)",
-                        border: "1px solid #555",
-                        color: "#fff",
-                        padding: "5px 10px",
-                        borderRadius: "5px",
-                        fontSize: "0.9rem",
-                        cursor: "pointer",
-                        colorScheme: "dark"
-                      }}
-                    />
+                    <div className="input-icon-wrapper" style={{ display: "inline-flex" }}>
+                      <input
+                        type="date"
+                        value={reportDate}
+                        onChange={(e) => setReportDate(e.target.value)}
+                        className="dashboard-input"
+                        style={{ border: "1px solid #555", paddingRight: "35px" }}
+                      />
+                      <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#d4af37", opacity: 0.8, right: "10px" }}></i>
+                    </div>
                     <select
                       value={reportView}
                       onChange={(e) => setReportView(e.target.value)}
@@ -856,7 +875,8 @@ export default function DentistDashboard() {
                     <div style={{ position: "relative" }}>
                       <label>Select Patient</label>
                       <div className="patient-search-container" style={{ position: "relative" }}>
-                        <div style={{ position: "relative" }}>
+                        <div className="input-icon-wrapper">
+                          <i className="fas fa-search"></i>
                           <input
                             type="text"
                             placeholder="Search patient name..."
@@ -868,9 +888,7 @@ export default function DentistDashboard() {
                             }}
                             onFocus={() => setShowPrescPatientSuggestions(true)}
                             className="dashboard-input"
-                            style={{ paddingLeft: "42px" }}
                           />
-                          <i className="fas fa-search" style={{ position: "absolute", left: "15px", top: "50%", transform: "translateY(-50%)", color: "#f0b800", opacity: 0.7 }}></i>
                         </div>
 
                         {showPrescPatientSuggestions && (prescPatientSearch.trim() !== "" || patientsList.length > 0) && (
@@ -912,12 +930,16 @@ export default function DentistDashboard() {
                     {/* PRESCRIPTION DATE */}
                     <div className="form-group">
                       <label>Prescription Date</label>
-                      <input
-                        type="date"
-                        value={prescDate}
-                        onChange={(e) => setPrescDate(e.target.value)}
-                        className="dashboard-input"
-                      />
+                      <div className="input-icon-wrapper">
+                        <input
+                          type="date"
+                          value={prescDate}
+                          onChange={(e) => setPrescDate(e.target.value)}
+                          className="dashboard-input"
+                          style={{ paddingRight: "35px" }}
+                        />
+                        <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#d4af37", opacity: 0.8 }}></i>
+                      </div>
                     </div>
                   </div>
 
@@ -962,7 +984,7 @@ export default function DentistDashboard() {
                                         .map(c => (
                                           <div key={c.iso} onClick={() => { setPrescCountryCode(c.code); setShowPrescCountrySearch(false); }}
                                                style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}>
-                                            {c.iso} ({c.code}) - {c.name}
+                                            {c.name} ({c.code})
                                           </div>
                                         ))}
                                     </div>
@@ -1012,7 +1034,9 @@ export default function DentistDashboard() {
                      </div>
                      <textarea
                        placeholder="e.g. Pain in lower left molar for 3 days..."
-                       value={prescChiefComplaint}
+                       value={prescChiefComplaint || ""}
+                       onFocus={() => ensureFirstBullet(prescChiefComplaint, setPrescChiefComplaint)}
+                       onKeyDown={(e) => handleBulletKeyDown(e, prescChiefComplaint, setPrescChiefComplaint)}
                        onChange={(e) => {
                          setPrescChiefComplaint(e.target.value);
                          if (e.target.value !== "Follow up" && visitType === "follow_up") setVisitType("complaint");
@@ -1037,7 +1061,9 @@ export default function DentistDashboard() {
                       <label>Diagnosis</label>
                       <textarea
                         placeholder="e.g. Chronic Gingivitis..."
-                        value={prescNotes}
+                        value={prescNotes || ""}
+                        onFocus={() => ensureFirstBullet(prescNotes, setPrescNotes)}
+                        onKeyDown={(e) => handleBulletKeyDown(e, prescNotes, setPrescNotes)}
                         onChange={(e) => setPrescNotes(e.target.value)}
                         className="dashboard-textarea"
                         style={{ minHeight: "100px" }}
@@ -1048,6 +1074,8 @@ export default function DentistDashboard() {
                       <textarea
                         placeholder="e.g. Scaling and Root Planing..."
                         value={prescTreatmentPlan || ""}
+                        onFocus={() => ensureFirstBullet(prescTreatmentPlan, setPrescTreatmentPlan)}
+                        onKeyDown={(e) => handleBulletKeyDown(e, prescTreatmentPlan, setPrescTreatmentPlan)}
                         onChange={(e) => setPrescTreatmentPlan(e.target.value)}
                         className="dashboard-textarea"
                         style={{ minHeight: "100px" }}
@@ -1062,18 +1090,19 @@ export default function DentistDashboard() {
                         <span style={{ fontFamily: "Times New Roman, serif", fontStyle: "italic", fontSize: "1.42rem", color: "#d4af37", marginRight: "8px", fontWeight: "bold" }}>Rx</span>
                       </label>
                       <div style={{ position: "relative", width: "250px" }}>
-                        <i className="fas fa-search" style={{ position: "absolute", left: "15px", top: "50%", transform: "translateY(-50%)", color: "#d4af37", opacity: 0.6, zIndex: 1 }}></i>
-                        <input
-                          type="text"
-                          placeholder="Quick search..."
-                          value={prescMedSearch || ""}
-                          onChange={(e) => setPrescMedSearch(e.target.value)}
-                          className="dashboard-input"
-                          style={{ paddingLeft: "42px" }}
-                        />
+                        <div className="input-icon-wrapper">
+                          <i className="fas fa-search"></i>
+                          <input
+                            type="text"
+                            placeholder="Quick search..."
+                            value={prescMedSearch || ""}
+                            onChange={(e) => setPrescMedSearch(e.target.value)}
+                            className="dashboard-input"
+                          />
+                        </div>
                         {/* Medication Suggestions Dropdown */}
                         {prescMedSearch && prescMedSearch.length > 0 && (
-                          <div style={{
+                          <div className="elegant-scroll" style={{
                             position: "absolute",
                             top: "100%",
                             left: 0,
@@ -1133,6 +1162,8 @@ export default function DentistDashboard() {
                     <textarea
                       placeholder="e.g. Tab. Paracetamol 500mg - 1-0-1 for 3 days..."
                       value={prescRecommendations || ""}
+                      onFocus={() => ensureFirstBullet(prescRecommendations, setPrescRecommendations)}
+                      onKeyDown={(e) => handleBulletKeyDown(e, prescRecommendations, setPrescRecommendations)}
                       onChange={(e) => setPrescRecommendations(e.target.value)}
                       className="dashboard-textarea"
                       style={{ minHeight: "100px" }}
@@ -1145,6 +1176,8 @@ export default function DentistDashboard() {
                     <textarea
                       placeholder="e.g. Warm saline rinses 3 times a day, avoid chewing on the right side..."
                       value={prescInstructions || ""}
+                      onFocus={() => ensureFirstBullet(prescInstructions, setPrescInstructions)}
+                      onKeyDown={(e) => handleBulletKeyDown(e, prescInstructions, setPrescInstructions)}
                       onChange={(e) => setPrescInstructions(e.target.value)}
                       className="dashboard-textarea"
                       style={{ minHeight: "100px" }}

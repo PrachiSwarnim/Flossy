@@ -889,13 +889,17 @@ export default function ReceptionistDashboard() {
                             <div style={{ display: "flex", gap: "10px", padding: "1rem", flexWrap: "wrap", borderBottom: "1px solid #333" }}>
                                 <div style={{ flex: 1, minWidth: "200px" }}>
                                     <label style={{ color: "#888", fontSize: "0.8rem", display: "block", marginBottom: "5px" }}>Search by Name</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Patient name..."
-                                        value={historyNameFilter}
-                                        onChange={(e) => setHistoryNameFilter(e.target.value)}
-                                        style={{ width: "100%", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
-                                    />
+                                    <div className="input-icon-wrapper">
+                                        <i className="fas fa-search"></i>
+                                        <input
+                                            type="text"
+                                            placeholder="Patient name..."
+                                            value={historyNameFilter}
+                                            onChange={(e) => setHistoryNameFilter(e.target.value)}
+                                            className="dashboard-input"
+                                            style={{ padding: "10px" }}
+                                        />
+                                    </div>
                                 </div>
                                 <div style={{ flex: 1, minWidth: "200px" }}>
                                     <label style={{ color: "#888", fontSize: "0.8rem", display: "block", marginBottom: "5px" }}>Filter by Date</label>
@@ -1008,12 +1012,16 @@ export default function ReceptionistDashboard() {
 
                                 <label style={{ display: 'block', marginBottom: '5px', color: '#aaa' }}>New Date & Time:</label>
                                 <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                                    <input
-                                        type="date"
-                                        value={proposedDate}
-                                        onChange={e => setProposedDate(e.target.value)}
-                                        style={{ flex: 1, padding: '10px', borderRadius: '5px', border: 'none' }}
-                                    />
+                                    <div className="input-icon-wrapper" style={{ flex: 1 }}>
+                                        <input
+                                            type="date"
+                                            value={proposedDate}
+                                            onChange={e => setProposedDate(e.target.value)}
+                                            className="dashboard-input"
+                                            style={{ paddingRight: "35px" }}
+                                        />
+                                        <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#d4af37", opacity: 0.8 }}></i>
+                                    </div>
                                     <select
                                         value={proposedTimeSlot}
                                         onChange={e => setProposedTimeSlot(e.target.value)}
@@ -1067,15 +1075,18 @@ export default function ReceptionistDashboard() {
                                     <div className="form-group" style={{ flex: 2 }}>
                                         <label style={{ color: "#888", marginBottom: "5px", display: "block" }}>Phone Number</label>
                                         <div style={{ display: "flex", gap: "5px" }}>
-                                            <div className="relative" style={{ width: "100px" }}>
+                                            <div className="input-icon-wrapper" style={{ width: "100px" }}>
+                                                <i className="fas fa-globe"></i>
                                                 <input
                                                     type="text"
                                                     value={showCountrySearch ? countrySearch : patientCountryCode}
                                                     onFocus={() => { setShowCountrySearch(true); setCountrySearch(""); }}
                                                     onChange={(e) => setCountrySearch(e.target.value)}
                                                     placeholder="Code"
-                                                    style={{ width: "100%", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff", outline: "none" }}
+                                                    className="dashboard-input"
+                                                    style={{ width: "100%", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff", outline: "none" }}
                                                 />
+                                            </div>
                                                 {showCountrySearch && (
                                                     <div className="elegant-scroll" style={{
                                                         position: "absolute", top: "100%", left: 0,
@@ -1090,7 +1101,7 @@ export default function ReceptionistDashboard() {
                                                         ).map(c => (
                                                             <div key={c.iso} onClick={() => { setPatientCountryCode(c.code); setShowCountrySearch(false); }}
                                                                  style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}>
-                                                                {c.iso} ({c.code}) - {c.name}
+                                                                {c.name} ({c.code})
                                                             </div>
                                                         ))}
                                                     </div>
@@ -1611,15 +1622,18 @@ export default function ReceptionistDashboard() {
                              <div>
                                  <label style={{ color: "#888", fontSize: "0.8rem" }}>Phone</label>
                                  <div style={{ display: "flex", gap: "5px" }}>
-                                     <div className="relative" style={{ width: "100px" }}>
+                                     <div className="input-icon-wrapper" style={{ width: "100px" }}>
+                                         <i className="fas fa-globe"></i>
                                          <input
                                              type="text"
                                              value={showEditCountrySearch ? editCountrySearch : editCountryCode}
                                              onFocus={() => { setShowEditCountrySearch(true); setEditCountrySearch(""); }}
                                              onChange={(e) => setEditCountrySearch(e.target.value)}
                                              placeholder="Code"
+                                             className="dashboard-input"
                                              style={{ width: "100%", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff", outline: "none" }}
                                          />
+                                     </div>
                                          {showEditCountrySearch && (
                                              <div className="elegant-scroll" style={{
                                                  position: "absolute", bottom: "100%", left: 0,
@@ -1634,7 +1648,7 @@ export default function ReceptionistDashboard() {
                                                  ).map(c => (
                                                      <div key={c.iso} onClick={() => { setEditCountryCode(c.code); setShowEditCountrySearch(false); }}
                                                           style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}>
-                                                         {c.iso} ({c.code}) - {c.name}
+                                                         {c.name} ({c.code})
                                                      </div>
                                                  ))}
                                              </div>
@@ -1701,12 +1715,16 @@ export default function ReceptionistDashboard() {
                         <div style={{ display: "flex", gap: "10px", marginBottom: "1rem" }}>
                             <div style={{ flex: 1 }}>
                                 <label style={{ display: "block", color: "#888", marginBottom: "5px", fontSize: "0.9rem" }}>Next Visit Date</label>
-                                <input
-                                    type="date"
-                                    value={followUpDate}
-                                    onChange={e => setFollowUpDate(e.target.value)}
-                                    style={{ width: "100%", padding: "10px", background: "#333", border: "none", color: "#fff", borderRadius: "5px" }}
-                                />
+                                <div className="input-icon-wrapper">
+                                    <input
+                                        type="date"
+                                        value={followUpDate}
+                                        onChange={e => setFollowUpDate(e.target.value)}
+                                        className="dashboard-input"
+                                        style={{ paddingRight: "35px" }}
+                                    />
+                                    <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#d4af37", opacity: 0.8 }}></i>
+                                </div>
                             </div>
                             <div style={{ flex: 1 }}>
                                 <label style={{ display: "block", color: "#888", marginBottom: "5px", fontSize: "0.9rem" }}>Time</label>

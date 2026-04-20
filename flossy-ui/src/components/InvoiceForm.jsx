@@ -105,7 +105,8 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
         }
     }, [patientName, onPatientChange]);
 
-    // Auto-calculate totals
+    const currencySymbol = CURRENCIES.find(c => c.code === currency)?.symbol || (currency === 'INR' ? '₹' : '$');
+
     const calculateItemDiscountAmount = (item) => {
         const cost = parseFloat(item.cost) || 0;
         const disc = parseFloat(item.discount) || 0;
@@ -282,7 +283,8 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                     <div className="form-group" style={{ position: "relative" }}>
                         <label>Select Patient</label>
                         <div className="patient-search-container" style={{ position: "relative" }}>
-                            <div style={{ position: "relative" }}>
+                            <div className="input-icon-wrapper">
+                                <i className="fas fa-search"></i>
                                 <input
                                     type="text"
                                     placeholder="Search patient name..."
@@ -294,9 +296,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                     }}
                                     onFocus={() => setShowPatientSuggestions(true)}
                                     className="dashboard-input"
-                                    style={{ paddingLeft: "42px" }}
                                 />
-                                <i className="fas fa-search" style={{ position: "absolute", left: "15px", top: "50%", transform: "translateY(-50%)", color: "#f0b800", opacity: 0.7 }}></i>
                             </div>
 
                             {showPatientSuggestions && (patientSearch.trim() !== "" || (patientsList && patientsList.length > 0)) && (
@@ -367,29 +367,31 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                     </div>
                         <div className="form-group relative" style={{ flex: 1 }}>
                             <label>DATE</label>
-                            <div className="relative">
+                            <div className="input-icon-wrapper">
                                 <input
                                     type="date"
                                     value={invoiceDate}
                                     onChange={(e) => setInvoiceDate(e.target.value)}
-                                    className="date-input-with-icon"
-                                    style={{ paddingRight: "35px" }}
+                                    className="dashboard-input"
+                                    style={{ colorScheme: "dark", paddingRight: "35px" }}
                                 />
                                 <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#d4af37", opacity: 0.8 }}></i>
                             </div>
                         </div>
-                        <div className="form-group relative" style={{ flex: 1, minWidth: "180px" }}>
+                        <div className="form-group relative" style={{ flex: 1 }}>
                             <label>CURRENCY</label>
-                            <div className="relative">
+                            <div className="input-icon-wrapper">
+                                <i className="fas fa-coins"></i>
                                 <input
                                     type="text"
-                                    value={showCurrencySearch ? currencySearch : `${currency} (${CURRENCIES.find(c => c.code === currency)?.symbol || ""})`}
+                                    value={showCurrencySearch ? currencySearch : `${currency} (${currencySymbol})`}
                                     onFocus={() => { setShowCurrencySearch(true); setCurrencySearch(""); }}
                                     onChange={(e) => setCurrencySearch(e.target.value)}
-                                    placeholder="Search currency..."
+                                    placeholder="Search..."
+                                    className="dashboard-input"
                                     style={{
                                         background: "#222", border: "1px solid #333", borderRadius: "8px",
-                                        color: "#fff", padding: "12px", width: "100%", outline: "none"
+                                        color: "#fff", width: "100%", outline: "none"
                                     }}
                                 />
                                 {showCurrencySearch && (
@@ -418,7 +420,8 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                     <div className="form-group">
                         <label>Patient Phone</label>
                         <div style={{ display: "flex", gap: "5px", position: "relative" }}>
-                            <div style={{ position: "relative", width: "110px" }}>
+                            <div className="input-icon-wrapper" style={{ width: "110px" }}>
+                                <i className="fas fa-globe"></i>
                                 <input
                                     type="text"
                                     placeholder="Search..."
@@ -428,9 +431,9 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                         setShowCountrySearch(true);
                                     }}
                                     onFocus={() => setShowCountrySearch(true)}
+                                    className="dashboard-input"
                                     style={{
                                         width: "100%",
-                                        padding: "12px 10px",
                                         background: "#222",
                                         border: "1px solid #333",
                                         borderRadius: "8px",
@@ -438,6 +441,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                         fontSize: "0.85rem"
                                     }}
                                 />
+                            </div>
                                 {showCountrySearch && (
                                     <div className="elegant-scroll" style={{
                                         position: "absolute", top: "100%", left: 0, right: 0,
@@ -461,7 +465,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                                     onMouseEnter={e => e.currentTarget.style.background = "#2a2a2a"}
                                                     onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                                                 >
-                                                    {c.iso} ({c.code})
+                                                    {c.name} ({c.code})
                                                 </div>
                                             ))
                                         }
@@ -550,7 +554,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                                 onMouseLeave={(e) => e.currentTarget.style.background = item.treatment_name === cat.name ? "#2a2a2a" : "transparent"}
                                             >
                                                 <div style={{ fontWeight: "600", color: "#fff" }}>{cat.name}</div>
-                                                <div style={{ fontSize: "0.75rem", color: "#f0b800" }}>{currency === 'INR' ? '₹' : '$'} {convertPrice(cat.cost, 'INR', currency)}</div>
+                                                <div style={{ fontSize: "0.75rem", color: "#f0b800" }}>{currencySymbol} {convertPrice(cat.cost, 'INR', currency)}</div>
                                             </div>
                                         ))}
                                     <div
@@ -622,15 +626,16 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                     textAlign: 'center'
                                 }}
                             >
-                                <option value="flat">{currency === 'INR' ? '₹' : '$'}</option>
+                                <option value="flat">{currencySymbol}</option>
                                 <option value="percent">%</option>
                             </select>
                         </div>
-                                                <div className="relative">
+                                <div className="input-icon-wrapper" style={{ flex: 1 }}>
                                     <input
                                         type="date"
                                         value={item.treatment_date}
                                         onChange={(e) => updateItem(idx, "treatment_date", e.target.value)}
+                                        className="dashboard-input"
                                         style={{ colorScheme: "dark", width: "100%", paddingRight: "35px" }}
                                     />
                                     <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#d4af37", opacity: 0.8 }}></i>
@@ -677,13 +682,14 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                 onChange={(e) => updatePayment(pIdx, 'amount', e.target.value)}
                                 className="dashboard-input"
                             />
-                            <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.8rem' }}>{currency === 'INR' ? '₹' : '$'}</span>
+                            <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.8rem' }}>{currencySymbol}</span>
                         </div>
-                                                <div className="relative">
+                                <div className="input-icon-wrapper" style={{ flex: 1 }}>
                                     <input
                                         type="date"
                                         value={p.paid_on}
                                         onChange={(e) => updatePayment(pIdx, "paid_on", e.target.value)}
+                                        className="dashboard-input"
                                         style={{ colorScheme: "dark", width: "100%", paddingRight: "35px" }}
                                     />
                                     <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#d4af37", opacity: 0.8 }}></i>
@@ -699,29 +705,29 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                 <div className="invoice-summary">
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                         <span>Subtotal (Gross):</span>
-                        <span style={{ fontWeight: 'bold' }}>{currency === 'INR' ? '₹' : '$'} {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span style={{ fontWeight: 'bold' }}>{currencySymbol} {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
 
                     {totalItemDiscount > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: '#f0b800' }}>
                             <span>Total Item Discounts:</span>
-                            <span style={{ fontWeight: 'bold' }}>- {currency === 'INR' ? '₹' : '$'} {totalItemDiscount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span style={{ fontWeight: 'bold' }}>- {currencySymbol} {totalItemDiscount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     )}
 
                     <div className="total-row" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                         <span>Total Payable:</span>
-                        <span>{currency === 'INR' ? '₹' : '$'} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span>{currencySymbol} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#2ecc71', marginTop: '8px', fontSize: '0.9rem', opacity: 0.8 }}>
                         <span>Total Paid:</span>
-                        <span>{currency === 'INR' ? '₹' : '$'} {totalPaid.toLocaleString()}</span>
+                        <span>{currencySymbol} {totalPaid.toLocaleString()}</span>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: amountDue > 0 ? '#ff7675' : '#2ecc71', fontWeight: 'bold', marginTop: '8px' }}>
                         <span>{amountDue > 0 ? "Amount Due:" : "Balance Cleared"}</span>
-                        <span>{currency === 'INR' ? '₹' : '$'} {Math.abs(amountDue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span>{currencySymbol} {Math.abs(amountDue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                 </div>
 

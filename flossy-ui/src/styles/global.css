@@ -59,6 +59,24 @@ body {
   display: none;
 }
 
+/* Hide default date picker icons globally while keeping them as functional triggers */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute !important;
+  right: 10px !important;
+  width: 30px !important;
+  height: 30px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+  opacity: 0 !important; /* Make invisible but clickable */
+  z-index: 10 !important; /* Ensure it's on top of our custom icon */
+}
+
+/* Ensure the wrapper respects the absolute positioning of the indicator */
+.input-icon-wrapper {
+  position: relative !important;
+}
+
 /* DEFAULT TEXT BEHAVIOR */
 p {
   font-size: 1.05rem;

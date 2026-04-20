@@ -100,18 +100,25 @@
     padding: 1.5rem !important;
     border-radius: 14px !important;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+    font-family: var(--font-body), 'Inter', sans-serif !important;
 }
 
 .premium-form .invoice-summary span {
-    color: #aaa;
+    color: #f0f0f0 !important;
+    font-weight: 500;
 }
 
 .premium-form .invoice-summary .total-row {
-    font-size: 1.2rem;
-    color: #d4af37;
+    color: #d4af37 !important;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
     padding-top: 1rem;
     margin-top: 0.5rem;
+}
+
+.premium-form .invoice-summary .total-row span {
+    color: #d4af37 !important;
+    font-weight: 700;
+    font-size: 1.3rem;
 }
 
 /* ── Submit Button ── */

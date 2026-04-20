@@ -27,7 +27,7 @@ export default function Login() {
             <img
               src="/static/assets/logo.png"
               alt="Smile Artists"
-              style={{ width: "42px", height: "42px", borderRadius: "50%", border: "1px solid rgba(212, 175, 55, 0.4)", objectFit: "cover" }}
+              style={{ width: "42px", height: "42px", borderRadius: "50%", border: "1px solid rgba(212, 175, 55, 0.4)", objectFit: "cover", marginTop: "-6px" }}
             />
             <div style={{ display: "flex", flexDirection: "column", lineHeight: "1.1", alignItems: "flex-end" }}>
               <span style={{ color: "#fff", fontSize: "1.35rem", fontWeight: "bold", fontFamily: "var(--font-heading)" }}>Smile Artists</span>

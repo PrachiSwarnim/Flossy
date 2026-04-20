@@ -303,7 +303,28 @@ header {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  /* Remove browser default UI */
+}
+
+/* --- Input with Icon Helper --- */
+.input-icon-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.input-icon-wrapper i {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--primary-gold);
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.7;
+  font-size: 0.85rem;
+}
+
+.input-icon-wrapper .dashboard-input {
+  padding-left: 40px !important;
 }
 
 /* Fix for number input white spinners */

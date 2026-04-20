@@ -131,7 +131,9 @@
 .auth-feature-label {
     opacity: 0.9;
     font-family: 'Outfit', 'Inter', sans-serif;
-    font-weight: 400;
+    font-weight: 500;
+    color: #fff;
+    letter-spacing: 0.5px;
 }
 .auth-feature-icon {
   width: 32px;
@@ -306,9 +308,22 @@
   position: relative !important;
 }
 
-/* Hide the 'Last used' floating text from Clerk */
+/* Style the 'Last used' floating text from Clerk */
 .cl-socialButtonsBlockButtonBadge {
-    display: none !important;
+    display: inline-flex !important;
+    background: #d4af37 !important;
+    color: #000 !important;
+    font-size: 0.65rem !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    padding: 2px 8px !important;
+    border-radius: 4px !important;
+    position: absolute !important;
+    right: 15px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    letter-spacing: 0.5px !important;
+    box-shadow: 0 4px 10px rgba(212, 175, 55, 0.2) !important;
 }
 
 .cl-socialButtonsBlockButtonArrow {
@@ -336,15 +351,7 @@
   font-weight: 600 !important;
 }
 
-.cl-socialButtonsBlockButtonBadge {
-    background: #d4af37 !important;
-    color: #111 !important;
-    font-size: 0.65rem !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    padding: 2px 6px !important;
-    border-radius: 4px !important;
-}
+/* Removed redundant badge style */
 
 .cl-footerActionLink {
   color: #d4af37 !important;
