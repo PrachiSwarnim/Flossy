@@ -125,6 +125,10 @@ export default function DentistDashboard() {
   const [prescContinue, setPrescContinue] = useState(false);
   const [prescXrays, setPrescXrays] = useState([]); // Array of filenames
   const [prescDate, setPrescDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showPrescPatientSuggestions, setShowPrescPatientSuggestions] = useState(false);
+  const [prescPatientPhone, setPrescPatientPhone] = useState("");
+  const [prescCountryCode, setPrescCountryCode] = useState("+91");
+  const [showPrescCountrySearch, setShowPrescCountrySearch] = useState(false);
 
   // ===== ANALYTICS STATE =====
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
@@ -848,25 +852,64 @@ export default function DentistDashboard() {
                   {/* PATIENT & DATE SELECTION */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                     {/* SELECT PATIENT */}
-                    <div>
+                    <div style={{ position: "relative" }}>
                       <label>Select Patient</label>
-                      <select
-                        value={prescPatient}
-                        onChange={(e) => {
-                          setPrescPatient(e.target.value);
-                          fetchPatientPrescriptions(e.target.value);
-                        }}
-                        className="dashboard-select"
-                      >
-                        <option value="">-- Choose Patient --</option>
-                        {patientsList.map(p => (
-                          <option key={p.id} value={p.name}>{p.name}</option>
-                        ))}
-                      </select>
+                      <div className="patient-search-container" style={{ position: "relative" }}>
+                        <div style={{ position: "relative" }}>
+                          <input
+                            type="text"
+                            placeholder="Search patient name..."
+                            value={prescPatientSearch || prescPatient}
+                            onChange={(e) => {
+                              setPrescPatientSearch(e.target.value);
+                              setShowPrescPatientSuggestions(true);
+                              if (prescPatient) setPrescPatient("");
+                            }}
+                            onFocus={() => setShowPrescPatientSuggestions(true)}
+                            className="dashboard-input"
+                            style={{ paddingLeft: "42px" }}
+                          />
+                          <i className="fas fa-search" style={{ position: "absolute", left: "15px", top: "50%", transform: "translateY(-50%)", color: "#f0b800", opacity: 0.7 }}></i>
+                        </div>
+
+                        {showPrescPatientSuggestions && (prescPatientSearch.trim() !== "" || patientsList.length > 0) && (
+                          <div className="patient-suggestions elegant-scroll" style={{
+                            position: "absolute", top: "100%", left: 0, right: 0,
+                            zIndex: 101, background: "#1a1a1a", border: "1px solid #444",
+                            borderRadius: "8px", marginTop: "5px", maxHeight: "180px",
+                            overflowY: "scroll", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+                          }}>
+                            {patientsList
+                              .filter(p => (p.name || "").toLowerCase().includes((prescPatientSearch || "").toLowerCase()))
+                              .map(p => (
+                                <div
+                                  key={p.id}
+                                  onClick={() => {
+                                    setPrescPatient(p.name);
+                                    setPrescPatientSearch(p.name);
+                                    fetchPatientPrescriptions(p.name);
+                                    // Auto-fill phone
+                                    setPrescPatientPhone(p.phone || "");
+                                    setShowPrescPatientSuggestions(false);
+                                  }}
+                                  style={{
+                                    padding: "10px 15px", cursor: "pointer", borderBottom: "1px solid #333",
+                                    color: "#fff", background: prescPatient === p.name ? "#2a2a2a" : "transparent"
+                                  }}
+                                >
+                                  {p.name}
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                        {showPrescPatientSuggestions && (
+                          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }} onClick={() => setShowPrescPatientSuggestions(false)}></div>
+                        )}
+                      </div>
                     </div>
 
                     {/* PRESCRIPTION DATE */}
-                    <div>
+                    <div className="form-group">
                       <label>Prescription Date</label>
                       <input
                         type="date"
@@ -874,6 +917,69 @@ export default function DentistDashboard() {
                         onChange={(e) => setPrescDate(e.target.value)}
                         className="dashboard-input"
                       />
+                    </div>
+                  </div>
+
+                  {/* PATIENT PHONE & COUNTRY CODE */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                    <div className="form-group">
+                        <label>Patient Phone Number</label>
+                        <div style={{ display: "flex", gap: "5px", position: "relative" }}>
+                            <div style={{ position: "relative", width: "110px" }}>
+                                <input
+                                    type="text"
+                                    placeholder="Code"
+                                    value={prescCountryCode}
+                                    onChange={(e) => {
+                                        setPrescCountryCode(e.target.value);
+                                        setShowPrescCountrySearch(true);
+                                    }}
+                                    onFocus={() => setShowPrescCountrySearch(true)}
+                                    style={{
+                                        width: "100%",
+                                        padding: "12px 10px",
+                                        background: "#222",
+                                        border: "1px solid #333",
+                                        borderRadius: "8px",
+                                        color: "#fff",
+                                        fontSize: "0.85rem"
+                                    }}
+                                />
+                                {showPrescCountrySearch && (
+                                    <div className="elegant-scroll" style={{
+                                        position: "absolute", top: "100%", left: 0, right: 0,
+                                        zIndex: 105, background: "#1a1a1a", border: "1px solid #444",
+                                        borderRadius: "8px", marginTop: "5px", maxHeight: "200px",
+                                        overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", width: "120px"
+                                    }}>
+                                        {[
+                                          { code: "+91", iso: "IN" },
+                                          { code: "+1", iso: "US" },
+                                          { code: "+44", iso: "GB" },
+                                          { code: "+971", iso: "AE" },
+                                          { code: "+84", iso: "VN" }
+                                        ].filter(c => c.code.includes(prescCountryCode) || c.iso.toLowerCase().includes(prescCountryCode.toLowerCase()))
+                                        .map(c => (
+                                          <div key={c.iso} onClick={() => { setPrescCountryCode(c.code); setShowPrescCountrySearch(false); }}
+                                               style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}>
+                                            {c.iso} ({c.code})
+                                          </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {showPrescCountrySearch && (
+                                    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 104 }} onClick={() => setShowPrescCountrySearch(false)}></div>
+                                )}
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Phone number"
+                                value={prescPatientPhone}
+                                onChange={(e) => setPrescPatientPhone(e.target.value)}
+                                className="dashboard-input"
+                                style={{ flex: 1 }}
+                            />
+                        </div>
                     </div>
                   </div>
 
@@ -956,14 +1062,14 @@ export default function DentistDashboard() {
                         <span style={{ fontFamily: "Times New Roman, serif", fontStyle: "italic", fontSize: "1.42rem", color: "#d4af37", marginRight: "8px", fontWeight: "bold" }}>Rx</span>
                       </label>
                       <div style={{ position: "relative", width: "250px" }}>
-                        <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#d4af37", opacity: 0.6, zIndex: 1 }}></i>
+                        <i className="fas fa-search" style={{ position: "absolute", left: "15px", top: "50%", transform: "translateY(-50%)", color: "#d4af37", opacity: 0.6, zIndex: 1 }}></i>
                         <input
                           type="text"
                           placeholder="Quick search..."
                           value={prescMedSearch || ""}
                           onChange={(e) => setPrescMedSearch(e.target.value)}
                           className="dashboard-input"
-                          style={{ paddingLeft: "35px" }}
+                          style={{ paddingLeft: "42px" }}
                         />
                         {/* Medication Suggestions Dropdown */}
                         {prescMedSearch && prescMedSearch.length > 0 && (

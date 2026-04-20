@@ -39,6 +39,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
     const [catalog, setCatalog] = useState([]);
     const [patientPhone, setPatientPhone] = useState("");
     const [countryCode, setCountryCode] = useState("+91");
+    const [showCountrySearch, setShowCountrySearch] = useState(false);
 
     // Populate form if editing
     useEffect(() => {
@@ -290,9 +291,9 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                     }}
                                     onFocus={() => setShowPatientSuggestions(true)}
                                     className="dashboard-input"
-                                    style={{ paddingLeft: "35px" }}
+                                    style={{ paddingLeft: "42px" }}
                                 />
-                                <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#f0b800", opacity: 0.7 }}></i>
+                                <i className="fas fa-search" style={{ position: "absolute", left: "15px", top: "50%", transform: "translateY(-50%)", color: "#f0b800", opacity: 0.7 }}></i>
                             </div>
 
                             {showPatientSuggestions && (patientSearch.trim() !== "" || (patientsList && patientsList.length > 0)) && (
@@ -386,16 +387,63 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '1rem' }}>
                     <div className="form-group">
                         <label>Patient Phone</label>
-                        <div style={{ display: "flex", gap: "5px" }}>
-                            <select
-                                value={countryCode}
-                                onChange={e => setCountryCode(e.target.value)}
-                                style={{ width: "90px", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff", cursor: "pointer" }}
-                            >
-                                {COUNTRY_CODES.map(c => (
-                                    <option key={c.iso} value={c.code}>{c.iso} ({c.code})</option>
-                                ))}
-                            </select>
+                        <div style={{ display: "flex", gap: "5px", position: "relative" }}>
+                            <div style={{ position: "relative", width: "110px" }}>
+                                <input
+                                    type="text"
+                                    placeholder="Search..."
+                                    value={countryCode}
+                                    onChange={(e) => {
+                                        setCountryCode(e.target.value);
+                                        setShowCountrySearch(true);
+                                    }}
+                                    onFocus={() => setShowCountrySearch(true)}
+                                    style={{
+                                        width: "100%",
+                                        padding: "12px 10px",
+                                        background: "#222",
+                                        border: "1px solid #333",
+                                        borderRadius: "8px",
+                                        color: "#fff",
+                                        fontSize: "0.85rem"
+                                    }}
+                                />
+                                {showCountrySearch && (
+                                    <div className="elegant-scroll" style={{
+                                        position: "absolute", top: "100%", left: 0, right: 0,
+                                        zIndex: 105, background: "#1a1a1a", border: "1px solid #444",
+                                        borderRadius: "8px", marginTop: "5px", maxHeight: "200px",
+                                        overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", width: "220px"
+                                    }}>
+                                        {COUNTRY_CODES
+                                            .filter(c => 
+                                                c.code.includes(countryCode) || 
+                                                c.iso.toLowerCase().includes(countryCode.toLowerCase())
+                                            )
+                                            .map(c => (
+                                                <div 
+                                                    key={c.iso}
+                                                    onClick={() => {
+                                                        setCountryCode(c.code);
+                                                        setShowCountrySearch(false);
+                                                    }}
+                                                    style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = "#2a2a2a"}
+                                                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                                                >
+                                                    {c.iso} ({c.code})
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                )}
+                                {showCountrySearch && (
+                                    <div 
+                                        style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 104 }}
+                                        onClick={() => setShowCountrySearch(false)}
+                                    ></div>
+                                )}
+                            </div>
                             <input
                                 type="text"
                                 placeholder="Phone number"
@@ -425,7 +473,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                 </div>
 
                 {items.map((item, idx) => (
-                    <div key={idx} className="dynamic-row" style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 40px', gap: '15px', marginBottom: '10px', background: '#222', padding: '10px', borderRadius: '8px', alignItems: 'center' }}>
+                    <div key={idx} className="dynamic-row" style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 40px', gap: '15px', marginBottom: '8px', background: 'rgba(34, 34, 34, 0.6)', padding: '8px 12px', borderRadius: '10px', alignItems: 'center' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
                             <div style={{ position: 'relative' }}>
                                 <input
@@ -442,9 +490,9 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                         setActiveTreatmentIdx(idx);
                                     }}
                                     className="dashboard-input"
-                                    style={{ paddingLeft: '35px' }}
+                                    style={{ paddingLeft: '42px' }}
                                 />
-                                <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#f0b800', opacity: 0.7 }}></i>
+                                <i className="fas fa-search" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: '#f0b800', opacity: 0.7 }}></i>
                             </div>
 
                             {activeTreatmentIdx === idx && (treatmentSearchTerm.trim() !== "" || catalog.length > 0) && (
@@ -576,7 +624,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                 </div>
 
                 {payments.map((p, pIdx) => (
-                    <div key={pIdx} className="dynamic-row" style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 40px', gap: '15px', marginBottom: '10px', background: '#222', padding: '10px', borderRadius: '8px', alignItems: 'center' }}>
+                    <div key={pIdx} className="dynamic-row" style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 40px', gap: '15px', marginBottom: '8px', background: 'rgba(34, 34, 34, 0.6)', padding: '8px 12px', borderRadius: '10px', alignItems: 'center' }}>
                         <select
                             value={p.payment_method}
                             onChange={(e) => updatePayment(pIdx, 'payment_method', e.target.value)}
