@@ -15,6 +15,7 @@ import "../../styles/dentist_dashboard.css";
 import "../../styles/dashboard_extras.css";
 import "../../styles/patient_dashboard.css";
 import "../../styles/ai_features.css";
+import "../../styles/invoice_form.css";
 
 /* ==============================
    CONFIG
@@ -788,9 +789,9 @@ export default function DentistDashboard() {
                 <div style={{ padding: "1rem" }}>
                   {/* METRICS CARDS */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
-                    <div style={{ background: "#222", padding: "1rem", borderRadius: "8px", textAlign: "center", border: "1px solid #333" }}>
-                      <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Appointments Done</h4>
-                      <div style={{ fontSize: "1.8rem", color: "#2ecc71", fontWeight: "bold" }}>
+                    <div className="stat-card glow-card">
+                      <h4>Appointments Done</h4>
+                      <div className="stat-value" style={{ color: "#2ecc71" }}>
                         {[...today, ...history].filter(a => {
                           const d = new Date(a.time);
                           const r = new Date(reportDate);
@@ -802,9 +803,9 @@ export default function DentistDashboard() {
                         }).length}
                       </div>
                     </div>
-                    <div style={{ background: "#222", padding: "1rem", borderRadius: "8px", textAlign: "center", border: "1px solid #333" }}>
-                      <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Revenue Generated</h4>
-                      <div style={{ fontSize: "1.8rem", color: "#f0b800", fontWeight: "bold" }}>
+                    <div className="stat-card glow-card" style={{ animationDelay: '0.1s' }}>
+                      <h4>Filtered Revenue</h4>
+                      <div className="stat-value" style={{ color: "#d4af37" }}>
                         ₹{invoices
                           .filter(inv => {
                             const d = new Date(inv.date);
@@ -818,15 +819,15 @@ export default function DentistDashboard() {
                           .toLocaleString()}
                       </div>
                     </div>
-                    <div style={{ background: "#222", padding: "1rem", borderRadius: "8px", textAlign: "center", border: "1px solid #333" }}>
-                      <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Total Patients</h4>
-                      <div style={{ fontSize: "1.8rem", color: "#3498db", fontWeight: "bold" }}>
+                    <div className="stat-card glow-card" style={{ animationDelay: '0.2s' }}>
+                      <h4>Total Patients</h4>
+                      <div className="stat-value" style={{ color: "#3498db" }}>
                         {patientsList.length}
                       </div>
                     </div>
-                    <div style={{ background: "#222", padding: "1rem", borderRadius: "8px", textAlign: "center", border: "1px solid #333" }}>
-                      <h4 style={{ color: "#888", marginBottom: "0.5rem" }}>Prescriptions Written</h4>
-                      <div style={{ fontSize: "1.8rem", color: "#9b59b6", fontWeight: "bold" }}>
+                    <div className="stat-card glow-card" style={{ animationDelay: '0.3s' }}>
+                      <h4>Prescriptions</h4>
+                      <div className="stat-value" style={{ color: "#9b59b6" }}>
                         {recentPrescriptions.length}
                       </div>
                     </div>
@@ -837,30 +838,25 @@ export default function DentistDashboard() {
 
             {/* ROW 4: PRESCRIPTIONS */}
             <div className="row-prescriptions" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-              <div className="card animate-fade-up" style={{ animationDelay: "0.5s", width: "100%", maxWidth: "1020px", background: "#1a1a1a", borderRadius: "8px", border: "1px solid #333" }}>
-                <div style={{ padding: "1rem" }}>
+              <div className="card animate-fade-up premium-form" style={{ animationDelay: "0.5s", width: "100%", maxWidth: "1020px" }}>
+                <div style={{ padding: "0.5rem" }}>
+                  <div className="card-header" style={{ marginBottom: '1.5rem' }}>
+                    <h3>Create Prescription</h3>
+                    <i className="fas fa-file-prescription card-icon"></i>
+                  </div>
 
                   {/* PATIENT & DATE SELECTION */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                     {/* SELECT PATIENT */}
                     <div>
-                      <label style={{ color: "#f0b800", fontWeight: "bold", marginBottom: "8px", display: "block", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.85rem" }}>Select Patient</label>
+                      <label>Select Patient</label>
                       <select
                         value={prescPatient}
                         onChange={(e) => {
                           setPrescPatient(e.target.value);
                           fetchPatientPrescriptions(e.target.value);
                         }}
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          background: "#222",
-                          border: "1px solid #444",
-                          borderRadius: "6px",
-                          color: "#fff",
-                          fontSize: "0.9rem",
-                          cursor: "pointer"
-                        }}
+                        className="dashboard-select"
                       >
                         <option value="">-- Choose Patient --</option>
                         {patientsList.map(p => (
@@ -871,21 +867,12 @@ export default function DentistDashboard() {
 
                     {/* PRESCRIPTION DATE */}
                     <div>
-                      <label style={{ color: "#f0b800", fontWeight: "bold", marginBottom: "8px", display: "block", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.85rem" }}>Prescription Date</label>
+                      <label>Prescription Date</label>
                       <input
                         type="date"
                         value={prescDate}
                         onChange={(e) => setPrescDate(e.target.value)}
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          background: "#222",
-                          border: "1px solid #444",
-                          borderRadius: "6px",
-                          color: "#fff",
-                          fontSize: "0.9rem",
-                          cursor: "pointer"
-                        }}
+                        className="dashboard-input"
                       />
                     </div>
                   </div>
@@ -939,43 +926,25 @@ export default function DentistDashboard() {
                    </div>
 
                   {/* DIAGNOSIS & TREATMENT PLAN - Side by Side */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
+                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
                     <div>
-                      <label style={{ color: "#fff", fontWeight: "bold", marginBottom: "10px", display: "block", textTransform: "uppercase", letterSpacing: "1px" }}>Diagnosis</label>
+                      <label>Diagnosis</label>
                       <textarea
                         placeholder="e.g. Chronic Gingivitis..."
                         value={prescNotes}
                         onChange={(e) => setPrescNotes(e.target.value)}
-                        style={{
-                        width: "100%",
-                        padding: "10px",
-                        background: "#222",
-                        border: "1px solid #444",
-                        borderRadius: "6px",
-                        color: "#fff",
-                        fontSize: "0.85rem",
-                        minHeight: "80px",
-                          resize: "vertical"
-                        }}
+                        className="dashboard-textarea"
+                        style={{ minHeight: "100px" }}
                       ></textarea>
                     </div>
                     <div>
-                      <label style={{ color: "#fff", fontWeight: "bold", marginBottom: "10px", display: "block", textTransform: "uppercase", letterSpacing: "1px" }}>Treatment Plan</label>
+                      <label>Treatment Plan</label>
                       <textarea
                         placeholder="e.g. Scaling and Root Planing..."
                         value={prescTreatmentPlan || ""}
                         onChange={(e) => setPrescTreatmentPlan(e.target.value)}
-                        style={{
-                        width: "100%",
-                        padding: "10px",
-                        background: "#222",
-                        border: "1px solid #444",
-                        borderRadius: "6px",
-                        color: "#fff",
-                        fontSize: "0.85rem",
-                        minHeight: "80px",
-                          resize: "vertical"
-                        }}
+                        className="dashboard-textarea"
+                        style={{ minHeight: "100px" }}
                       ></textarea>
                     </div>
                   </div>
@@ -983,23 +952,16 @@ export default function DentistDashboard() {
                   {/* Rx - MEDICATIONS */}
                   <div style={{ marginBottom: "1.5rem" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                      <label style={{ color: "#fff", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px" }}><span style={{ fontFamily: "Times New Roman, serif", fontStyle: "italic", fontSize: "1.2rem", color: "#f0b800", marginRight: "6px" }}>Rx</span> Medications</label>
+                      <label><span style={{ fontFamily: "Times New Roman, serif", fontStyle: "italic", fontSize: "1.2rem", color: "#d4af37", marginRight: "6px" }}>Rx</span> Medications</label>
                       <div style={{ position: "relative", width: "250px" }}>
-                        <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#666", zIndex: 1 }}></i>
+                        <i className="fas fa-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#d4af37", opacity: 0.6, zIndex: 1 }}></i>
                         <input
                           type="text"
-                          placeholder="Search medication..."
+                          placeholder="Quick search..."
                           value={prescMedSearch || ""}
                           onChange={(e) => setPrescMedSearch(e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: "10px 10px 10px 35px",
-                            background: "#333",
-                            border: "1px solid #555",
-                            borderRadius: "5px",
-                            color: "#fff",
-                            fontSize: "0.9rem"
-                          }}
+                          className="dashboard-input"
+                          style={{ paddingLeft: "35px" }}
                         />
                         {/* Medication Suggestions Dropdown */}
                         {prescMedSearch && prescMedSearch.length > 0 && (
@@ -1064,57 +1026,42 @@ export default function DentistDashboard() {
                       placeholder="e.g. Tab. Paracetamol 500mg - 1-0-1 for 3 days..."
                       value={prescRecommendations || ""}
                       onChange={(e) => setPrescRecommendations(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        background: "#222",
-                        border: "1px solid #444",
-                        borderRadius: "6px",
-                        color: "#fff",
-                        fontSize: "0.85rem",
-                        minHeight: "80px",
-                        resize: "vertical"
-                      }}
+                      className="dashboard-textarea"
+                      style={{ minHeight: "100px" }}
                     ></textarea>
                   </div>
 
                   {/* RECOMMENDATION / INSTRUCTIONS */}
                   <div style={{ marginBottom: "1.5rem" }}>
-                    <label style={{ color: "#fff", fontWeight: "bold", marginBottom: "10px", display: "block", textTransform: "uppercase", letterSpacing: "1px" }}>Clinical Instructions / Advice</label>
+                    <label>Clinical Instructions & Advice</label>
                     <textarea
-                      placeholder="e.g. Warm saline rinses, avoid hot foods..."
+                      placeholder="e.g. Warm saline rinses 3 times a day, avoid chewing on the right side..."
                       value={prescInstructions || ""}
                       onChange={(e) => setPrescInstructions(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        background: "#222",
-                        border: "1px solid #444",
-                        borderRadius: "6px",
-                        color: "#fff",
-                        fontSize: "0.85rem",
-                        minHeight: "80px",
-                        resize: "vertical"
-                      }}
+                      className="dashboard-textarea"
+                      style={{ minHeight: "100px" }}
                     ></textarea>
                   </div>
 
                   {/* X-RAY UPLOAD SECTION */}
                   <div style={{ marginBottom: "1.5rem" }}>
-                    <label style={{ color: "#f0b800", fontWeight: "bold", marginBottom: "10px", display: "block", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.85rem" }}>Radiological Attachments (X-Rays)</label>
+                    <label>Radiological Attachments (X-Rays)</label>
                     <div style={{
-                      border: "2px dashed #444",
-                      borderRadius: "8px",
-                      padding: "20px",
+                      border: "2px dashed rgba(212, 175, 55, 0.2)",
+                      borderRadius: "12px",
+                      padding: "2.5rem 1.5rem",
                       textAlign: "center",
-                      background: "#121212",
+                      background: "rgba(0,0,0,0.2)",
                       cursor: "pointer",
-                      position: "relative"
+                      position: "relative",
+                      transition: "all 0.3s ease",
                     }}
+                      onMouseEnter={(e) => e.currentTarget.style.borderColor = "#d4af37"}
+                      onMouseLeave={(e) => e.currentTarget.style.borderColor = "rgba(212, 175, 55, 0.2)"}
                       onClick={() => document.getElementById("xray-input").click()}
                     >
-                      <i className="fas fa-file-image" style={{ fontSize: "2rem", color: "#666", marginBottom: "10px" }}></i>
-                      <p style={{ color: "#888", fontSize: "0.85rem", margin: 0 }}>Click to upload X-ray photos (JPG, PNG)</p>
+                      <i className="fas fa-cloud-upload-alt" style={{ fontSize: "2.5rem", color: "#d4af37", opacity: 0.8, marginBottom: "12px" }}></i>
+                      <p style={{ color: "#aaa", fontSize: "0.9rem", margin: 0 }}>Click or drag to upload X-ray photos</p>
                       <input
                         id="xray-input"
                         type="file"
@@ -1160,10 +1107,12 @@ export default function DentistDashboard() {
                   {/* CONTINUE PRESCRIPTION TOGGLE */}
                   {prescPatient && patientPrescriptions.length > 0 && (
                     <div style={{
-                      display: "flex", alignItems: "center", gap: "10px",
-                      padding: "10px 14px", marginBottom: "1rem",
-                      background: "#1a2a1a", border: "1px solid #2a5a2a",
-                      borderRadius: "6px", cursor: "pointer"
+                      display: "flex", alignItems: "center", gap: "12px",
+                      padding: "1rem", marginBottom: "1.5rem",
+                      background: "rgba(46, 204, 113, 0.05)", 
+                      border: "1px solid rgba(46, 204, 113, 0.2)",
+                      borderRadius: "12px", cursor: "pointer",
+                      transition: "all 0.2s ease"
                     }}
                       onClick={() => setPrescContinue && setPrescContinue(!prescContinue)}
                     >
@@ -1171,11 +1120,11 @@ export default function DentistDashboard() {
                         type="checkbox"
                         checked={prescContinue || false}
                         onChange={(e) => setPrescContinue(e.target.checked)}
-                        style={{ accentColor: "#2ecc71", width: "16px", height: "16px", cursor: "pointer" }}
+                        style={{ accentColor: "#2ecc71", width: "18px", height: "18px", cursor: "pointer" }}
                       />
                       <div>
-                        <span style={{ color: "#2ecc71", fontWeight: "bold", fontSize: "0.85rem" }}>Continue Last Prescription</span>
-                        <div style={{ color: "#888", fontSize: "0.75rem" }}>This visit will be appended as a new page to the patient's latest prescription PDF</div>
+                        <span style={{ color: "#2ecc71", fontWeight: "700", fontSize: "0.9rem" }}>Continue Last Prescription</span>
+                        <div style={{ color: "#777", fontSize: "0.8rem", marginTop: "2px" }}>This visit will be appended as a new page to the patient's latest prescription PDF</div>
                       </div>
                     </div>
                   )}
@@ -1184,28 +1133,18 @@ export default function DentistDashboard() {
                   <button
                     onClick={submitPrescription}
                     disabled={prescSubmitting || !prescPatient}
+                    className="upload-btn"
                     style={{
-                      padding: "12px",
-                      background: "#f0b800",
-                      color: "#000",
-                      border: "none",
-                      borderRadius: "0 0 8px 8px",
-                      fontWeight: "bold",
-                      fontSize: "0.9rem",
-                      cursor: prescPatient ? "pointer" : "not-allowed",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "8px",
-                      marginTop: "1rem",
-                      marginLeft: "-1rem",
-                      marginRight: "-1rem",
-                      marginBottom: "-1rem",
-                      width: "calc(100% + 2rem)"
+                        width: 'calc(100% + 1rem)',
+                        marginLeft: '-0.5rem',
+                        marginRight: '-0.5rem',
+                        marginBottom: '-0.5rem',
+                        borderRadius: '0 0 12px 12px',
+                        marginTop: '1rem'
                     }}
                   >
-                    <i className="fas fa-upload"></i>
-                    {prescSubmitting ? "UPLOADING..." : "UPLOAD PRESCRIPTION"}
+                    {prescSubmitting ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-cloud-upload-alt"></i>}
+                    {prescSubmitting ? " UPLOADING..." : " UPLOAD PRESCRIPTION"}
                   </button>
 
                   {/* PATIENT PRESCRIPTION HISTORY - Below Upload Button */}

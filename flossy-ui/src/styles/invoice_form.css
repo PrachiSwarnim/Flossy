@@ -1,0 +1,208 @@
+/* ═══════════════════════════════════════════
+   PREMIUM INVOICE & PRESCRIPTION FORMS
+═══════════════════════════════════════════ */
+
+.invoice-form-container {
+    padding: 10px;
+    background: transparent;
+}
+
+.premium-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* ── Section Title ── */
+.premium-form h4 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    color: #d4af37;
+    margin: 0;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.premium-form h4::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(212, 175, 55, 0.3) 0%, transparent 100%);
+}
+
+/* ── Custom Inputs ── */
+.premium-form .dashboard-input,
+.premium-form .dashboard-select,
+.premium-form .dashboard-textarea {
+    background: rgba(26, 26, 26, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 10px !important;
+    padding: 0.75rem 1rem !important;
+    color: #f0f0f0 !important;
+    font-size: 0.9rem !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.premium-form .dashboard-input:focus,
+.premium-form .dashboard-select:focus,
+.premium-form .dashboard-textarea:focus {
+    border-color: rgba(212, 175, 55, 0.5) !important;
+    background: rgba(30, 30, 30, 0.9) !important;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1), inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+    outline: none !important;
+}
+
+.premium-form label {
+    margin-bottom: 0.5rem !important;
+    font-weight: 600 !important;
+    font-size: 0.75rem !important;
+    color: #888 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+}
+
+/* ── Dynamic Rows ── */
+.premium-form .dynamic-row {
+    background: rgba(35, 35, 35, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(8px) !important;
+    padding: 1.25rem !important;
+    border-radius: 14px !important;
+    transition: all 0.2s ease !important;
+}
+
+.premium-form .dynamic-row:hover {
+    background: rgba(40, 40, 40, 0.5) !important;
+    border-color: rgba(212, 175, 55, 0.2) !important;
+}
+
+/* ── Suggestions Dropdown ── */
+.premium-form .elegant-scroll {
+    background: #1a1a1a !important;
+    border: 1px solid #333 !important;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.6) !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+}
+
+.premium-form .elegant-scroll div:hover {
+    background: rgba(212, 175, 55, 0.1) !important;
+    color: #d4af37 !important;
+}
+
+/* ── Summary Card ── */
+.premium-form .invoice-summary {
+    background: linear-gradient(145deg, #161616 0%, #111 100%) !important;
+    border: 1px solid rgba(212, 175, 55, 0.1) !important;
+    padding: 1.5rem !important;
+    border-radius: 14px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+}
+
+.premium-form .invoice-summary span {
+    color: #aaa;
+}
+
+.premium-form .invoice-summary .total-row {
+    font-size: 1.2rem;
+    color: #d4af37;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+}
+
+/* ── Submit Button ── */
+.premium-form .upload-btn {
+    background: linear-gradient(135deg, #c9a227, #f0c455) !important;
+    color: #111 !important;
+    height: 52px !important;
+    font-size: 1rem !important;
+    border-radius: 12px !important;
+    border: none !important;
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2) !important;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.premium-form .upload-btn:hover {
+    transform: translateY(-2px) scale(1.01) !important;
+    box-shadow: 0 12px 30px rgba(212, 175, 55, 0.3) !important;
+}
+
+.premium-form .upload-btn:active {
+    transform: translateY(0) scale(0.98) !important;
+}
+
+.premium-form .action-btn-mini {
+    background: rgba(212, 175, 55, 0.1) !important;
+    color: #d4af37 !important;
+    border: 1px solid rgba(212, 175, 55, 0.2) !important;
+    padding: 8px 14px !important;
+    border-radius: 8px !important;
+    font-size: 0.8rem !important;
+    transition: all 0.2s ease !important;
+}
+
+.premium-form .action-btn-mini:hover {
+    background: rgba(212, 175, 55, 0.2) !important;
+    transform: scale(1.05) !important;
+}
+
+.premium-form .trash-btn {
+    background: rgba(231, 76, 60, 0.1) !important;
+    color: #e74c3c !important;
+}
+
+.premium-form .trash-btn:hover {
+    background: rgba(231, 76, 60, 0.2) !important;
+    color: #ff5e57 !important;
+}
+
+/* ── Dashboard Stats ── */
+.stat-card {
+    background: linear-gradient(145deg, #1f1f1f 0%, #161616 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    padding: 1.25rem !important;
+    border-radius: 16px !important;
+    text-align: center !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px) !important;
+    border-color: rgba(212, 175, 55, 0.3) !important;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.4) !important;
+}
+
+.stat-card h4 {
+    color: #888 !important;
+    font-size: 0.8rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    margin-bottom: 0.75rem !important;
+}
+
+.stat-card .stat-value {
+    font-size: 1.75rem !important;
+    font-weight: 800 !important;
+    font-family: 'Playfair Display', serif !important;
+}
+
+.glow-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.glow-card::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
+    pointer-events: none;
+}

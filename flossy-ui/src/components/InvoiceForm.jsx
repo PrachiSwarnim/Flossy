@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from '@clerk/clerk-react';
 import { COUNTRY_CODES } from '../utils/countryCodes';
+import '../styles/invoice_form.css';
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
@@ -265,7 +266,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
     };
 
     return (
-        <div className="invoice-form-container" style={{ color: '#fff' }}>
+        <div className="invoice-form-container">
             <form onSubmit={handleSubmit} className="premium-form">
                 {editingInvoice && (
                     <div style={{ background: "#f39c1222", border: "1px solid #f39c12", padding: "10px", borderRadius: "8px", marginBottom: "15px", color: "#f39c12", fontWeight: "bold", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -275,7 +276,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                 )}
                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '20px' }}>
                     <div className="form-group" style={{ position: "relative" }}>
-                        <label style={{ color: '#f0b800', fontWeight: 'bold' }}>Select Patient</label>
+                        <label>Select Patient</label>
                         <div className="patient-search-container" style={{ position: "relative" }}>
                             <div style={{ position: "relative" }}>
                                 <input
@@ -361,7 +362,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                         )}
                     </div>
                     <div className="form-group">
-                        <label style={{ color: '#f0b800', fontWeight: 'bold' }}>Date</label>
+                        <label>Date</label>
                         <input
                             type="date"
                             value={invoiceDate}
@@ -370,7 +371,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                         />
                     </div>
                     <div className="form-group">
-                        <label style={{ color: '#f0b800', fontWeight: 'bold' }}>Currency</label>
+                        <label>Currency</label>
                         <select
                             value={currency}
                             onChange={(e) => handleCurrencyChange(e.target.value)}
@@ -384,7 +385,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '1rem' }}>
                     <div className="form-group">
-                        <label style={{ color: '#f0b800', fontWeight: 'bold' }}>Patient Phone</label>
+                        <label>Patient Phone</label>
                         <div style={{ display: "flex", gap: "5px" }}>
                             <select
                                 value={countryCode}
@@ -409,13 +410,13 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
 
                 {/* Treatment Items */}
                 <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', marginBottom: '0.5rem' }}>
-                    <h4 style={{ color: '#f0b800' }}>Treatment Details</h4>
-                    <button type="button" onClick={addItem} className="action-btn-mini" style={{ background: '#f0b800', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    <h4>Treatment Details</h4>
+                    <button type="button" onClick={addItem} className="action-btn-mini">
                         <i className="fas fa-plus"></i> Add another treatment
                     </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 40px', gap: '15px', marginBottom: '5px', padding: '0 10px', fontSize: '0.75rem', fontFamily: 'var(--font-body), Inter, sans-serif', color: '#f0b800', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', alignItems: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 40px', gap: '15px', marginBottom: '5px', padding: '0 10px', fontSize: '0.75rem', fontFamily: 'var(--font-body), Inter, sans-serif', color: '#888', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', alignItems: 'center' }}>
                     <div style={{ paddingLeft: '2px' }}>Treatment</div>
                     <div style={{ paddingLeft: '2px' }}>Cost</div>
                     <div style={{ paddingLeft: '2px' }}>Disc.</div>
@@ -553,7 +554,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                             onChange={(e) => updateItem(idx, 'treatment_date', e.target.value)}
                             className="dashboard-input"
                         />
-                        <button type="button" onClick={() => removeItem(idx)} disabled={items.length === 1} style={{ background: 'transparent', color: '#ff4444', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                        <button type="button" onClick={() => removeItem(idx)} disabled={items.length === 1} className="trash-btn" style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                             <i className="fas fa-trash"></i>
                         </button>
                     </div>
@@ -561,8 +562,8 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
 
                 {/* Payments */}
                 <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', marginBottom: '0.5rem' }}>
-                    <h4 style={{ color: '#f0b800' }}>Payment Records</h4>
-                    <button type="button" onClick={addPayment} className="action-btn-mini" style={{ background: '#f0b800', color: '#000', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    <h4>Payment Records</h4>
+                    <button type="button" onClick={addPayment} className="action-btn-mini">
                         <i className="fas fa-plus"></i> Add Payment Item
                     </button>
                 </div>
@@ -612,32 +613,30 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
 
                 {/* Summary */}
                 {/* Summary */}
-                <div className="invoice-summary" style={{ marginTop: '1.5rem', padding: '15px', background: '#1a1a1a', borderRadius: '10px', border: '1px solid #333' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div className="invoice-summary">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                         <span>Subtotal (Gross):</span>
                         <span style={{ fontWeight: 'bold' }}>{currency === 'INR' ? '₹' : '$'} {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
 
                     {totalItemDiscount > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#f0b800' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: '#f0b800' }}>
                             <span>Total Item Discounts:</span>
                             <span style={{ fontWeight: 'bold' }}>- {currency === 'INR' ? '₹' : '$'} {totalItemDiscount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     )}
 
-                    <hr style={{ borderColor: '#333', margin: '10px 0' }} />
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.1rem', color: '#f0b800', marginTop: '5px' }}>
+                    <div className="total-row" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                         <span>Total Payable:</span>
                         <span>{currency === 'INR' ? '₹' : '$'} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#2ecc71', marginTop: '5px', fontSize: '0.9rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#2ecc71', marginTop: '8px', fontSize: '0.9rem', opacity: 0.8 }}>
                         <span>Total Paid:</span>
                         <span>{currency === 'INR' ? '₹' : '$'} {totalPaid.toLocaleString()}</span>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: amountDue > 0 ? '#ff4444' : '#2ecc71', fontWeight: 'bold', marginTop: '5px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: amountDue > 0 ? '#ff7675' : '#2ecc71', fontWeight: 'bold', marginTop: '8px' }}>
                         <span>{amountDue > 0 ? "Amount Due:" : "Balance Cleared"}</span>
                         <span>{currency === 'INR' ? '₹' : '$'} {Math.abs(amountDue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
@@ -647,9 +646,8 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                     type="submit"
                     disabled={isSubmitting}
                     className="upload-btn"
-                    style={{ width: '100%', marginTop: '1.5rem', background: editingInvoice ? "#2ecc71" : "#f0b800", color: editingInvoice ? "#fff" : "#000", fontWeight: 'bold', padding: '12px' }}
                 >
-                    {isSubmitting ? <i className="fas fa-spinner fa-spin"></i> : <i className={editingInvoice ? "fas fa-save" : "fas fa-file-invoice"}></i>}
+                    {isSubmitting ? <span className="fas fa-spinner fa-spin"></span> : <i className={editingInvoice ? "fas fa-save" : "fas fa-file-invoice"}></i>}
                     {isSubmitting ? (editingInvoice ? " Updating..." : " Generating...") : (editingInvoice ? " Update Invoice" : " Generate & Save Invoice")}
                 </button>
             </form>
