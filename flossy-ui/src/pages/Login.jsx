@@ -1,37 +1,72 @@
 import { SignIn } from "@clerk/clerk-react";
 import "../styles/login.css";
-import Header from "../components/RoleHeader";
 import Footer from "../components/Footer";
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Meteors } from "../components/ui/Meteors";
 
 export default function Login() {
   useEffect(() => {
     document.title = "Login | Smile Artists";
   }, []);
-  return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#0f0f0f" }}>
-      <Header />
-      <div className="login-page relative overflow-hidden" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "4rem 1rem" }}>
-        
-        {/* Animated Background Elements */}
-        <Meteors number={15} />
-        <div
-          className="absolute top-1/4 left-1/4 w-[500px] h-[500px] pointer-events-none opacity-40"
-          style={{
-            background: "radial-gradient(circle at center, rgba(212,175,55,0.08) 0%, transparent 60%)",
-          }}
-        />
 
-        <motion.div 
+  return (
+    <div className="auth-root">
+      {/* ── Left brand panel ── */}
+      <motion.div
+        className="auth-brand-panel"
+        initial={{ opacity: 0, x: -40 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.7 }}
+      >
+        {/* Glow orbs */}
+        <div className="auth-orb auth-orb--top" />
+        <div className="auth-orb auth-orb--bottom" />
+
+        <div className="auth-brand-content">
+          <div className="auth-logo-row">
+            <span className="auth-logo-icon">🦷</span>
+            <span className="auth-logo-text">Smile Artists</span>
+          </div>
+          <h2 className="auth-brand-headline">
+            Premium Dental Care,<br />
+            <span className="auth-brand-accent">Powered by AI.</span>
+          </h2>
+          <p className="auth-brand-sub">
+            Manage prescriptions, appointments, and patient records — all in
+            one elegant workspace.
+          </p>
+
+          <div className="auth-feature-list">
+            {[
+              { icon: "📋", label: "Smart Prescription Builder" },
+              { icon: "📅", label: "Real-time Appointment Scheduling" },
+              { icon: "🤖", label: "AI Clinical Assistant" },
+              { icon: "💳", label: "Integrated Billing & Invoicing" },
+            ].map(({ icon, label }) => (
+              <div className="auth-feature-item" key={label}>
+                <span className="auth-feature-icon">{icon}</span>
+                <span>{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <p className="auth-brand-footer">
+          © 2025 Smile Artists Dental Studio · Powered by <strong>FlossyAI</strong>
+        </p>
+      </motion.div>
+
+      {/* ── Right form panel ── */}
+      <div className="auth-form-panel">
+        {/* Subtle ambient glow behind card */}
+        <div className="auth-form-glow" />
+
+        <motion.div
+          className="auth-form-card"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="login-card relative z-10 w-full max-w-md"
+          transition={{ duration: 0.6, delay: 0.15 }}
         >
-          {/* Custom headers removed to use native Clerk headers */}
-
           <SignIn
             path="/login"
             routing="path"
@@ -41,59 +76,65 @@ export default function Login() {
             appearance={{
               variables: {
                 colorPrimary: "#d4af37",
-                colorText: "#ffffff", // Brighter white
-                colorBackground: "#1a1a1a",
-                colorInputBackground: "#2a2a2a",
+                colorText: "#f0f0f0",
+                colorBackground: "transparent",
+                colorInputBackground: "#1e1e1e",
                 colorInputText: "#ffffff",
-                colorTextSecondary: "#cccccc", // Brighter grey
+                colorTextSecondary: "#aaaaaa",
+                fontFamily: "'Inter', sans-serif",
+                borderRadius: "10px",
               },
               elements: {
-                rootBox: {
-                  width: "100%",
-                  maxWidth: "420px", // Match Signup
-                  margin: "0 auto",
-                },
+                rootBox: { width: "100%", maxWidth: "400px", margin: "0 auto" },
                 card: {
-                  background: "#1f1f1f",
-                  backdropFilter: "blur(20px)", // Match Signup
-                  borderRadius: "22px", // Match Signup
-                  boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
-                  padding: "24px", // Match Signup
-                  border: "1px solid #333",
-                },
-                // headerTitle: { display: "none" }, // Un-hiding standard Clerk headers
-                // headerSubtitle: { display: "none" },
-                socialButtonsBlockButton: {
-                  background: "#333",
-                  border: "1px solid #555",
-                  color: "#fff",
-                },
-                socialButtonsBlockButtonText: {
-                  color: "#fff",
-                },
-                formButtonPrimary: {
-                  background: "linear-gradient(135deg, #d4af37, #f0c455)",
-                  color: "#1a1a1a",
+                  background: "transparent",
+                  boxShadow: "none",
+                  padding: "0",
                   border: "none",
-                  fontWeight: "bold",
+                },
+                headerTitle: {
+                  fontSize: "1.6rem",
+                  fontWeight: "700",
+                  color: "#ffffff",
+                  fontFamily: "'Playfair Display', serif",
+                },
+                headerSubtitle: { color: "#999", fontSize: "0.9rem" },
+                socialButtonsBlockButton: {
+                  background: "#1e1e1e",
+                  border: "1px solid #333",
+                  color: "#fff",
+                  borderRadius: "10px",
+                  transition: "border-color 0.2s",
+                },
+                socialButtonsBlockButtonText: { color: "#fff", fontWeight: "500" },
+                formButtonPrimary: {
+                  background: "linear-gradient(135deg, #c9a227, #f0c455)",
+                  color: "#111",
+                  border: "none",
+                  fontWeight: "700",
+                  letterSpacing: "0.02em",
+                  borderRadius: "10px",
+                  transition: "opacity 0.2s",
                 },
                 formFieldInput: {
-                  border: "1px solid #d4af37", // Gold Border for visibility
-                  backgroundColor: "#2a2a2a",
-                  color: "#ffffff",
+                  background: "#1e1e1e",
+                  border: "1px solid #333",
+                  color: "#fff",
+                  borderRadius: "10px",
+                  outline: "none",
+                  transition: "border-color 0.2s, box-shadow 0.2s",
                 },
-                formFieldLabel: {
-                  color: "#ddd",
-                },
-                footerActionLink: {
-                  color: "#d4af37",
-                }
+                formFieldLabel: { color: "#bbb", fontSize: "0.85rem" },
+                dividerLine: { background: "#333" },
+                dividerText: { color: "#666" },
+                footerActionLink: { color: "#d4af37", fontWeight: "600" },
+                identityPreviewText: { color: "#ccc" },
+                identityPreviewEditButton: { color: "#d4af37" },
               },
             }}
           />
         </motion.div>
       </div>
-      <Footer />
     </div>
   );
 }
