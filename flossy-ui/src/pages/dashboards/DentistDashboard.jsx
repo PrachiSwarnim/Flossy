@@ -758,6 +758,8 @@ export default function DentistDashboard() {
                     >
                       <option value="newest">Newest First</option>
                       <option value="oldest">Oldest First</option>
+                      <option value="az">Patient Name (A-Z)</option>
+                      <option value="za">Patient Name (Z-A)</option>
                     </select>
                   </div>
                   {(historyNameFilter || historyDateFilter) && (
@@ -779,6 +781,12 @@ export default function DentistDashboard() {
                         return nameMatch && dateMatch;
                       })
                       .sort((a, b) => {
+                        if (historySortOrder === "az") {
+                          return (a.patient || a.patient_name || "").localeCompare(b.patient || b.patient_name || "");
+                        }
+                        if (historySortOrder === "za") {
+                          return (b.patient || b.patient_name || "").localeCompare(a.patient || a.patient_name || "");
+                        }
                         const dateA = new Date(a.time);
                         const dateB = new Date(b.time);
                         return historySortOrder === "newest" ? dateB - dateA : dateA - dateB;
