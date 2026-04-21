@@ -581,67 +581,42 @@ export default function DentistDashboard() {
           background: "radial-gradient(circle at center, rgba(212,175,55,0.04) 0%, transparent 60%)",
         }}
       />
-      {/* DOCTOR PROFILE SIDEBAR */}
-      <aside className="profile-sidebar">
-        <div className="profile-sidebar-content elegant-scroll">
-          {/* Toggle button now inside scrollable content */}
-          <div
-            className="sidebar-expand-toggle"
-            onClick={() => setProfileVisible(!profileVisible)}
-            title={profileVisible ? "Hide Sidebar" : "Show Sidebar"}
-            style={{ position: 'relative', left: 'auto', transform: 'none', margin: '0 auto 1.5rem', top: '0' }}
-          >
-            <i className={`fas fa-${profileVisible ? 'chevron-left' : 'bars'}`}></i>
+      {/* DOCTOR PROFILE SIDEBAR (FULL HEIGHT) */}
+      <aside className="profile-sidebar full-height">
+        <div className="sidebar-top-icons">
+          <div className="sidebar-icon-btn" onClick={() => navigate("/")} title="Home">
+            <i className="fas fa-home"></i>
           </div>
-          <div className="profile-avatar">
+          <div className="sidebar-icon-btn" title="Email">
+            <i className="fas fa-envelope"></i>
+          </div>
+          <div className="sidebar-icon-btn" title="Doctor Details">
+            <i className="fas fa-stethoscope"></i>
+          </div>
+          <div className="sidebar-icon-btn" title="Location">
+            <i className="fas fa-clinic-medical"></i>
+          </div>
+          <div className="sidebar-icon-btn" onClick={() => setAiOpen(true)} title="FlossyAI">
+            <i className="fas fa-robot"></i>
+          </div>
+        </div>
+
+        <div className="sidebar-bottom-section">
+          <div className="profile-avatar-mini" title={`Dr. ${fullName}`}>
             {user?.imageUrl ? (
               <img src={user.imageUrl} alt="Profile" />
             ) : (
-              <div className="avatar-placeholder">
+              <div className="avatar-placeholder-mini">
                 <i className="fas fa-user-md"></i>
               </div>
             )}
           </div>
-
-          <div className="profile-header-text">
-            <h3 className="profile-name">Dr. {fullName}</h3>
-            <span className="profile-role">Dentist</span>
-          </div>
-
-          <div className="profile-info-grid" style={{ justifyContent: 'center', textAlign: 'center' }}>
-            <div className="profile-stat">
-              <span className="stat-value">{today.length}</span>
-              <span className="stat-label">Today</span>
-            </div>
-            <div className="profile-stat">
-              <span className="stat-value">{upcoming.length}</span>
-              <span className="stat-label">Upcoming</span>
-            </div>
-            <div className="profile-stat">
-              <span className="stat-value">{history.length}</span>
-              <span className="stat-label">History</span>
-            </div>
-          </div>
-
-          <div className="profile-details-compact">
-            <div className="detail-row" title={user?.primaryEmailAddress?.emailAddress}>
-              <i className="fas fa-envelope"></i>
-              <span>{user?.primaryEmailAddress?.emailAddress || "No email"}</span>
-            </div>
-            <div className="detail-row">
-              <i className="fas fa-stethoscope"></i>
-              <span>General Dentistry</span>
-            </div>
-            <div className="detail-row">
-              <i className="fas fa-clinic-medical"></i>
-              <span>Smile Artists Dental Studio</span>
-            </div>
-          </div>
-
-          <div className="sidebar-actions">
-            <button className="p-btn sidebar-book-btn" onClick={() => setAiOpen(true)}>
-              <i className="fas fa-robot"></i> <span>FlossyAI</span>
-            </button>
+          <div 
+             className="sidebar-logout-btn" 
+             onClick={() => signOut(() => (window.location.href = "/"))}
+             title="Logout"
+          >
+            <i className="fas fa-sign-out-alt"></i>
           </div>
         </div>
       </aside>
@@ -826,7 +801,7 @@ export default function DentistDashboard() {
               <div className="card animate-fade-up" style={{ animationDelay: "0.4s", width: "100%", maxWidth: "1020px" }}>
                 <div className="card-header">
                   <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-                    <h3>Daily Analytics</h3>
+                    <h3>Visit Analytics</h3>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <div className="input-icon-wrapper" style={{ display: "inline-flex", height: "40px" }}>
                         <i
@@ -846,25 +821,28 @@ export default function DentistDashboard() {
                           onClick={(e) => e.target.showPicker()}
                         />
                       </div>
-                      <select
-                        value={reportView}
-                        onChange={(e) => setReportView(e.target.value)}
-                        className="dashboard-input"
-                        style={{
-                          background: "rgba(0,0,0,0.3)",
-                          border: "1px solid #444",
-                          padding: "0 10px",
-                          borderRadius: "5px",
-                          fontSize: "0.9rem",
-                          cursor: "pointer",
-                          colorScheme: "dark",
-                          height: "40px"
-                        }}
-                      >
-                        <option value="daily">Daily</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="yearly">Yearly</option>
-                      </select>
+                      <div className="tab-group" style={{ display: "flex", background: "rgba(255,255,255,0.05)", borderRadius: "8px", padding: "3px", border: "1px solid #444", gap: "2px" }}>
+                        {['daily', 'monthly', 'yearly'].map(view => (
+                          <button
+                            key={view}
+                            onClick={() => setReportView(view)}
+                            style={{
+                              padding: "6px 18px",
+                              borderRadius: "6px",
+                              border: "none",
+                              fontSize: "0.85rem",
+                              cursor: "pointer",
+                              background: reportView === view ? "#f0b800" : "transparent",
+                              color: reportView === view ? "#000" : "#888",
+                              fontWeight: reportView === view ? "700" : "500",
+                              transition: "all 0.2s ease",
+                              textTransform: "capitalize"
+                            }}
+                          >
+                            {view}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                   <i className="fas fa-chart-line card-icon"></i>

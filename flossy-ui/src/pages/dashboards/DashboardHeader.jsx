@@ -57,14 +57,6 @@ export default function Header({ openAI }) {
                 </button>
               )}
 
-              <SignedIn>
-                <button
-                  className="px-4 py-2 bg-[#d4af37] text-[#0f0f0f] hover:brightness-110 text-[0.8rem] font-bold uppercase tracking-wider rounded-lg transition-all duration-150 cursor-pointer shadow-[0_4px_14px_rgba(212,175,55,0.3)]"
-                  onClick={() => signOut(() => (window.location.href = "/"))}
-                >
-                  Logout
-                </button>
-              </SignedIn>
             </nav>
 
             <SignedIn>
@@ -119,16 +111,6 @@ export default function Header({ openAI }) {
           )}
         </nav>
 
-        <div className="pt-4 border-t border-white/[0.08]">
-          <SignedIn>
-            <button
-              className="w-full py-2.5 text-center bg-[#d4af37] text-[#0f0f0f] text-[0.82rem] font-bold uppercase tracking-wide rounded-lg hover:brightness-110 transition-all cursor-pointer shadow-[0_4px_14px_rgba(212,175,55,0.25)]"
-              onClick={() => signOut(() => (window.location.href = "/"))}
-            >
-              <i className="fas fa-sign-out-alt mr-2"></i> Logout
-            </button>
-          </SignedIn>
-        </div>
       </aside>
     </>
   );
