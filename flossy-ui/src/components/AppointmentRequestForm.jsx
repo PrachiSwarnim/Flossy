@@ -3,6 +3,16 @@ import { useUser, useSession, useClerk } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import "../styles/appointment_form.css";
 import { TIME_SLOTS, formatTime12h } from "../utils/timeSlots";
+import { COUNTRY_CODES } from "../utils/countryCodes";
+
+const getFlagEmoji = (isoCode) => {
+    if (!isoCode) return "🌐";
+    return isoCode
+        .toUpperCase()
+        .replace(/./g, (char) =>
+            String.fromCodePoint(char.charCodeAt(0) + 127397)
+        );
+};
 
 export default function AppointmentRequestForm({ className }) {
     const { isSignedIn, user } = useUser();
@@ -18,7 +28,10 @@ export default function AppointmentRequestForm({ className }) {
         time: "",
         age: "",
         sex: "",
+        countryCode: "+91"
     });
+    const [showCountrySearch, setShowCountrySearch] = useState(false);
+    const [countrySearch, setCountrySearch] = useState("");
     const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
@@ -78,7 +91,7 @@ export default function AppointmentRequestForm({ className }) {
                     body: JSON.stringify({
                         datetime: isoDate,
                         reason: formData.reason,
-                        phone: formData.phone,
+                        phone: `${formData.countryCode}${formData.phone}`,
                         age: formData.age ? parseInt(formData.age) : null,
                         sex: formData.sex
                     })
@@ -172,7 +185,44 @@ export default function AppointmentRequestForm({ className }) {
                             </div>
                         </div>
 
-                        <div className="input-group">
+                        <div className="input-group" style={{ display: "flex", gap: "10px", position: "relative" }}>
+                             <div style={{ width: "120px", position: "relative" }}>
+                                <input
+                                    type="text"
+                                    placeholder="Code"
+                                    value={showCountrySearch ? countrySearch : formData.countryCode}
+                                    onChange={(e) => setCountrySearch(e.target.value)}
+                                    onFocus={() => { setShowCountrySearch(true); setCountrySearch(""); }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.8rem',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        borderRadius: '6px',
+                                        color: '#f4f4f4'
+                                    }}
+                                />
+                                {showCountrySearch && (
+                                    <div className="elegant-scroll" style={{
+                                        position: "absolute", bottom: "100%", left: 0,
+                                        zIndex: 105, background: "#1a1a1a", border: "1px solid #444",
+                                        borderRadius: "8px", marginBottom: "5px", maxHeight: "180px",
+                                        overflowY: "auto", boxShadow: "0 -10px 25px rgba(0,0,0,0.5)", width: "220px"
+                                    }}>
+                                        {COUNTRY_CODES.filter(c =>
+                                            c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+                                            c.code.includes(countrySearch) ||
+                                            c.iso.toLowerCase().includes(countrySearch.toLowerCase())
+                                        ).map(c => (
+                                            <div key={c.iso} onClick={() => { setFormData(prev => ({...prev, countryCode: c.code})); setShowCountrySearch(false); }}
+                                                style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                                                <span style={{ fontSize: "1.2rem" }}>{getFlagEmoji(c.iso)}</span>
+                                                <span>{c.name} ({c.code})</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                             </div>
                             <input
                                 type="tel"
                                 name="phone"
@@ -180,27 +230,41 @@ export default function AppointmentRequestForm({ className }) {
                                 required
                                 value={formData.phone}
                                 onChange={handleChange}
+                                style={{ flex: 1 }}
                             />
                         </div>
 
                         <div style={{ display: "flex", gap: "15px", marginBottom: "1rem" }}>
-                            <div className="input-group" style={{ flex: 1 }}>
-                                <input
-                                    type="date"
-                                    name="date"
-                                    required
-                                    value={formData.date}
-                                    onChange={handleChange}
-                                    min={new Date().toISOString().split('T')[0]} // Prevents past dates
-                                    style={{
-                                        color: formData.date ? 'inherit' : '#999',
-                                        padding: "0.8rem",
-                                        width: "100%",
-                                        background: "rgba(255,255,255,0.05)",
-                                        border: "1px solid rgba(255,255,255,0.1)",
-                                        borderRadius: "6px"
-                                    }}
-                                />
+                            <div className="input-group" style={{ flex: 1, position: "relative" }}>
+                                <div className="input-icon-wrapper" style={{ height: "45px" }}>
+                                    <i
+                                        className="fas fa-calendar-alt"
+                                        onClick={(e) => {
+                                            const input = e.currentTarget.parentElement.querySelector('input');
+                                            if (input) input.showPicker();
+                                        }}
+                                        style={{ cursor: 'pointer', pointerEvents: 'auto', left: '12px' }}
+                                    ></i>
+                                    <input
+                                        type="date"
+                                        name="date"
+                                        required
+                                        value={formData.date}
+                                        onChange={handleChange}
+                                        min={new Date().toISOString().split('T')[0]} // Prevents past dates
+                                        style={{
+                                            color: formData.date ? 'inherit' : '#999',
+                                            padding: "0.8rem",
+                                            paddingLeft: "42px",
+                                            width: "100%",
+                                            background: "rgba(255,255,255,0.05)",
+                                            border: "1px solid rgba(255,255,255,0.1)",
+                                            borderRadius: "6px",
+                                            height: "100%"
+                                        }}
+                                        onClick={(e) => e.target.showPicker()}
+                                    />
+                                </div>
                             </div>
                             <div className="input-group" style={{ flex: 1 }}>
                                 <select

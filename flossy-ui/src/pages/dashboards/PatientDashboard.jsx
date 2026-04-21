@@ -517,18 +517,16 @@ export default function PatientDashboard() {
       />
       {/* PATIENT PROFILE SIDEBAR - Fixed to left */}
       <aside className="profile-sidebar">
-        {/* Toggle button - shows menu when collapsed, chevron when expanded */}
-        <div
-          className="sidebar-expand-toggle"
-          onClick={() => setProfileVisible(!profileVisible)}
-          title={profileVisible ? "Hide Sidebar" : "Show Sidebar"}
-        >
-          <i className={`fas fa-${profileVisible ? 'chevron-left' : 'bars'}`}></i>
-        </div>
-
-        {/* Close button removed to cleanly use only the toggle button */}
-
         <div className="profile-sidebar-content elegant-scroll">
+          {/* Toggle button now part of primary scroll flow */}
+          <div
+            className="sidebar-expand-toggle"
+            onClick={() => setProfileVisible(!profileVisible)}
+            title={profileVisible ? "Hide Sidebar" : "Show Sidebar"}
+            style={{ position: 'relative', left: 'auto', transform: 'none', margin: '0 auto 1.5rem', top: '0' }}
+          >
+            <i className={`fas fa-${profileVisible ? 'chevron-left' : 'bars'}`}></i>
+          </div>
           <div className="profile-avatar">
             {user?.imageUrl ? (
               <img src={user.imageUrl} alt="Profile" />
@@ -851,7 +849,7 @@ export default function PatientDashboard() {
             <div className="modal-overlay" onClick={() => setIsRescheduleModalOpen(false)}>
               <div className="modal-content" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
                 <h3>Propose New Time</h3>
-                <p style={{ margin: '10px 0', color: '#ccc' }}>The receptionist proposed: {editAppt && new Date(editAppt.time).toLocaleString()}</p>
+                <p style={{ margin: '10px 0', color: '#ccc' }}>The receptionist proposed: {editAppt && new Date(editAppt.time).toLocaleString("en-IN")}</p>
                 <p style={{ marginBottom: '5px' }}>Select your preferred time:</p>
                 <input
                   type="datetime-local"

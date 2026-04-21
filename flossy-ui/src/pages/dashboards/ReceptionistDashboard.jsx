@@ -16,6 +16,15 @@ import "../../styles/ai_features.css";
 
 const API = import.meta.env.VITE_API_BASE_URL?.replace("http://", "https://");
 
+const getFlagEmoji = (isoCode) => {
+    if (!isoCode) return "🌐";
+    return isoCode
+        .toUpperCase()
+        .replace(/./g, (char) =>
+            String.fromCodePoint(char.charCodeAt(0) + 127397)
+        );
+};
+
 export default function ReceptionistDashboard() {
     const { user, isLoaded } = useUser();
     const { session } = useSession();
@@ -86,6 +95,7 @@ export default function ReceptionistDashboard() {
     // HISTORY FILTER STATE
     const [historyNameFilter, setHistoryNameFilter] = useState("");
     const [historyDateFilter, setHistoryDateFilter] = useState("");
+    const [historySortOrder, setHistorySortOrder] = useState("newest"); // 'newest' or 'oldest'
 
 
     async function handleApprove(id) {
@@ -601,15 +611,16 @@ export default function ReceptionistDashboard() {
 
             {/* RECEPTIONIST PROFILE SIDEBAR */}
             <aside className="profile-sidebar">
-                <div
-                    className="sidebar-expand-toggle"
-                    onClick={() => setProfileVisible(!profileVisible)}
-                    title={profileVisible ? "Hide Sidebar" : "Show Sidebar"}
-                >
-                    <i className={`fas fa-${profileVisible ? 'chevron-left' : 'bars'}`}></i>
-                </div>
-
                 <div className="profile-sidebar-content elegant-scroll">
+                    {/* Toggle button - now part of scroll flow */}
+                    <div
+                        className="sidebar-expand-toggle"
+                        onClick={() => setProfileVisible(!profileVisible)}
+                        title={profileVisible ? "Hide Sidebar" : "Show Sidebar"}
+                        style={{ position: 'relative', left: 'auto', transform: 'none', margin: '0 auto 1.5rem', top: '0' }}
+                    >
+                        <i className={`fas fa-${profileVisible ? 'chevron-left' : 'bars'}`}></i>
+                    </div>
                     <div className="profile-avatar">
                         {user?.imageUrl ? (
                             <img src={user.imageUrl} alt="Profile" />
@@ -903,12 +914,32 @@ export default function ReceptionistDashboard() {
                                 </div>
                                 <div style={{ flex: 1, minWidth: "200px" }}>
                                     <label style={{ color: "#888", fontSize: "0.8rem", display: "block", marginBottom: "5px" }}>Filter by Date</label>
-                                    <input
-                                        type="date"
-                                        value={historyDateFilter}
-                                        onChange={(e) => setHistoryDateFilter(e.target.value)}
-                                        style={{ width: "100%", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff", colorScheme: "dark" }}
-                                    />
+                                    <div className="input-icon-wrapper">
+                                        <i className="fas fa-calendar-alt" onClick={(e) => {
+                                            const input = e.currentTarget.parentElement.querySelector('input');
+                                            if (input) input.showPicker();
+                                        }} style={{ cursor: 'pointer', pointerEvents: 'auto' }}></i>
+                                        <input
+                                            type="date"
+                                            value={historyDateFilter}
+                                            onChange={(e) => setHistoryDateFilter(e.target.value)}
+                                            onClick={(e) => e.target.showPicker()}
+                                            className="dashboard-input"
+                                            style={{ padding: "10px", colorScheme: "dark" }}
+                                        />
+                                    </div>
+                                </div>
+                                <div style={{ flex: 1, minWidth: "150px" }}>
+                                    <label style={{ color: "#888", fontSize: "0.8rem", display: "block", marginBottom: "5px" }}>Sort Order</label>
+                                    <select
+                                        value={historySortOrder}
+                                        onChange={(e) => setHistorySortOrder(e.target.value)}
+                                        className="dashboard-input"
+                                        style={{ padding: "10px", width: "100%", height: "40px", background: "#222", border: "1px solid #333", borderRadius: "5px", colorScheme: "dark" }}
+                                    >
+                                        <option value="newest">Newest First</option>
+                                        <option value="oldest">Oldest First</option>
+                                    </select>
                                 </div>
                                 {(historyNameFilter || historyDateFilter) && (
                                     <button
@@ -928,76 +959,78 @@ export default function ReceptionistDashboard() {
                                             const dateMatch = !historyDateFilter || new Date(a.time).toISOString().split('T')[0] === historyDateFilter;
                                             return nameMatch && dateMatch;
                                         })
-                                        .length > 0 ? (
-                                        history
-                                            .filter(a => {
-                                                const nameMatch = !historyNameFilter || (a.patient_name || "").toLowerCase().includes(historyNameFilter.toLowerCase());
-                                                const dateMatch = !historyDateFilter || new Date(a.time).toISOString().split('T')[0] === historyDateFilter;
-                                                return nameMatch && dateMatch;
-                                            })
-                                            .map((a) => (
-                                                <div className="appt-item" key={a.id} style={{ opacity: 0.85 }}>
-                                                    <b>
-                                                        {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
-                                                            hour: "2-digit",
-                                                            minute: "2-digit",
-                                                            hour12: true
-                                                        })}
-                                                    </b>
-                                                    <div className="appt-patient">
-                                                        {capitalizeFullName(cleanName(a.patient_name))}
-                                                        <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
-                                                            {a.patient_age && `(Age: ${a.patient_age})`} • 📞 {(!a.patient_phone || a.patient_phone.startsWith("TEMP_")) ? "null" : a.patient_phone}
-                                                        </span>
-                                                    </div>
-                                                    <div className="appt-reason">{a.reason}</div>
-                                                    <div style={{ color: "#f0b800", fontSize: "0.8rem", marginTop: "4px" }}>
-                                                        <i className="fas fa-user-md"></i> {a.doctor_name}
-                                                    </div>
-
-                                                    {a.status === "completed" && (
-                                                        <span style={{ color: "#2ecc71", display: "block", marginTop: "5px" }}>
-                                                            <i className="fas fa-check-circle"></i> Completed
-                                                        </span>
-                                                    )}
-
-                                                    {a.status === "missed" && (
-                                                        <span style={{ color: "#e74c3c", display: "block", marginTop: "5px" }}>
-                                                            <i className="fas fa-times-circle"></i> Not Visited
-                                                        </span>
-                                                    )}
-
-                                                    {a.status === "follow_up" && (
-                                                        <div style={{ color: "#f0b800", marginTop: "5px" }}>
-                                                            <i className="fas fa-clock"></i> Follow Up Required
-                                                            <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>Note: {a.follow_up_reason}</div>
-                                                            <div className="follow-up-actions" style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
-                                                                {!a.follow_up_status ? (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => updateFollowUpStatus(a.id, "completed")}
-                                                                            style={{ fontSize: "0.75rem", background: "#28a745", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
-                                                                        >Mark Done</button>
-                                                                        <button
-                                                                            onClick={() => updateFollowUpStatus(a.id, "missed")}
-                                                                            style={{ fontSize: "0.75rem", background: "#dc3545", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
-                                                                        >Mark Missed</button>
-                                                                    </>
-                                                                ) : (
-                                                                    <span style={{ fontSize: "0.75rem", fontWeight: "bold", color: a.follow_up_status === "completed" ? "#28a745" : "#dc3545", textTransform: "capitalize" }}>
-                                                                        Follow-up {a.follow_up_status}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                        .sort((a, b) => {
+                                            const dateA = new Date(a.time);
+                                            const dateB = new Date(b.time);
+                                            return historySortOrder === "newest" ? dateB - dateA : dateA - dateB;
+                                        })
+                                        .map((a) => (
+                                            <div className="appt-item" key={a.id} style={{ opacity: 0.85 }}>
+                                                <b>
+                                                    {new Date(a.time).toLocaleDateString()} {new Date(a.time).toLocaleTimeString("en-IN", {
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                        hour12: true
+                                                    })}
+                                                </b>
+                                                <div className="appt-patient">
+                                                    {capitalizeFullName(cleanName(a.patient_name))}
+                                                    <span style={{ marginLeft: "10px", fontSize: "0.85rem", opacity: 0.7 }}>
+                                                        {a.patient_age && `(Age: ${a.patient_age})`} • 📞 {(!a.patient_phone || a.patient_phone.startsWith("TEMP_")) ? "null" : a.patient_phone}
+                                                    </span>
                                                 </div>
-                                            ))
-                                    ) : (
-                                        <p className="empty-state">No matching appointments found.</p>
-                                    )
+                                                <div className="appt-reason">{a.reason}</div>
+                                                <div style={{ color: "#f0b800", fontSize: "0.8rem", marginTop: "4px" }}>
+                                                    <i className="fas fa-user-md"></i> {a.doctor_name}
+                                                </div>
+
+                                                {a.status === "completed" && (
+                                                    <span style={{ color: "#2ecc71", display: "block", marginTop: "5px" }}>
+                                                        <i className="fas fa-check-circle"></i> Completed
+                                                    </span>
+                                                )}
+
+                                                {a.status === "missed" && (
+                                                    <span style={{ color: "#e74c3c", display: "block", marginTop: "5px" }}>
+                                                        <i className="fas fa-times-circle"></i> Not Visited
+                                                    </span>
+                                                )}
+
+                                                {a.status === "follow_up" && (
+                                                    <div style={{ color: "#f0b800", marginTop: "5px" }}>
+                                                        <i className="fas fa-clock"></i> Follow Up Required
+                                                        <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>Note: {a.follow_up_reason}</div>
+                                                        <div className="follow-up-actions" style={{ marginTop: "8px", display: "flex", gap: "8px" }}>
+                                                            {!a.follow_up_status ? (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => updateFollowUpStatus(a.id, "completed")}
+                                                                        style={{ fontSize: "0.75rem", background: "#28a745", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
+                                                                    >Mark Done</button>
+                                                                    <button
+                                                                        onClick={() => updateFollowUpStatus(a.id, "missed")}
+                                                                        style={{ fontSize: "0.75rem", background: "#dc3545", color: "#fff", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}
+                                                                    >Mark Missed</button>
+                                                                </>
+                                                            ) : (
+                                                                <span style={{ fontSize: "0.75rem", fontWeight: "bold", color: a.follow_up_status === "completed" ? "#28a745" : "#dc3545", textTransform: "capitalize" }}>
+                                                                    Follow-up {a.follow_up_status}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))
                                 ) : (
                                     <p className="empty-state">No appointment history yet.</p>
+                                )}
+                                {history.length > 0 && history.filter(a => {
+                                    const nameMatch = !historyNameFilter || (a.patient_name || "").toLowerCase().includes(historyNameFilter.toLowerCase());
+                                    const dateMatch = !historyDateFilter || new Date(a.time).toISOString().split('T')[0] === historyDateFilter;
+                                    return nameMatch && dateMatch;
+                                }).length === 0 && (
+                                    <p className="empty-state">No matching appointments found.</p>
                                 )}
                             </div>
                         </div>
@@ -1013,19 +1046,22 @@ export default function ReceptionistDashboard() {
                                 <label style={{ display: 'block', marginBottom: '5px', color: '#aaa' }}>New Date & Time:</label>
                                 <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                                     <div className="input-icon-wrapper" style={{ flex: 1, height: "45px" }}>
+                                        <i
+                                            className="fas fa-calendar-alt"
+                                            onClick={(e) => {
+                                                const input = e.currentTarget.parentElement.querySelector('input');
+                                                if (input) input.showPicker();
+                                            }}
+                                            style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                        ></i>
                                         <input
                                             type="date"
                                             value={proposedDate}
                                             onChange={e => setProposedDate(e.target.value)}
                                             className="dashboard-input"
-                                            style={{ paddingRight: "35px", height: "100%" }}
+                                            style={{ height: "100%" }}
                                             onClick={(e) => e.target.showPicker()}
                                         />
-                                        <i 
-                                            className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" 
-                                            style={{ color: "#d4af37", opacity: 0.8 }}
-                                            onClick={(e) => e.currentTarget.previousSibling.showPicker()}
-                                        ></i>
                                     </div>
                                     <select
                                         value={proposedTimeSlot}
@@ -1104,8 +1140,9 @@ export default function ReceptionistDashboard() {
                                                             c.iso.toLowerCase().includes(countrySearch.toLowerCase())
                                                         ).map(c => (
                                                             <div key={c.iso} onClick={() => { setPatientCountryCode(c.code); setShowCountrySearch(false); }}
-                                                                style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}>
-                                                                {c.name} ({c.code})
+                                                                style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                                                                <span style={{ fontSize: "1.2rem" }}>{getFlagEmoji(c.iso)}</span>
+                                                                <span>{c.name} ({c.code})</span>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -1153,19 +1190,22 @@ export default function ReceptionistDashboard() {
                                     <div style={{ display: "flex", gap: "10px" }}>
                                         <div className="form-group" style={{ flex: 1 }}>
                                             <div className="input-icon-wrapper" style={{ height: "45px" }}>
+                                                <i
+                                                    className="fas fa-calendar-alt"
+                                                    onClick={(e) => {
+                                                        const input = e.currentTarget.parentElement.querySelector('input');
+                                                        if (input) input.showPicker();
+                                                    }}
+                                                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                                ></i>
                                                 <input
                                                     type="date"
                                                     value={visitDate}
                                                     onChange={e => setVisitDate(e.target.value)}
                                                     className="dashboard-input"
-                                                    style={{ width: "100%", height: "100%", paddingRight: "35px" }}
+                                                    style={{ width: "100%", height: "100%" }}
                                                     onClick={(e) => e.target.showPicker()}
                                                 />
-                                                <i 
-                                                    className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" 
-                                                    style={{ color: "#d4af37", opacity: 0.8 }}
-                                                    onClick={(e) => e.currentTarget.previousSibling.showPicker()}
-                                                ></i>
                                             </div>
                                         </div>
                                         <select
@@ -1245,43 +1285,47 @@ export default function ReceptionistDashboard() {
                     <div className="row-stats" style={{ display: "flex", justifyContent: "center", width: "100%", marginBottom: "2rem" }}>
                         <div className="card animate-fade-up" style={{ animationDelay: "0.2s", width: "100%", maxWidth: "1000px" }}>
                             <div className="card-header">
-                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
                                     <h3>Daily Closure Report</h3>
-                                    <div className="input-icon-wrapper" style={{ display: "inline-flex", height: "38px" }}>
-                                        <input
-                                            type="date"
-                                            value={reportDate}
-                                            onChange={(e) => setReportDate(e.target.value)}
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                        <div className="input-icon-wrapper" style={{ display: "inline-flex", height: "40px" }}>
+                                            <i
+                                                className="fas fa-calendar-alt"
+                                                onClick={(e) => {
+                                                    const input = e.currentTarget.parentElement.querySelector('input');
+                                                    if (input) input.showPicker();
+                                                }}
+                                                style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                            ></i>
+                                            <input
+                                                type="date"
+                                                value={reportDate}
+                                                onChange={(e) => setReportDate(e.target.value)}
+                                                className="dashboard-input"
+                                                style={{ border: "1px solid #444", height: "100%", width: "160px" }}
+                                                onClick={(e) => e.target.showPicker()}
+                                            />
+                                        </div>
+                                        <select
+                                            value={reportView}
+                                            onChange={(e) => setReportView(e.target.value)}
                                             className="dashboard-input"
-                                            style={{ border: "1px solid #555", paddingRight: "35px", height: "100%", width: "160px" }}
-                                            onClick={(e) => e.target.showPicker()}
-                                        />
-                                        <i 
-                                            className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" 
-                                            style={{ color: "#d4af37", opacity: 0.8, right: "10px" }}
-                                            onClick={(e) => e.currentTarget.previousSibling.showPicker()}
-                                        ></i>
+                                            style={{
+                                                border: "1px solid #444",
+                                                padding: "0 10px",
+                                                borderRadius: "5px",
+                                                fontSize: "0.9rem",
+                                                cursor: "pointer",
+                                                colorScheme: "dark",
+                                                height: "40px",
+                                                background: "rgba(0,0,0,0.3)"
+                                            }}
+                                        >
+                                            <option value="daily" style={{ background: "#222", color: "#fff" }}>Daily</option>
+                                            <option value="monthly" style={{ background: "#222", color: "#fff" }}>Monthly</option>
+                                            <option value="yearly" style={{ background: "#222", color: "#fff" }}>Yearly</option>
+                                        </select>
                                     </div>
-                                    <select
-                                        value={reportView}
-                                        onChange={(e) => setReportView(e.target.value)}
-                                        style={{
-                                            background: "rgba(0,0,0,0.3)",
-                                            border: "1px solid #555",
-                                            color: "#fff",
-                                            padding: "0 10px",
-                                            borderRadius: "5px",
-                                            fontSize: "0.9rem",
-                                            cursor: "pointer",
-                                            outline: "none",
-                                            colorScheme: "dark",
-                                            height: "38px"
-                                        }}
-                                    >
-                                        <option value="daily" style={{ background: "#222", color: "#fff" }}>Daily</option>
-                                        <option value="monthly" style={{ background: "#222", color: "#fff" }}>Monthly</option>
-                                        <option value="yearly" style={{ background: "#222", color: "#fff" }}>Yearly</option>
-                                    </select>
                                 </div>
                                 <i className="fas fa-chart-line card-icon"></i>
                             </div>
@@ -1315,7 +1359,7 @@ export default function ReceptionistDashboard() {
                                                     return false;
                                                 })
                                                 .reduce((sum, inv) => sum + (parseFloat(inv.total) || 0), 0)
-                                                .toLocaleString()}
+                                                .toLocaleString("en-IN")}
                                         </div>
                                     </div>
                                     <div style={{ background: "#222", padding: "1.5rem", borderRadius: "10px", textAlign: "center", border: "1px solid #333" }}>
@@ -1331,7 +1375,7 @@ export default function ReceptionistDashboard() {
                                                     return false;
                                                 });
                                                 const totalRev = dailyInvoices.reduce((sum, inv) => sum + (parseFloat(inv.total) || 0), 0);
-                                                return dailyInvoices.length ? Math.round(totalRev / dailyInvoices.length).toLocaleString() : 0;
+                                                return dailyInvoices.length ? Math.round(totalRev / dailyInvoices.length).toLocaleString("en-IN") : 0;
                                             })()}
                                         </div>
                                     </div>
@@ -1399,7 +1443,7 @@ export default function ReceptionistDashboard() {
                                                         return false;
                                                     })
                                                     .reduce((sum, inv) => sum + (parseFloat(inv.total) || 0), 0)
-                                                    .toLocaleString()}</span>
+                                                    .toLocaleString("en-IN")}</span>
                                             </div>
                                             <div style={{ height: "8px", background: "#333", borderRadius: "4px", overflow: "hidden" }}>
                                                 <div style={{ width: "65%", height: "100%", background: "#f0b800" }}></div>
@@ -1457,7 +1501,7 @@ export default function ReceptionistDashboard() {
                                                         <div>
                                                             <b style={{ color: "#fff" }}>{inv.patient_name}</b>
                                                             <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(inv.date).toLocaleDateString()}</div>
-                                                            <div style={{ fontSize: "0.85rem", color: "#2ecc71", fontWeight: "bold" }}>₹ {inv.total.toLocaleString()} ({inv.invoice_number})</div>
+                                                            <div style={{ fontSize: "0.85rem", color: "#2ecc71", fontWeight: "bold" }}>₹ {inv.total.toLocaleString("en-IN")} ({inv.invoice_number})</div>
                                                         </div>
                                                         <div style={{ display: "flex", gap: "8px" }}>
                                                             <button
@@ -1638,7 +1682,7 @@ export default function ReceptionistDashboard() {
                             </div>
                              <div>
                                  <label style={{ color: "#888", fontSize: "0.8rem" }}>Phone</label>
-                                 <div style={{ display: "flex", gap: "5px" }}>
+                                 <div style={{ position: "relative", display: "flex", gap: "5px" }}>
                                      <div className="input-icon-wrapper" style={{ width: "100px" }}>
                                          <i className="fas fa-globe"></i>
                                          <input
@@ -1650,13 +1694,12 @@ export default function ReceptionistDashboard() {
                                              className="dashboard-input"
                                              style={{ width: "100%", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff", outline: "none" }}
                                          />
-                                     </div>
                                          {showEditCountrySearch && (
                                              <div className="elegant-scroll" style={{
                                                  position: "absolute", bottom: "100%", left: 0,
                                                  zIndex: 105, background: "#1a1a1a", border: "1px solid #444",
-                                                 borderRadius: "8px", marginBottom: "5px", maxHeight: "150px",
-                                                 overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", width: "220px"
+                                                 borderRadius: "8px", marginBottom: "5px", maxHeight: "180px",
+                                                 overflowY: "auto", boxShadow: "0 -10px 25px rgba(0,0,0,0.5)", width: "220px"
                                              }}>
                                                  {COUNTRY_CODES.filter(c => 
                                                      c.name.toLowerCase().includes(editCountrySearch.toLowerCase()) || 
@@ -1664,8 +1707,9 @@ export default function ReceptionistDashboard() {
                                                      c.iso.toLowerCase().includes(editCountrySearch.toLowerCase())
                                                  ).map(c => (
                                                      <div key={c.iso} onClick={() => { setEditCountryCode(c.code); setShowEditCountrySearch(false); }}
-                                                          style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}>
-                                                         {c.name} ({c.code})
+                                                          style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                                                         <span style={{ fontSize: "1.2rem" }}>{getFlagEmoji(c.iso)}</span>
+                                                         <span>{c.name} ({c.code})</span>
                                                      </div>
                                                  ))}
                                              </div>
@@ -1676,6 +1720,7 @@ export default function ReceptionistDashboard() {
                                          style={{ flex: 1, padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
                                      />
                                  </div>
+                            </div>
                             <div>
                                 <label style={{ color: "#888", fontSize: "0.8rem" }}>Age</label>
                                 <input

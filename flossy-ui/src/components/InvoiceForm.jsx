@@ -4,6 +4,15 @@ import { COUNTRY_CODES } from '../utils/countryCodes';
 import { CURRENCIES } from '../utils/currencies';
 import '../styles/invoice_form.css';
 
+const getFlagEmoji = (isoCode) => {
+    if (!isoCode) return "🌐";
+    return isoCode
+        .toUpperCase()
+        .replace(/./g, (char) =>
+            String.fromCodePoint(char.charCodeAt(0) + 127397)
+        );
+};
+
 const API = import.meta.env.VITE_API_BASE_URL;
 
 const EXCHANGE_RATES = {
@@ -369,19 +378,22 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                     <div className="form-group relative" style={{ flex: 1 }}>
                         <label>DATE</label>
                         <div className="input-icon-wrapper" style={{ height: "45px" }}>
+                            <i
+                                className="fas fa-calendar-alt"
+                                onClick={(e) => {
+                                    const input = e.currentTarget.parentElement.querySelector('input');
+                                    if (input) input.showPicker();
+                                }}
+                                style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                            ></i>
                             <input
                                 type="date"
                                 value={invoiceDate}
                                 onChange={(e) => setInvoiceDate(e.target.value)}
                                 className="dashboard-input"
-                                style={{ colorScheme: "dark", paddingRight: "35px", height: "100%" }}
+                                style={{ colorScheme: "dark", height: "100%" }}
                                 onClick={(e) => e.target.showPicker()}
                             />
-                            <i 
-                                className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" 
-                                style={{ color: "#d4af37", opacity: 0.8 }}
-                                onClick={(e) => e.currentTarget.previousSibling.showPicker()}
-                            ></i>
                         </div>
                     </div>
 
@@ -413,8 +425,9 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                         c.code.toLowerCase().includes(currencySearch.toLowerCase())
                                     ).map(c => (
                                         <div key={c.code} onClick={() => { setCurrency(c.code); setShowCurrencySearch(false); }}
-                                            style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}>
-                                            {c.code} ({c.symbol}) - {c.name}
+                                            style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                                            <span style={{ fontSize: "1.1rem" }}>{getFlagEmoji(c.code.slice(0, 2))}</span>
+                                            <span>{c.code} ({c.symbol}) - {c.name}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -450,7 +463,8 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                     {COUNTRY_CODES
                                         .filter(c =>
                                             c.code.includes(countryCode) ||
-                                            c.iso.toLowerCase().includes(countryCode.toLowerCase())
+                                            c.iso.toLowerCase().includes(countryCode.toLowerCase()) ||
+                                            c.name.toLowerCase().includes(countryCode.toLowerCase())
                                         )
                                         .map(c => (
                                             <div
@@ -459,11 +473,12 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                                     setCountryCode(c.code);
                                                     setShowCountrySearch(false);
                                                 }}
-                                                style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}
+                                                style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}
                                                 onMouseEnter={e => e.currentTarget.style.background = "#2a2a2a"}
                                                 onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                                             >
-                                                {c.name} ({c.code})
+                                                <span style={{ fontSize: "1.2rem" }}>{getFlagEmoji(c.iso)}</span>
+                                                <span>{c.name} ({c.code})</span>
                                             </div>
                                         ))
                                     }
@@ -628,15 +643,23 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                 <option value="percent">%</option>
                             </select>
                         </div>
-                                <div className="input-icon-wrapper" style={{ flex: 1 }}>
+                                <div className="input-icon-wrapper" style={{ flex: 1, height: "45px" }}>
+                                    <i
+                                        className="fas fa-calendar-alt"
+                                        onClick={(e) => {
+                                            const input = e.currentTarget.parentElement.querySelector('input');
+                                            if (input) input.showPicker();
+                                        }}
+                                        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                    ></i>
                                     <input
                                         type="date"
                                         value={item.treatment_date}
                                         onChange={(e) => updateItem(idx, "treatment_date", e.target.value)}
                                         className="dashboard-input"
-                                        style={{ colorScheme: "dark", width: "100%", paddingRight: "35px" }}
+                                        style={{ colorScheme: "dark", width: "100%", height: "100%" }}
+                                        onClick={(e) => e.target.showPicker()}
                                     />
-                                    <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#d4af37", opacity: 0.8 }}></i>
                                 </div>
                         <button type="button" onClick={() => removeItem(idx)} disabled={items.length === 1} className="trash-btn" style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                             <i className="fas fa-trash"></i>
@@ -682,15 +705,23 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                             />
                             <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.8rem' }}>{currencySymbol}</span>
                         </div>
-                                <div className="input-icon-wrapper" style={{ flex: 1 }}>
+                                <div className="input-icon-wrapper" style={{ flex: 1, height: "45px" }}>
+                                    <i
+                                        className="fas fa-calendar-alt"
+                                        onClick={(e) => {
+                                            const input = e.currentTarget.parentElement.querySelector('input');
+                                            if (input) input.showPicker();
+                                        }}
+                                        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                                    ></i>
                                     <input
                                         type="date"
                                         value={p.paid_on}
                                         onChange={(e) => updatePayment(pIdx, "paid_on", e.target.value)}
                                         className="dashboard-input"
-                                        style={{ colorScheme: "dark", width: "100%", paddingRight: "35px" }}
+                                        style={{ colorScheme: "dark", width: "100%", height: "100%" }}
+                                        onClick={(e) => e.target.showPicker()}
                                     />
-                                    <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#d4af37", opacity: 0.8 }}></i>
                                 </div>
                         <button type="button" onClick={() => removePayment(pIdx)} disabled={payments.length === 1} style={{ background: 'transparent', color: '#ff4444', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                             <i className="fas fa-trash"></i>
@@ -703,29 +734,29 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                 <div className="invoice-summary">
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                         <span>Subtotal (Gross):</span>
-                        <span style={{ fontWeight: 'bold' }}>{currencySymbol} {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span style={{ fontWeight: 'bold' }}>{currencySymbol} {subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
 
                     {totalItemDiscount > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: '#f0b800' }}>
                             <span>Total Item Discounts:</span>
-                            <span style={{ fontWeight: 'bold' }}>- {currencySymbol} {totalItemDiscount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span style={{ fontWeight: 'bold' }}>- {currencySymbol} {totalItemDiscount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     )}
 
                     <div className="total-row" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                         <span>Total Payable:</span>
-                        <span>{currencySymbol} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span>{currencySymbol} {totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#2ecc71', marginTop: '8px', fontSize: '0.9rem', opacity: 0.8 }}>
                         <span>Total Paid:</span>
-                        <span>{currencySymbol} {totalPaid.toLocaleString()}</span>
+                        <span>{currencySymbol} {totalPaid.toLocaleString("en-IN")}</span>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: amountDue > 0 ? '#ff7675' : '#2ecc71', fontWeight: 'bold', marginTop: '8px' }}>
                         <span>{amountDue > 0 ? "Amount Due:" : "Balance Cleared"}</span>
-                        <span>{currencySymbol} {Math.abs(amountDue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span>{currencySymbol} {Math.abs(amountDue).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                 </div>
 

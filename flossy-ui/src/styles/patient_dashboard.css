@@ -653,7 +653,11 @@ body {
 
 .sidebar-collapsed .profile-sidebar {
   width: 80px;
-  padding: 6rem 0.5rem 2rem;
+  padding: 3.5rem 0 2rem;
+}
+
+.sidebar-collapsed .profile-sidebar-content {
+  align-items: center;
 }
 
 /* Form Styles for Modal */
@@ -888,6 +892,12 @@ body {
   justify-content: center;
   background: transparent;
   padding: 1rem 0;
+  width: 100%;
+}
+
+.sidebar-collapsed .detail-row i {
+  margin: 0;
+  font-size: 1.2rem;
 }
 
 .sidebar-collapsed .profile-sidebar-content {

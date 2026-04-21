@@ -28,6 +28,19 @@ const API = import.meta.env.VITE_API_BASE_URL?.replace(
 );
 
 /* ==============================
+   HELPERS
+================================ */
+
+const getFlagEmoji = (isoCode) => {
+  if (!isoCode) return "🌐";
+  return isoCode
+    .toUpperCase()
+    .replace(/./g, (char) =>
+      String.fromCodePoint(char.charCodeAt(0) + 127397)
+    );
+};
+
+/* ==============================
    MEDICATION CONSTANTS
 ================================ */
 
@@ -162,6 +175,7 @@ export default function DentistDashboard() {
   // ===== HISTORY FILTER STATE =====
   const [historyNameFilter, setHistoryNameFilter] = useState("");
   const [historyDateFilter, setHistoryDateFilter] = useState("");
+  const [historySortOrder, setHistorySortOrder] = useState("newest"); // 'newest' or 'oldest'
 
   /* ==============================
      AUTH & ACCESS CONTROL
@@ -569,18 +583,16 @@ export default function DentistDashboard() {
       />
       {/* DOCTOR PROFILE SIDEBAR */}
       <aside className="profile-sidebar">
-        {/* Toggle button */}
-        <div
-          className="sidebar-expand-toggle"
-          onClick={() => setProfileVisible(!profileVisible)}
-          title={profileVisible ? "Hide Sidebar" : "Show Sidebar"}
-        >
-          <i className={`fas fa-${profileVisible ? 'chevron-left' : 'bars'}`}></i>
-        </div>
-
-        {/* Close button removed to cleanly use only the toggle button */}
-
         <div className="profile-sidebar-content elegant-scroll">
+          {/* Toggle button now inside scrollable content */}
+          <div
+            className="sidebar-expand-toggle"
+            onClick={() => setProfileVisible(!profileVisible)}
+            title={profileVisible ? "Hide Sidebar" : "Show Sidebar"}
+            style={{ position: 'relative', left: 'auto', transform: 'none', margin: '0 auto 1.5rem', top: '0' }}
+          >
+            <i className={`fas fa-${profileVisible ? 'chevron-left' : 'bars'}`}></i>
+          </div>
           <div className="profile-avatar">
             {user?.imageUrl ? (
               <img src={user.imageUrl} alt="Profile" />
@@ -707,22 +719,46 @@ export default function DentistDashboard() {
                 <div style={{ display: "flex", gap: "10px", padding: "1rem", flexWrap: "wrap", borderBottom: "1px solid #333" }}>
                   <div style={{ flex: 1, minWidth: "200px" }}>
                     <label style={{ color: "#888", fontSize: "0.8rem", display: "block", marginBottom: "5px" }}>Search by Name</label>
-                    <input
-                      type="text"
-                      placeholder="Patient name..."
-                      value={historyNameFilter}
-                      onChange={(e) => setHistoryNameFilter(e.target.value)}
-                      style={{ width: "100%", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff" }}
-                    />
+                    <div className="input-icon-wrapper">
+                      <i className="fas fa-search"></i>
+                      <input
+                        type="text"
+                        placeholder="Patient name..."
+                        value={historyNameFilter}
+                        onChange={(e) => setHistoryNameFilter(e.target.value)}
+                        className="dashboard-input"
+                        style={{ padding: "10px" }}
+                      />
+                    </div>
                   </div>
                   <div style={{ flex: 1, minWidth: "200px" }}>
                     <label style={{ color: "#888", fontSize: "0.8rem", display: "block", marginBottom: "5px" }}>Filter by Date</label>
-                    <input
-                      type="date"
-                      value={historyDateFilter}
-                      onChange={(e) => setHistoryDateFilter(e.target.value)}
-                      style={{ width: "100%", padding: "10px", background: "#222", border: "1px solid #333", borderRadius: "5px", color: "#fff", colorScheme: "dark" }}
-                    />
+                    <div className="input-icon-wrapper">
+                      <i className="fas fa-calendar-alt" onClick={(e) => {
+                        const input = e.currentTarget.parentElement.querySelector('input');
+                        if (input) input.showPicker();
+                      }} style={{ cursor: 'pointer', pointerEvents: 'auto' }}></i>
+                      <input
+                        type="date"
+                        value={historyDateFilter}
+                        onChange={(e) => setHistoryDateFilter(e.target.value)}
+                        onClick={(e) => e.target.showPicker()}
+                        className="dashboard-input"
+                        style={{ padding: "10px", colorScheme: "dark" }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: "150px" }}>
+                    <label style={{ color: "#888", fontSize: "0.8rem", display: "block", marginBottom: "5px" }}>Sort Order</label>
+                    <select
+                      value={historySortOrder}
+                      onChange={(e) => setHistorySortOrder(e.target.value)}
+                      className="dashboard-input"
+                      style={{ padding: "10px", width: "100%", height: "40px", background: "#222", border: "1px solid #333", borderRadius: "5px", colorScheme: "dark" }}
+                    >
+                      <option value="newest">Newest First</option>
+                      <option value="oldest">Oldest First</option>
+                    </select>
                   </div>
                   {(historyNameFilter || historyDateFilter) && (
                     <button
@@ -741,6 +777,11 @@ export default function DentistDashboard() {
                         const nameMatch = !historyNameFilter || (a.patient || a.patient_name || "").toLowerCase().includes(historyNameFilter.toLowerCase());
                         const dateMatch = !historyDateFilter || new Date(a.time).toISOString().split('T')[0] === historyDateFilter;
                         return nameMatch && dateMatch;
+                      })
+                      .sort((a, b) => {
+                        const dateA = new Date(a.time);
+                        const dateB = new Date(b.time);
+                        return historySortOrder === "newest" ? dateB - dateA : dateA - dateB;
                       })
                       .map((a) => (
                         <div className="appt-item" key={a.id} style={{ opacity: 0.8 }}>
@@ -776,42 +817,47 @@ export default function DentistDashboard() {
             <div className="row-stats" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
               <div className="card animate-fade-up" style={{ animationDelay: "0.4s", width: "100%", maxWidth: "1020px" }}>
                 <div className="card-header">
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
                     <h3>Daily Analytics</h3>
-                    <div className="input-icon-wrapper" style={{ display: "inline-flex", height: "38px" }}>
-                      <input
-                        type="date"
-                        value={reportDate}
-                        onChange={(e) => setReportDate(e.target.value)}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div className="input-icon-wrapper" style={{ display: "inline-flex", height: "40px" }}>
+                        <i
+                          className="fas fa-calendar-alt"
+                          onClick={(e) => {
+                            const input = e.currentTarget.parentElement.querySelector('input');
+                            if (input) input.showPicker();
+                          }}
+                          style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                        ></i>
+                        <input
+                          type="date"
+                          value={reportDate}
+                          onChange={(e) => setReportDate(e.target.value)}
+                          className="dashboard-input"
+                          style={{ border: "1px solid #444", height: "100%", width: "160px" }}
+                          onClick={(e) => e.target.showPicker()}
+                        />
+                      </div>
+                      <select
+                        value={reportView}
+                        onChange={(e) => setReportView(e.target.value)}
                         className="dashboard-input"
-                        style={{ border: "1px solid #555", paddingRight: "35px", height: "100%", width: "160px" }}
-                        onClick={(e) => e.target.showPicker()}
-                      />
-                      <i 
-                        className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" 
-                        style={{ color: "#d4af37", opacity: 0.8, right: "10px" }}
-                        onClick={(e) => e.currentTarget.previousSibling.showPicker()}
-                      ></i>
+                        style={{
+                          background: "rgba(0,0,0,0.3)",
+                          border: "1px solid #444",
+                          padding: "0 10px",
+                          borderRadius: "5px",
+                          fontSize: "0.9rem",
+                          cursor: "pointer",
+                          colorScheme: "dark",
+                          height: "40px"
+                        }}
+                      >
+                        <option value="daily">Daily</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                      </select>
                     </div>
-                    <select
-                      value={reportView}
-                      onChange={(e) => setReportView(e.target.value)}
-                      style={{
-                        background: "rgba(0,0,0,0.3)",
-                        border: "1px solid #555",
-                        color: "#fff",
-                        padding: "0 10px",
-                        borderRadius: "5px",
-                        fontSize: "0.9rem",
-                        cursor: "pointer",
-                        colorScheme: "dark",
-                        height: "38px"
-                      }}
-                    >
-                      <option value="daily">Daily</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="yearly">Yearly</option>
-                    </select>
                   </div>
                   <i className="fas fa-chart-line card-icon"></i>
                 </div>
@@ -845,7 +891,7 @@ export default function DentistDashboard() {
                             return false;
                           })
                           .reduce((sum, inv) => sum + (parseFloat(inv.total) || 0), 0)
-                          .toLocaleString()}
+                          .toLocaleString("en-IN")}
                       </div>
                     </div>
                     <div className="stat-card glow-card" style={{ animationDelay: '0.2s' }}>
@@ -937,19 +983,22 @@ export default function DentistDashboard() {
                     <div className="form-group">
                       <label>Prescription Date</label>
                       <div className="input-icon-wrapper" style={{ height: "45px" }}>
+                        <i
+                          className="fas fa-calendar-alt"
+                          onClick={(e) => {
+                            const input = e.currentTarget.parentElement.querySelector('input');
+                            if (input) input.showPicker();
+                          }}
+                          style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                        ></i>
                         <input
                           type="date"
                           value={prescDate}
                           onChange={(e) => setPrescDate(e.target.value)}
                           className="dashboard-input"
-                          style={{ paddingRight: "35px", height: "100%" }}
+                          style={{ height: "100%" }}
                           onClick={(e) => e.target.showPicker()}
                         />
-                        <i 
-                          className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" 
-                          style={{ color: "#d4af37", opacity: 0.8 }}
-                          onClick={(e) => e.currentTarget.previousSibling.showPicker()}
-                        ></i>
                       </div>
                     </div>
                   </div>
@@ -987,8 +1036,9 @@ export default function DentistDashboard() {
                               )
                               .map(c => (
                                 <div key={c.iso} onClick={() => { setPrescCountryCode(c.code); setShowPrescCountrySearch(false); }}
-                                  style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}>
-                                  {c.name} ({c.code})
+                                  style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                                  <span style={{ fontSize: "1.2rem" }}>{getFlagEmoji(c.iso)}</span>
+                                  <span>{c.name} ({c.code})</span>
                                 </div>
                               ))}
                           </div>
@@ -1381,7 +1431,7 @@ export default function DentistDashboard() {
                               <div>
                                 <b style={{ color: "#fff" }}>{inv.patient_name}</b>
                                 <div style={{ fontSize: "0.8rem", color: "#888" }}>{new Date(inv.date).toLocaleDateString()}</div>
-                                <div style={{ fontSize: "0.85rem", color: "#2ecc71", fontWeight: "bold" }}>₹ {inv.total?.toLocaleString()} ({inv.invoice_number})</div>
+                                <div style={{ fontSize: "0.85rem", color: "#2ecc71", fontWeight: "bold" }}>₹ {inv.total?.toLocaleString("en-IN")} ({inv.invoice_number})</div>
                               </div>
                               <div style={{ display: "flex", gap: "8px" }}>
                                 <button
