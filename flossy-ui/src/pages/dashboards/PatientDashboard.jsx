@@ -592,9 +592,8 @@ export default function PatientDashboard() {
         </div>
       </aside>
 
+      <Header openAI={() => setAiOpen(true)} />
       <div className="dashboard-main-content">
-        <Header openAI={() => setAiOpen(true)} />
-
         <main className="patient-main">
           <h2 id="welcomeMessage">{isNewUser ? "Welcome" : "Welcome back"}, {fullName}!</h2>
 

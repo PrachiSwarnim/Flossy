@@ -663,8 +663,8 @@ export default function ReceptionistDashboard() {
                 </div>
             </aside>
 
+            <Header openAI={() => setAiOpen(true)} />
             <div className="dashboard-main-content">
-                <Header openAI={() => setAiOpen(true)} />
                 <main className="dentist-main relative z-10">
                 <h2 id="Message" style={{ marginBottom: "0.5rem" }}>Clinic Reception</h2>
                 <h3 style={{ textAlign: "center", color: "#d4af37", marginBottom: "2.5rem", fontSize: "1.4rem", fontWeight: "normal", fontFamily: "var(--font-heading)", fontStyle: "italic" }}>

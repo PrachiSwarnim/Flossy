@@ -15,16 +15,18 @@ body {
 /* Make sidebar start BELOW the header (80px) */
 .dentist-main~.profile-sidebar,
 .dashboard-shell .profile-sidebar {
-  top: 80px !important;
-  /* Start below header */
-  height: calc(100vh - 80px) !important;
+  top: 100px !important;
+  /* Reduced height to account for higher top */
+  height: calc(100vh - 120px) !important;
+  margin: 10px !important;
+  border-radius: 20px !important;
   padding-top: 3.5rem !important; 
-  /* Increased padding so toggle doesn't overlap profile */
-  z-index: 1000 !important;
-  /* Lower z-index so header stays on top */
-  background: linear-gradient(180deg, #111 0%, #1a1a1a 100%) !important;
-  border-right: 1px solid rgba(212, 175, 55, 0.2) !important;
-  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4) !important;
+  z-index: 999 !important;
+  /* Floating look */
+  background: rgba(17, 17, 17, 0.95) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 175, 55, 0.15) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
 }
 
 /* Remove any weird gold horizontal bars that might appear as pseudo-elements */
@@ -35,9 +37,9 @@ body {
 }
 
 .dashboard-shell .sidebar-expand-toggle {
-  top: 15px !important;
-  width: 32px !important;
-  height: 32px !important;
+  top: 100px !important;
+  width: 34px !important;
+  height: 34px !important;
   background: var(--primary-gold) !important;
   color: #000 !important;
   border-radius: 50% !important;

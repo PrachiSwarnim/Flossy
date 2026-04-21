@@ -634,9 +634,8 @@ export default function DentistDashboard() {
         </div>
       </aside>
 
+      <Header openAI={() => setAiOpen(true)} />
       <div className="dashboard-main-content">
-        <Header openAI={() => setAiOpen(true)} />
-
         <main className="dentist-main">
           <h2 id="Message">Welcome back, Dr. {fullName}</h2>
 

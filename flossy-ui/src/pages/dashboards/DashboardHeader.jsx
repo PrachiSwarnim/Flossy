@@ -14,12 +14,12 @@ export default function Header({ openAI }) {
   return (
     <>
       <header
-        className="sa-header sticky top-0 z-[1000] w-full py-3 px-4 md:px-8"
+        className="sa-header fixed top-0 left-0 right-0 z-[1000] w-full py-3 px-4 md:px-8"
         id="flossy-main-header"
       >
         <div 
-          className="max-w-6xl mx-auto flex items-center justify-between h-[64px] px-5 md:px-8 rounded-xl border border-white/[0.08] bg-[#141414]/90 backdrop-blur-xl"
-          style={{ boxShadow: "0 4px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)" }}
+          className="max-w-6xl mx-auto flex items-center justify-between h-[64px] px-5 md:px-8 rounded-xl border border-white/[0.08] bg-[#1a1a1a]/95 backdrop-blur-xl"
+          style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)" }}
         >
           {/* LOGO */}
           <div className="sa-logo flex items-center gap-2.5 flex-shrink-0" onClick={() => navigate("/")} style={{ cursor: "pointer", display: "flex", flexDirection: "row" }}>

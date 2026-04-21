@@ -630,20 +630,20 @@ body {
 .profile-sidebar {
   position: fixed;
   left: 0;
-  top: 0;
-  bottom: 0;
+  top: 100px;
+  bottom: 20px;
   width: 320px;
-  background: #111;
-  /* Solid dark background for a cleaner look */
-  border-right: 1px solid rgba(212, 175, 55, 0.15);
-  z-index: 99999 !important;
-  /* Extremely high to beat any other element */
-  padding: 9rem 1.5rem 2rem;
-  /* Massive top padding to push content below fixed header */
+  margin: 10px;
+  border-radius: 20px;
+  background: rgba(17, 17, 17, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  z-index: 999 !important;
+  padding: 3.5rem 1.5rem 2rem;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
-  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .profile-sidebar::before {
@@ -749,10 +749,10 @@ body {
 .sidebar-expand-toggle {
   position: absolute;
   right: -12px;
-  top: 40px;
+  top: 100px;
   /* Bring it higher up */
-  width: 25px;
-  height: 25px;
+  width: 28px;
+  height: 28px;
   background: var(--primary-gold);
   color: #000;
   border-radius: 50%;
@@ -761,10 +761,10 @@ body {
   justify-content: center;
   cursor: pointer;
   z-index: 1600;
-  box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
   font-size: 0.8rem;
   transition: all 0.3s ease;
-  border: 2px solid #111;
+  border: 2px solid #1a1a1a;
 }
 
 .sidebar-expand-toggle:hover {
