@@ -278,12 +278,11 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                         <span>Editing Invoice #{editingInvoice.invoice_number}</span>
                         <button type="button" onClick={onCancelEdit} style={{ background: "transparent", border: "1px solid #f39c12", color: "#f39c12", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}>Cancel</button>
                     </div>
-                )}
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '20px' }}>
+                )}                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '20px', marginBottom: '1rem' }}>
                     <div className="form-group" style={{ position: "relative" }}>
                         <label>Select Patient</label>
                         <div className="patient-search-container" style={{ position: "relative" }}>
-                            <div className="input-icon-wrapper">
+                            <div className="input-icon-wrapper" style={{ height: "45px" }}>
                                 <i className="fas fa-search"></i>
                                 <input
                                     type="text"
@@ -296,6 +295,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                     }}
                                     onFocus={() => setShowPatientSuggestions(true)}
                                     className="dashboard-input"
+                                    style={{ height: "100%" }}
                                 />
                             </div>
 
@@ -304,7 +304,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                     position: "absolute", top: "100%", left: 0, right: 0,
                                     zIndex: 101, background: "#1a1a1a", border: "1px solid #444",
                                     borderRadius: "8px", marginTop: "5px", maxHeight: "180px",
-                                    overflowY: "scroll", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+                                    overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
                                 }}>
                                     {patientsList
                                         .filter(p => {
@@ -365,129 +365,128 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                             ></div>
                         )}
                     </div>
-                        <div className="form-group relative" style={{ flex: 1 }}>
-                            <label>DATE</label>
-                            <div className="input-icon-wrapper">
-                                <input
-                                    type="date"
-                                    value={invoiceDate}
-                                    onChange={(e) => setInvoiceDate(e.target.value)}
-                                    className="dashboard-input"
-                                    style={{ colorScheme: "dark", paddingRight: "35px" }}
-                                />
-                                <i className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#d4af37", opacity: 0.8 }}></i>
-                            </div>
-                        </div>
-                        <div className="form-group relative" style={{ flex: 1 }}>
-                            <label>CURRENCY</label>
-                            <div className="input-icon-wrapper">
-                                <i className="fas fa-coins"></i>
-                                <input
-                                    type="text"
-                                    value={showCurrencySearch ? currencySearch : `${currency} (${currencySymbol})`}
-                                    onFocus={() => { setShowCurrencySearch(true); setCurrencySearch(""); }}
-                                    onChange={(e) => setCurrencySearch(e.target.value)}
-                                    placeholder="Search..."
-                                    className="dashboard-input"
-                                    style={{
-                                        background: "#222", border: "1px solid #333", borderRadius: "8px",
-                                        color: "#fff", width: "100%", outline: "none"
-                                    }}
-                                />
-                                {showCurrencySearch && (
-                                    <div className="elegant-scroll" style={{
-                                        position: "absolute", top: "100%", left: 0, right: 0,
-                                        zIndex: 105, background: "#1a1a1a", border: "1px solid #444",
-                                        borderRadius: "8px", marginTop: "5px", maxHeight: "200px",
-                                        overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
-                                    }}>
-                                        {CURRENCIES.filter(c => 
-                                            c.name.toLowerCase().includes(currencySearch.toLowerCase()) || 
-                                            c.code.toLowerCase().includes(currencySearch.toLowerCase())
-                                        ).map(c => (
-                                            <div key={c.code} onClick={() => { setCurrency(c.code); setShowCurrencySearch(false); }}
-                                                 style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}>
-                                                {c.code} ({c.symbol}) - {c.name}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '1rem' }}>
-                    <div className="form-group">
-                        <label>Patient Phone</label>
-                        <div style={{ display: "flex", gap: "5px", position: "relative" }}>
-                            <div className="input-icon-wrapper" style={{ width: "110px" }}>
-                                <i className="fas fa-globe"></i>
-                                <input
-                                    type="text"
-                                    placeholder="Search..."
-                                    value={countryCode}
-                                    onChange={(e) => {
-                                        setCountryCode(e.target.value);
-                                        setShowCountrySearch(true);
-                                    }}
-                                    onFocus={() => setShowCountrySearch(true)}
-                                    className="dashboard-input"
-                                    style={{
-                                        width: "100%",
-                                        background: "#222",
-                                        border: "1px solid #333",
-                                        borderRadius: "8px",
-                                        color: "#fff",
-                                        fontSize: "0.85rem"
-                                    }}
-                                />
-                            </div>
-                                {showCountrySearch && (
-                                    <div className="elegant-scroll" style={{
-                                        position: "absolute", top: "100%", left: 0, right: 0,
-                                        zIndex: 105, background: "#1a1a1a", border: "1px solid #444",
-                                        borderRadius: "8px", marginTop: "5px", maxHeight: "200px",
-                                        overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", width: "220px"
-                                    }}>
-                                        {COUNTRY_CODES
-                                            .filter(c => 
-                                                c.code.includes(countryCode) || 
-                                                c.iso.toLowerCase().includes(countryCode.toLowerCase())
-                                            )
-                                            .map(c => (
-                                                <div 
-                                                    key={c.iso}
-                                                    onClick={() => {
-                                                        setCountryCode(c.code);
-                                                        setShowCountrySearch(false);
-                                                    }}
-                                                    style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}
-                                                    onMouseEnter={e => e.currentTarget.style.background = "#2a2a2a"}
-                                                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                                                >
-                                                    {c.name} ({c.code})
-                                                </div>
-                                            ))
-                                        }
-                                    </div>
-                                )}
-                                {showCountrySearch && (
-                                    <div 
-                                        style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 104 }}
-                                        onClick={() => setShowCountrySearch(false)}
-                                    ></div>
-                                )}
-                            </div>
+                    <div className="form-group relative" style={{ flex: 1 }}>
+                        <label>DATE</label>
+                        <div className="input-icon-wrapper" style={{ height: "45px" }}>
                             <input
-                                type="text"
-                                placeholder="Phone number"
-                                value={patientPhone}
-                                onChange={(e) => setPatientPhone(e.target.value)}
+                                type="date"
+                                value={invoiceDate}
+                                onChange={(e) => setInvoiceDate(e.target.value)}
                                 className="dashboard-input"
-                                style={{ flex: 1 }}
+                                style={{ colorScheme: "dark", paddingRight: "35px", height: "100%" }}
+                                onClick={(e) => e.target.showPicker()}
                             />
+                            <i 
+                                className="fas fa-calendar-alt absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" 
+                                style={{ color: "#d4af37", opacity: 0.8 }}
+                                onClick={(e) => e.currentTarget.previousSibling.showPicker()}
+                            ></i>
                         </div>
                     </div>
+
+                    <div className="form-group relative" style={{ flex: 1 }}>
+                        <label>CURRENCY</label>
+                        <div className="input-icon-wrapper" style={{ height: "45px" }}>
+                            <i className="fas fa-coins"></i>
+                            <input
+                                type="text"
+                                value={showCurrencySearch ? currencySearch : `${currency} (${currencySymbol})`}
+                                onFocus={() => { setShowCurrencySearch(true); setCurrencySearch(""); }}
+                                onChange={(e) => setCurrencySearch(e.target.value)}
+                                placeholder="Search..."
+                                className="dashboard-input"
+                                style={{
+                                    background: "#222", border: "1px solid #333", borderRadius: "8px",
+                                    color: "#fff", width: "100%", outline: "none", height: "100%"
+                                }}
+                            />
+                            {showCurrencySearch && (
+                                <div className="elegant-scroll" style={{
+                                    position: "absolute", top: "100%", left: 0, right: 0,
+                                    zIndex: 105, background: "#1a1a1a", border: "1px solid #444",
+                                    borderRadius: "8px", marginTop: "5px", maxHeight: "200px",
+                                    overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+                                }}>
+                                    {CURRENCIES.filter(c =>
+                                        c.name.toLowerCase().includes(currencySearch.toLowerCase()) ||
+                                        c.code.toLowerCase().includes(currencySearch.toLowerCase())
+                                    ).map(c => (
+                                        <div key={c.code} onClick={() => { setCurrency(c.code); setShowCurrencySearch(false); }}
+                                            style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}>
+                                            {c.code} ({c.symbol}) - {c.name}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: "1.5rem" }}>
+                    <label>Patient Phone Number</label>
+                    <div style={{ display: "flex", gap: "10px", position: "relative" }}>
+                        <div className="input-icon-wrapper" style={{ width: "120px", height: "45px" }}>
+                            <i className="fas fa-globe"></i>
+                            <input
+                                type="text"
+                                placeholder="Code"
+                                value={countryCode}
+                                onChange={(e) => {
+                                    setCountryCode(e.target.value);
+                                    setShowCountrySearch(true);
+                                }}
+                                onFocus={() => setShowCountrySearch(true)}
+                                className="dashboard-input"
+                                style={{ width: "100%", height: "100%" }}
+                            />
+                            {showCountrySearch && (
+                                <div className="elegant-scroll" style={{
+                                    position: "absolute", top: "100%", left: 0, right: 0,
+                                    zIndex: 105, background: "#1a1a1a", border: "1px solid #444",
+                                    borderRadius: "8px", marginTop: "5px", maxHeight: "200px",
+                                    overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", width: "220px"
+                                }}>
+                                    {COUNTRY_CODES
+                                        .filter(c =>
+                                            c.code.includes(countryCode) ||
+                                            c.iso.toLowerCase().includes(countryCode.toLowerCase())
+                                        )
+                                        .map(c => (
+                                            <div
+                                                key={c.iso}
+                                                onClick={() => {
+                                                    setCountryCode(c.code);
+                                                    setShowCountrySearch(false);
+                                                }}
+                                                style={{ padding: "10px", cursor: "pointer", borderBottom: "1px solid #333", color: "#fff", fontSize: "0.85rem" }}
+                                                onMouseEnter={e => e.currentTarget.style.background = "#2a2a2a"}
+                                                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                                            >
+                                                {c.name} ({c.code})
+                                            </div>
+                                        ))
+                                    }
+                                </div>
+                            )}
+                            {showCountrySearch && (
+                                <div
+                                    style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 104 }}
+                                    onClick={() => setShowCountrySearch(false)}
+                                ></div>
+                            )}
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Phone number"
+                            value={patientPhone}
+                            onChange={(e) => setPatientPhone(e.target.value)}
+                            className="dashboard-input"
+                            style={{ flex: 1, height: "45px" }}
+                        />
+                    </div>
+                </div>
+
 
                 {/* Treatment Items */}
                 <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', marginBottom: '0.5rem' }}>
