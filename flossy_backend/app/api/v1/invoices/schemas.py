@@ -9,7 +9,6 @@ class InvoiceItemCreate(BaseModel):
     discount: float = 0.0
 
 class PaymentRecordCreate(BaseModel):
-    receipt_number: Optional[str] = None
     paid_on: Optional[str] = None # format "YYYY-MM-DD"
     payment_method: str
     amount: float

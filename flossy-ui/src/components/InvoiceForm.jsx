@@ -17,7 +17,8 @@ const API = import.meta.env.VITE_API_BASE_URL;
 
 const EXCHANGE_RATES = {
     INR: 1,
-    USD: 0.012
+    USD: 0.012,
+    AFN: 0.80
 };
 
 const convertPrice = (amount, fromCurrency, toCurrency) => {
@@ -537,7 +538,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                         setActiveTreatmentIdx(idx);
                                     }}
                                     className="dashboard-input"
-                                    style={{ paddingLeft: '42px' }}
+                                    style={{ paddingLeft: '45px' }}
                                 />
                                 <i className="fas fa-search" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: '#f0b800', opacity: 0.7 }}></i>
                             </div>
@@ -547,7 +548,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                     position: "absolute", top: "100%", left: 0, right: 0,
                                     zIndex: 102, background: "#1a1a1a", border: "1px solid #444",
                                     borderRadius: "8px", marginTop: "5px", maxHeight: "180px",
-                                    overflowY: "scroll", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+                                    overflowY: "auto", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
                                 }}>
                                     {catalog
                                         .filter(cat => cat.name.toLowerCase().includes(treatmentSearchTerm.toLowerCase()))

@@ -93,10 +93,8 @@ def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db), user = De
                 try: p_date = datetime.strptime(pay.paid_on, "%Y-%m-%d")
                 except: pass
             
-            rec_num = pay.receipt_number or f"REC-{uuid.uuid4().hex[:8].upper()}"
             db.add(PaymentRecord(
                 invoice_id=invoice.id,
-                receipt_number=rec_num,
                 paid_on=p_date,
                 payment_method=pay.payment_method,
                 amount=pay.amount
@@ -179,10 +177,8 @@ def update_invoice(id: int, data: InvoiceCreate, db: Session = Depends(get_db), 
                 try: p_date = datetime.strptime(pay.paid_on, "%Y-%m-%d")
                 except: pass
             
-            rec_num = pay.receipt_number or f"RCP-{int(datetime.now().timestamp())}-{id}"
             db.add(PaymentRecord(
                 invoice_id=invoice.id,
-                receipt_number=rec_num,
                 paid_on=p_date,
                 payment_method=pay.payment_method,
                 amount=pay.amount
@@ -250,8 +246,7 @@ def get_invoice_details(id: int, db: Session = Depends(get_db)):
             {
                 "payment_method": p.payment_method,
                 "amount": p.amount,
-                "paid_on": p.paid_on,
-                "receipt_number": p.receipt_number
+                "paid_on": p.paid_on
             }
             for p in invoice.payment_records
         ]
@@ -339,23 +334,26 @@ def download_invoice_pdf(id: int, stamp: bool = Query(True), db: Session = Depen
     
     pdf.ln(8)
 
-    # Treatment Table
+    # Items Table (Combined Treatments & Payments)
     pdf.set_font("Arial", "B", 10)
     pdf.set_fill_color(212, 175, 55)
     pdf.set_text_color(255, 255, 255)
     pdf.cell(15, 10, "S.No", border=1, align="C", fill=True)
     pdf.cell(85, 10, " Description", border=1, fill=True)
     pdf.cell(30, 10, " Date", border=1, align="C", fill=True)
-    pdf.cell(30, 10, f" Cost ({invoice.currency})", border=1, align="C", fill=True)
+    pdf.cell(30, 10, f" Amount ({invoice.currency})", border=1, align="C", fill=True)
     pdf.cell(30, 10, " Disc.", border=1, align="C", fill=True, ln=True)
     
     pdf.set_text_color(26, 26, 26)
     pdf.set_font("Arial", "", 10)
     gross_amount = 0
     total_item_discount = 0
-    for idx, item in enumerate(invoice.items, 1):
+    row_count = 1
+    
+    # Treatments
+    for item in invoice.items:
         item_discount = getattr(item, "discount", 0.0) or 0.0
-        pdf.cell(15, 8, str(idx), border=1, align="C")
+        pdf.cell(15, 8, str(row_count), border=1, align="C")
         pdf.cell(85, 8, f" {item.treatment_name}", border=1)
         t_date_str = item.treatment_date.strftime("%b %d, %Y") if item.treatment_date else "N/A"
         pdf.cell(30, 8, t_date_str, border=1, align="C")
@@ -363,54 +361,48 @@ def download_invoice_pdf(id: int, stamp: bool = Query(True), db: Session = Depen
         pdf.cell(30, 8, f"{item_discount:,.2f}", border=1, align="R", ln=True)
         gross_amount += item.cost
         total_item_discount += item_discount
+        row_count += 1
+
+    # Payments
+    total_paid = 0
+    for pay in invoice.payment_records:
+        pdf.cell(15, 8, str(row_count), border=1, align="C")
+        pdf.set_font("Arial", "I", 10)
+        pdf.cell(85, 8, f" Payment via {pay.payment_method}", border=1)
+        pdf.set_font("Arial", "", 10)
+        pdf.cell(30, 8, pay.paid_on.strftime("%b %d, %Y") if pay.paid_on else "N/A", border=1, align="C")
+        pdf.cell(30, 8, f"{pay.amount:,.2f}", border=1, align="R")
+        pdf.cell(30, 8, "-", border=1, align="C", ln=True)
+        total_paid += pay.amount
+        row_count += 1
         
+    pdf.ln(2)
     pdf.set_font("Arial", "B", 10)
-    pdf.cell(150, 8, "Gross Amount", border=1, align="R")
+    pdf.cell(150, 8, "Treatment Total (Gross)", border=1, align="R")
     pdf.cell(0, 8, f"{invoice.currency} {gross_amount:,.2f}", border=1, align="R", ln=True)
 
     if total_item_discount > 0:
-         pdf.cell(150, 8, "Item Discounts", border=1, align="R")
-         pdf.cell(0, 8, f"INR {total_item_discount:,.2f}", border=1, align="R", ln=True)
+         pdf.cell(150, 8, "Total Item Discounts", border=1, align="R")
+         pdf.cell(0, 8, f"{invoice.currency} {total_item_discount:,.2f}", border=1, align="R", ln=True)
 
-    pdf.cell(150, 8, "Additional Discount", border=1, align="R")
-    pdf.cell(0, 8, f"INR {invoice.discount:,.2f}", border=1, align="R", ln=True)
+    if invoice.discount > 0:
+        pdf.cell(150, 8, "Additional Discount", border=1, align="R")
+        pdf.cell(0, 8, f"{invoice.currency} {invoice.discount:,.2f}", border=1, align="R", ln=True)
     
     pdf.set_fill_color(245, 245, 245)
-    pdf.cell(150, 10, "TOTAL PAYABLE", border=1, align="R", fill=True)
+    pdf.cell(150, 10, "NET PAYABLE VALUE", border=1, align="R", fill=True)
     pdf.cell(0, 10, f"{invoice.currency} {invoice.total_amount:,.2f}", border=1, align="R", fill=True, ln=True)
     
-    pdf.ln(10)
-
-    # Payment Table
     pdf.set_font("Arial", "B", 10)
-    pdf.cell(130, 8, "Payment History", ln=True)
-    pdf.set_font("Arial", "B", 9)
-    pdf.cell(15, 8, "S.No", border=1, align="C")
-    pdf.cell(60, 8, " Receipt #", border=1)
-    pdf.cell(35, 8, " Paid On", border=1, align="C")
-    pdf.cell(40, 8, " Method", border=1, align="C")
-    pdf.cell(0, 8, " Amount", border=1, align="C", ln=True)
-    
-    pdf.set_font("Arial", "", 9)
-    total_paid = 0
-    for idx, pay in enumerate(invoice.payment_records, 1):
-        pdf.cell(15, 7, str(idx), border=1, align="C")
-        pdf.cell(60, 7, f" {pay.receipt_number}", border=1)
-        pdf.cell(35, 7, pay.paid_on.strftime("%b %d, %Y"), border=1, align="C")
-        pdf.cell(40, 7, pay.payment_method, border=1, align="C")
-        pdf.cell(0, 7, f"{invoice.currency} {pay.amount:,.2f}", border=1, align="R", ln=True)
-        total_paid += pay.amount
-        
-    pdf.set_font("Arial", "B", 9)
     pdf.cell(150, 8, "Total Amount Paid", border=1, align="R")
     pdf.cell(0, 8, f"{invoice.currency} {total_paid:,.2f}", border=1, align="R", ln=True)
 
     # Final Summary
     due = invoice.total_amount - total_paid
-    pdf.ln(10)
+    pdf.ln(5)
     pdf.set_font("Arial", "B", 11)
     pdf.cell(130, 10, "BALANCE DUE (NET):", border="B")
-    pdf.set_text_color(200, 0, 0) if due > 0 else pdf.set_text_color(0, 150, 0)
+    pdf.set_text_color(200, 0, 0) if due > 0.01 else pdf.set_text_color(0, 150, 0)
     pdf.cell(0, 10, f"{invoice.currency} {max(0, due):,.2f}", border="B", align="R", ln=True)
 
     if pdf.get_y() > 240: pdf.add_page()
