@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useUser, useSession } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
-import Header from "../components/RoleHeader";
+import Header from "./dashboards/DashboardHeader";
 
 export default function PostLogin() {
   const { user, isLoaded } = useUser();

@@ -433,6 +433,12 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                     ))}
                                 </div>
                             )}
+                            {showCurrencySearch && (
+                                <div
+                                    style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 104 }}
+                                    onClick={() => setShowCurrencySearch(false)}
+                                ></div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -538,7 +544,7 @@ const InvoiceForm = ({ patientsList, onInvoiceCreated, downloadInvoice, editingI
                                         setActiveTreatmentIdx(idx);
                                     }}
                                     className="dashboard-input"
-                                    style={{ paddingLeft: '45px' }}
+                                    style={{ paddingLeft: '32px' }}
                                 />
                                 <i className="fas fa-search" style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: '#f0b800', opacity: 0.7 }}></i>
                             </div>

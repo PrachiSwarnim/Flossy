@@ -612,17 +612,17 @@ export default function ReceptionistDashboard() {
             {/* RECEPTIONIST PROFILE SIDEBAR (FULL HEIGHT) */}
             <aside className="profile-sidebar full-height">
                 <div className="sidebar-top-icons">
-                    <div className="sidebar-icon-btn" onClick={() => navigate("/")} title="Home">
+                    <div className="sidebar-icon-btn" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} title="Home">
                         <i className="fas fa-home"></i>
                     </div>
-                    <div className="sidebar-icon-btn" title="Email">
-                        <i className="fas fa-envelope"></i>
+                    <div className="sidebar-icon-btn" onClick={() => document.getElementById('appointments')?.scrollIntoView({ behavior: 'smooth' })} title="Appointments">
+                        <i className="fas fa-calendar-alt"></i>
                     </div>
-                    <div className="sidebar-icon-btn" title="Doctor Details">
-                        <i className="fas fa-stethoscope"></i>
+                    <div className="sidebar-icon-btn" onClick={() => document.getElementById('history')?.scrollIntoView({ behavior: 'smooth' })} title="History">
+                        <i className="fas fa-history"></i>
                     </div>
-                    <div className="sidebar-icon-btn" title="Location">
-                        <i className="fas fa-clinic-medical"></i>
+                    <div className="sidebar-icon-btn" onClick={() => document.getElementById('arrival')?.scrollIntoView({ behavior: 'smooth' })} title="New Arrival">
+                        <i className="fas fa-user-plus"></i>
                     </div>
                     <div className="sidebar-icon-btn" onClick={() => setAiOpen(true)} title="FlossyAI">
                         <i className="fas fa-robot"></i>
@@ -657,10 +657,10 @@ export default function ReceptionistDashboard() {
                     {isNewUser ? "Welcome" : "Welcome back"}, {fullName}!
                 </h3>
 
-                <div className="dashboard-layout dash-row" style={{ paddingBottom: "3rem", justifyContent: "center" }}>
+                <div className="dashboard-layout dash-row" style={{ paddingBottom: "1.5rem", justifyContent: "center" }}>
 
                     {/* ROW 1: APPOINTMENTS */}
-                    <div className="row-appointments dash-row" style={{ justifyContent: "center", maxWidth: "1000px" }}>
+                    <div id="appointments" className="row-appointments dash-row" style={{ justifyContent: "center", maxWidth: "1000px" }}>
                         <div className="card dash-col animate-fade-up" style={{ animationDelay: "0.1s", maxWidth: "488px" }}>
                             <div className="card-header">
                                 <h3>Today’s Appointments <span style={{ fontSize: "0.8rem", color: "#f0b800", marginLeft: "8px" }}>{new Date().toLocaleDateString()}</span></h3>
@@ -864,7 +864,7 @@ export default function ReceptionistDashboard() {
                     </div>
 
                     {/* ROW 1.5: HISTORY (CENTERED) */}
-                    <div className="row-history" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+                    <div id="history" className="row-history" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
                         <div className="card animate-fade-up" style={{ animationDelay: "0.2s", width: "100%", maxWidth: "1000px" }}>
                             <div className="card-header">
                                 <h3>Appointment History</h3>
@@ -914,6 +914,8 @@ export default function ReceptionistDashboard() {
                                     >
                                         <option value="newest">Newest First</option>
                                         <option value="oldest">Oldest First</option>
+                                        <option value="az">Patient Name (A-Z)</option>
+                                        <option value="za">Patient Name (Z-A)</option>
                                     </select>
                                 </div>
                                 {(historyNameFilter || historyDateFilter) && (
@@ -935,6 +937,12 @@ export default function ReceptionistDashboard() {
                                             return nameMatch && dateMatch;
                                         })
                                         .sort((a, b) => {
+                                            if (historySortOrder === "az") {
+                                                return (a.patient_name || "").localeCompare(b.patient_name || "");
+                                            }
+                                            if (historySortOrder === "za") {
+                                                return (b.patient_name || "").localeCompare(a.patient_name || "");
+                                            }
                                             const dateA = new Date(a.time);
                                             const dateB = new Date(b.time);
                                             return historySortOrder === "newest" ? dateB - dateA : dateA - dateB;
@@ -1067,8 +1075,8 @@ export default function ReceptionistDashboard() {
                     )}
 
                     {/* ROW 2: NEW PATIENT ARRIVAL */}
-                    <div className="row-arrival" style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-                        <h2 style={{ color: "#f0b800", marginBottom: "2rem", textAlign: "center" }}>New Patient Arrival</h2>
+                    <div id="arrival" className="row-arrival" style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+                        <h2 style={{ color: "#f0b800", marginBottom: "2rem", textAlign: "center", fontSize: "2.4rem" }}>New Patient Arrival</h2>
 
                         <div id="arrivalForm" className="card animate-fade-up" style={{ width: "100%", maxWidth: "600px", margin: "0 auto" }}>
                             <div className="card-header">
@@ -1152,7 +1160,7 @@ export default function ReceptionistDashboard() {
                                             onChange={e => setPatientSex(e.target.value)}
                                             style={{ width: "100%", padding: "12px", background: "#222", border: "1px solid #333", borderRadius: "8px", color: "#fff" }}
                                         >
-                                            <option value="" disabled>Choose</option>
+                                            <option value="" disabled>Select</option>
                                             <option value="M">Male</option>
                                             <option value="F">Female</option>
                                             <option value="Other">Other</option>

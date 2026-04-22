@@ -100,6 +100,10 @@ export default function Login() {
                   width: "100%",
                   border: "none",
                 },
+                cardBox: {
+                  background: "transparent",
+                  boxShadow: "none",
+                },
                 headerTitle: {
                   fontSize: "1.6rem",
                   fontWeight: "700",

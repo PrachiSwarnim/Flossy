@@ -126,6 +126,11 @@ header {
   z-index: 10000 !important;
 }
 
+.dashboard-shell .sa-header {
+  left: 70px !important;
+  width: calc(100% - 70px) !important;
+}
+
 /* ===== PAGE LOAD OVERLAY ===== */
 .page-loader {
   position: fixed;

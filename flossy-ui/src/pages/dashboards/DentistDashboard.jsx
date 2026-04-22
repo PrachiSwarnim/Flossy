@@ -584,17 +584,17 @@ export default function DentistDashboard() {
       {/* DOCTOR PROFILE SIDEBAR (FULL HEIGHT) */}
       <aside className="profile-sidebar full-height">
         <div className="sidebar-top-icons">
-          <div className="sidebar-icon-btn" onClick={() => navigate("/")} title="Home">
+          <div className="sidebar-icon-btn" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} title="Home">
             <i className="fas fa-home"></i>
           </div>
-          <div className="sidebar-icon-btn" title="Email">
-            <i className="fas fa-envelope"></i>
+          <div className="sidebar-icon-btn" onClick={() => document.getElementById('appointments')?.scrollIntoView({ behavior: 'smooth' })} title="Appointments">
+            <i className="fas fa-calendar-alt"></i>
           </div>
-          <div className="sidebar-icon-btn" title="Doctor Details">
-            <i className="fas fa-stethoscope"></i>
+          <div className="sidebar-icon-btn" onClick={() => document.getElementById('history')?.scrollIntoView({ behavior: 'smooth' })} title="History">
+            <i className="fas fa-history"></i>
           </div>
-          <div className="sidebar-icon-btn" title="Location">
-            <i className="fas fa-clinic-medical"></i>
+          <div className="sidebar-icon-btn" onClick={() => document.getElementById('analytics')?.scrollIntoView({ behavior: 'smooth' })} title="Analytics">
+            <i className="fas fa-chart-line"></i>
           </div>
           <div className="sidebar-icon-btn" onClick={() => setAiOpen(true)} title="FlossyAI">
             <i className="fas fa-robot"></i>
@@ -629,7 +629,7 @@ export default function DentistDashboard() {
           <div className="dashboard-layout" style={{ display: "flex", flexDirection: "column", gap: "1.5rem", paddingBottom: "1.5rem" }}>
 
             {/* ROW 1: APPOINTMENTS (SIDE BY SIDE) */}
-            <div className="row-appointments" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "1rem", width: "100%", maxWidth: "1020px", margin: "0 auto" }}>
+            <div id="appointments" className="row-appointments" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "1rem", width: "100%", maxWidth: "1020px", margin: "0 auto" }}>
 
               {/* TODAY */}
               <div className="card animate-fade-up" style={{ animationDelay: "0.1s", flex: "1", minWidth: "300px" }}>
@@ -791,13 +791,8 @@ export default function DentistDashboard() {
                       )}
                   </div>
                 ) : (
-                  <p style={{ color: "#888", fontStyle: "italic", padding: "1rem" }}>No past appointments</p>
-                )}
-              </div>
-            </div>
-
-            {/* ROW 3: DAILY ANALYTICS */}
-            <div className="row-stats" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+            {/* ROW 2: HISTORY (FULL WIDTH) */}
+            <div id="history" className="row-history" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
               <div className="card animate-fade-up" style={{ animationDelay: "0.4s", width: "100%", maxWidth: "1020px" }}>
                 <div className="card-header">
                   <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>

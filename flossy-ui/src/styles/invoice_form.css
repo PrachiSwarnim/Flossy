@@ -85,7 +85,27 @@
     border: 1px solid #333 !important;
     box-shadow: 0 15px 40px rgba(0,0,0,0.6) !important;
     border-radius: 10px !important;
-    overflow: hidden !important;
+    overflow-y: auto !important;
+}
+
+/* Custom Scrollbar for Dropdowns */
+.premium-form .elegant-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.premium-form .elegant-scroll::-webkit-scrollbar-track {
+    background: rgba(42, 42, 42, 0.4);
+    border-radius: 10px;
+}
+
+.premium-form .elegant-scroll::-webkit-scrollbar-thumb {
+    background: rgba(212, 175, 55, 0.3);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.premium-form .elegant-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-gold);
 }
 
 .premium-form .elegant-scroll div:hover {
@@ -118,16 +138,16 @@
 .premium-form .invoice-summary .total-row span {
     color: #d4af37 !important;
     font-weight: 700;
-    font-size: 1.3rem;
+    font-size: 1.15rem;
 }
 
 /* ── Submit Button ── */
 .premium-form .upload-btn {
     background: linear-gradient(135deg, #c9a227, #f0c455) !important;
     color: #111 !important;
-    height: 48px !important;
-    padding: 0 40px !important;
-    font-size: 0.95rem !important;
+    height: 42px !important;
+    padding: 0 30px !important;
+    font-size: 0.85rem !important;
     font-weight: 600 !important;
     border-radius: 12px !important;
     border: none !important;
