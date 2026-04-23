@@ -791,8 +791,13 @@ export default function DentistDashboard() {
                       )}
                   </div>
                 ) : (
-            {/* ROW 2: HISTORY (FULL WIDTH) */}
-            <div id="history" className="row-history" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+                  <p style={{ color: "#888", textAlign: "center", padding: "2rem" }}>No history found.</p>
+                )}
+              </div>
+            </div>
+
+            {/* ROW 3: ANALYTICS (FULL WIDTH) */}
+            <div id="analytics" className="row-analytics" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
               <div className="card animate-fade-up" style={{ animationDelay: "0.4s", width: "100%", maxWidth: "1020px" }}>
                 <div className="card-header">
                   <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
