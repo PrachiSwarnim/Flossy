@@ -4,6 +4,11 @@ from app.core.database import SessionLocal, engine
 from app.models import User, Patient
 
 def fix_and_check_db():
+    from app.core.database import init_db
+    try:
+        init_db()
+    except Exception as e:
+        print(f"init_db failed: {e}")
     db = SessionLocal()
     print("--- FIX AND CHECK DB ---")
 
@@ -11,6 +16,7 @@ def fix_and_check_db():
     mappings = {
         "choudhary.shruti01@gmail.com": "dentist",
         "prachi.swarnim@gmail.com": "dentist",
+        "shaguftajawaid1@gmail.com": "dentist",
         "anything.handmade1@gmail.com": "receptionist"
     }
 

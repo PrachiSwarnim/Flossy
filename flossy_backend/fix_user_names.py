@@ -37,6 +37,7 @@ KNOWN_USERS = {
     "prachi.swarnim@gmail.com": {"first_name": "Prachi", "last_name": "Swarnim"},
     "choudhary.shruti01@gmail.com": {"first_name": "Shruti", "last_name": "Choudhary"},
     "prachiswarnim03@gmail.com": {"first_name": "Prachi", "last_name": "Swarnim"},
+    "shaguftajawaid1@gmail.com": {"first_name": "Shagufta", "last_name": "Jawaid"},
 }
 
 def fix_user_names():

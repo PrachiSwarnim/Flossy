@@ -194,7 +194,8 @@ export default function DentistDashboard() {
 
     const allowedEmails = [
       "prachi.swarnim@gmail.com",
-      "choudhary.shruti01@gmail.com"
+      "choudhary.shruti01@gmail.com",
+      "shaguftajawaid1@gmail.com"
     ];
 
     const isDentist = role === "dentist" || allowedEmails.includes(email);

@@ -37,7 +37,8 @@ def get_automatic_role(email: str) -> str:
         "prachi.swarnim@gmail.com", 
         "choudhary.shruti01@gmail.com", 
         "smileartistsdental@gmail.com",  # Added fallback
-        "dr.prachi@smileartists.com"      # Added potential work email
+        "dr.prachi@smileartists.com",      # Added potential work email
+        "shaguftajawaid1@gmail.com"        # Added new dentist
     ]:
         return "dentist"
     
@@ -75,6 +76,7 @@ KNOWN_USERS = {
     "prachi.swarnim@gmail.com": {"first_name": "Prachi", "last_name": "Swarnim"},
     "choudhary.shruti01@gmail.com": {"first_name": "Shruti", "last_name": "Choudhary"},
     "prachiswarnim03@gmail.com": {"first_name": "Prachi", "last_name": "Swarnim"},
+    "shaguftajawaid1@gmail.com": {"first_name": "Shagufta", "last_name": "Jawaid"},
 }
 
 def fetch_clerk_email(user_payload: dict) -> str:

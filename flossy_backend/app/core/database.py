@@ -158,10 +158,24 @@ def init_db():
         inspector = inspect(engine)
         
         with engine.connect() as conn:
+            # 0. Check 'users' table
+            try:
+                if inspector.has_table('users'):
+                    columns = [c['name'].lower() for c in inspector.get_columns('users')]
+                    if "first_name" not in columns:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN first_name VARCHAR(100);"))
+                    if "last_name" not in columns:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN last_name VARCHAR(100);"))
+            except Exception as e: print(f"Migration error (users): {e}")
+
             # 1. Check 'patients' table
             try:
                 if inspector.has_table('patients'):
                     columns = [c['name'].lower() for c in inspector.get_columns('patients')]
+                    if "first_name" not in columns:
+                        conn.execute(text("ALTER TABLE patients ADD COLUMN first_name VARCHAR(100);"))
+                    if "last_name" not in columns:
+                        conn.execute(text("ALTER TABLE patients ADD COLUMN last_name VARCHAR(100);"))
                     if "age" not in columns:
                         conn.execute(text("ALTER TABLE patients ADD COLUMN age INTEGER;"))
                     if "source" not in columns:

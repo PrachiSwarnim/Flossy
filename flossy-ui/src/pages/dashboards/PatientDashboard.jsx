@@ -177,7 +177,7 @@ export default function PatientDashboard() {
     if (!isLoaded || !user) return;
     const role = user?.publicMetadata?.role || sessionStorage.getItem("flossy_role");
     const email = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
-    const isHardcodedDentist = ["prachi.swarnim@gmail.com", "choudhary.shruti01@gmail.com", "smileartistsdental@gmail.com"].includes(email);
+    const isHardcodedDentist = ["prachi.swarnim@gmail.com", "choudhary.shruti01@gmail.com", "smileartistsdental@gmail.com", "shaguftajawaid1@gmail.com"].includes(email);
 
     if (role === "dentist" || role === "receptionist" || isHardcodedDentist) {
       if (role === "dentist" || isHardcodedDentist) navigate("/dentist");
