@@ -241,7 +241,7 @@ def update_prescription(id: int, data: PrescriptionUpdate, db: Session = Depends
         raise HTTPException(status_code=404, detail="Prescription not found")
     
     if presc.doctor_id != user.id:
-        if user.email != "prachi.swarnim@gmail.com":
+        if user.email not in ["prachi.swarnim@gmail.com", "shaguftajawaid1@gmail.com", "choudhary.shruti01@gmail.com"]:
              raise HTTPException(status_code=403, detail="Not authorized to edit this prescription")
 
     if data.details is not None: presc.details = data.details

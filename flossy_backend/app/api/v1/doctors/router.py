@@ -20,7 +20,9 @@ def get_doctors(db: Session = Depends(get_db)):
     dentists = db.query(User).filter(
         or_(
             User.role == "dentist",
-            User.email.ilike("prachi.swarnim@gmail.com")
+            User.email.ilike("prachi.swarnim@gmail.com"),
+            User.email.ilike("shaguftajawaid1@gmail.com"),
+            User.email.ilike("choudhary.shruti01@gmail.com")
         )
     ).all()
     

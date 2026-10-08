@@ -176,7 +176,8 @@ def dentist_upcoming(
     email = (user_payload.get("email") or user_payload.get("email_address") or "").lower()
     user = db.query(User).filter(User.email.ilike(email)).first()
 
-    if not user or (user.role != "dentist" and email != "prachi.swarnim@gmail.com"):
+    allowed_dentist_emails = ["prachi.swarnim@gmail.com", "shaguftajawaid1@gmail.com", "choudhary.shruti01@gmail.com"]
+    if not user or (user.role != "dentist" and email not in allowed_dentist_emails):
         return {"today": [], "upcoming": []}
 
     # Normalize dentist name logic omitted for brevity, adding back if needed
