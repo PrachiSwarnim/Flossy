@@ -34,7 +34,7 @@ class _ReceptionistDashboardState extends State<ReceptionistDashboard> with Sing
   final _emailController = TextEditingController();
   String _selectedService = 'Teeth Cleaning';
   String _selectedDentist = 'Dr. Sarah Jenkins';
-  DateTime _selectedDate = DateTime.now();
+  final DateTime _selectedDate = DateTime.now();
   String _selectedTime = '10:00 AM';
   bool _isBooking = false;
 

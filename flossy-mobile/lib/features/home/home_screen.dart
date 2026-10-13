@@ -637,7 +637,7 @@ class _FlossyAISection extends StatelessWidget {
           ),
         ],
       ),
-    );
+    )
   }
 }
 
@@ -748,7 +748,7 @@ class _HowItWorksSection extends StatelessWidget {
           }),
         ],
       ),
-    );
+    )
   }
 }
 
@@ -848,7 +848,7 @@ class _ServicesSection extends StatelessWidget {
           ),
         ],
       ),
-    );
+    )
   }
 }
 
@@ -961,7 +961,7 @@ class _CTABanner extends StatelessWidget {
           ),
         ],
       ),
-    );
+    )
   }
 }
 

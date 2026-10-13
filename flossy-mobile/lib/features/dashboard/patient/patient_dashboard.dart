@@ -347,7 +347,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
                     ),
                     child: Center(
                       child: Text(
-                        (user?.firstName?.isNotEmpty == true ? user!.firstName[0] : 'P').toUpperCase(),
+                        (user?.firstName.isNotEmpty == true ? user!.firstName[0] : 'P').toUpperCase(),
                         style: GoogleFonts.playfairDisplay(
                           color: AppTheme.gold,
                           fontSize: 22,
@@ -460,7 +460,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 ),
               ),
               const SizedBox(height: 12),
-              ..._today.map((a) => AppointmentCard(appt: a)).toList(),
+              ..._today.map((a) => AppointmentCard(appt: a)),
               const SizedBox(height: 16),
             ],
 
@@ -475,7 +475,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 ),
               ),
               const SizedBox(height: 12),
-              ..._upcoming.take(3).map((a) => AppointmentCard(appt: a)).toList(),
+              ..._upcoming.take(3).map((a) => AppointmentCard(appt: a)),
             ],
 
             if (_today.isEmpty && _upcoming.isEmpty)

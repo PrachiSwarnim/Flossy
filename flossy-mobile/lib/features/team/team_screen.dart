@@ -235,6 +235,6 @@ class TeamScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
+    )
   }
 }

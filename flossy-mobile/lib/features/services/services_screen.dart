@@ -262,6 +262,6 @@ class ServicesScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
+    )
   }
 }

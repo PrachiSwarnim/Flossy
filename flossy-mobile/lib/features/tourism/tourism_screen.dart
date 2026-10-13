@@ -338,6 +338,6 @@ class TourismScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
+    )
   }
 }
