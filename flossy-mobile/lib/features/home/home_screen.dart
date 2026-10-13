@@ -371,7 +371,6 @@ class _AppointmentCTA extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -493,7 +492,6 @@ class _AboutSection extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
           ),
           const SizedBox(height: 14),
           Text(
@@ -568,7 +566,6 @@ class _FlossyAISection extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -637,7 +634,7 @@ class _FlossyAISection extends StatelessWidget {
           ),
         ],
       ),
-    )
+    );
   }
 }
 
@@ -672,7 +669,6 @@ class _HowItWorksSection extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
           ),
           const SizedBox(height: 20),
           ..._howSteps.asMap().entries.map((e) {
@@ -748,7 +744,7 @@ class _HowItWorksSection extends StatelessWidget {
           }),
         ],
       ),
-    )
+    );
   }
 }
 
@@ -783,7 +779,6 @@ class _ServicesSection extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
           ),
           const SizedBox(height: 20),
           GridView.count(
@@ -848,7 +843,7 @@ class _ServicesSection extends StatelessWidget {
           ),
         ],
       ),
-    )
+    );
   }
 }
 
@@ -896,7 +891,6 @@ class _CTABanner extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
           ),
           const SizedBox(height: 10),
           Text(
@@ -961,7 +955,7 @@ class _CTABanner extends StatelessWidget {
           ),
         ],
       ),
-    )
+    );
   }
 }
 

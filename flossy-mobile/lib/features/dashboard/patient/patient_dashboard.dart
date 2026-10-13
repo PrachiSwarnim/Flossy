@@ -80,6 +80,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
     try {
       final res = await http.get(Uri.parse('$_apiBase/api/appointments/my'), headers: _headers);
       if (res.statusCode == 200) {
+        final data = json.decode(res.body) as Map<String, dynamic>;
         final List<dynamic> raw = data['appointments'] ?? [];
         final all = raw.map((item) => Map<String, dynamic>.from(item)).toList();
         final now = DateTime.now();

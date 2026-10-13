@@ -258,7 +258,7 @@ class _ReceptionistDashboardState extends State<ReceptionistDashboard> with Sing
 
                 // Navigation Tabs
                 Container(
-                  margin: const EdgeInsets.horizontal(16),
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
                     color: AppTheme.deepBlueVariant,
                     borderRadius: BorderRadius.circular(14),

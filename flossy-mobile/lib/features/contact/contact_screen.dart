@@ -57,7 +57,6 @@ class ContactScreen extends StatelessWidget {
                             ),
                           ],
                         ),
-                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -193,7 +192,7 @@ class ContactScreen extends StatelessWidget {
           ),
         ),
       ),
-    )
+    );
   }
 }
 

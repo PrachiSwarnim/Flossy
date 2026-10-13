@@ -142,7 +142,6 @@ class ServicesScreen extends StatelessWidget {
                             ),
                           ],
                         ),
-                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -262,6 +261,6 @@ class ServicesScreen extends StatelessWidget {
           ],
         ),
       ),
-    )
+    );
   }
 }

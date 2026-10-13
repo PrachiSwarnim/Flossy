@@ -105,7 +105,6 @@ class TourismScreen extends StatelessWidget {
                             ),
                           ],
                         ),
-                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -338,6 +337,6 @@ class TourismScreen extends StatelessWidget {
           ),
         ),
       ),
-    )
+    );
   }
 }
