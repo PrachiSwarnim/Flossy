@@ -423,6 +423,10 @@ protobuf==6.33.6
     #   proto-plus
 psutil==7.2.2
     # via livekit-agents
+psycopg==3.3.6
+    # via -r requirements.txt
+psycopg-binary==3.3.6
+    # via psycopg
 psycopg2-binary==2.9.13
     # via -r requirements.txt
 pyasn1==0.6.4
@@ -585,6 +589,7 @@ typing-extensions==4.16.0
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
+    #   psycopg
     #   pydantic
     #   pydantic-core
     #   sqlalchemy
